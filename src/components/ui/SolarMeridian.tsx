@@ -69,17 +69,17 @@ export function SolarMeridian() {
         onPointerUp={handlePointerUp}
       >
         {/* Sketchy Sundial SVG */}
-        <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" overflow="visible">
+        <svg className="absolute top-0 left-0 w-full h-full pointer-events-none drop-shadow-sm" overflow="visible">
            {/* Outer rims */}
-           <path d={`M ${cx - R},${cy} A ${R} ${R} 0 0 1 ${cx + R} ${cy}`} fill="none" stroke="#1e293b" strokeWidth="3" />
-           <path d={`M ${cx - R - 6},${cy + 2} A ${R+6} ${R+6} 0 0 1 ${cx + R + 6} ${cy + 2}`} fill="none" stroke="#1e293b" strokeWidth="1.5" strokeDasharray="6 4" opacity="0.5" />
+           <path d={`M ${cx - R},${cy} A ${R} ${R} 0 0 1 ${cx + R} ${cy}`} fill="none" stroke="#ffffff" strokeWidth="3" />
+           <path d={`M ${cx - R - 6},${cy + 2} A ${R+6} ${R+6} 0 0 1 ${cx + R + 6} ${cy + 2}`} fill="none" stroke="#ffffff" strokeWidth="1.5" strokeDasharray="6 4" opacity="0.5" />
            
            {/* Inner rim */}
-           <path d={`M ${cx - 20},${cy} A 20 20 0 0 1 ${cx + 20} ${cy}`} fill="none" stroke="#1e293b" strokeWidth="3" />
+           <path d={`M ${cx - 20},${cy} A 20 20 0 0 1 ${cx + 20} ${cy}`} fill="none" stroke="#ffffff" strokeWidth="3" />
            
            {/* Base line */}
-           <line x1={15} y1={cy} x2={245} y2={cy} stroke="#1e293b" strokeWidth="3" strokeLinecap="round" />
-           <line x1={15} y1={cy + 4} x2={245} y2={cy + 4} stroke="#1e293b" strokeWidth="1" strokeDasharray="8 6" opacity="0.4" />
+           <line x1={15} y1={cy} x2={245} y2={cy} stroke="#ffffff" strokeWidth="3" strokeLinecap="round" />
+           <line x1={15} y1={cy + 4} x2={245} y2={cy + 4} stroke="#ffffff" strokeWidth="1" strokeDasharray="8 6" opacity="0.4" />
 
            {/* Radial Ticks */}
            {ticks.map(h => {
@@ -95,8 +95,8 @@ export function SolarMeridian() {
 
              return (
                <g key={h}>
-                 <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#1e293b" strokeWidth="2" strokeDasharray="3 3" opacity="0.6" />
-                 <text x={tx} y={ty} fill="#1e293b" fontSize="11" fontFamily="monospace" fontWeight="900" textAnchor="middle" dominantBaseline="middle">
+                 <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#ffffff" strokeWidth="2" strokeDasharray="3 3" opacity="0.6" />
+                 <text x={tx} y={ty} fill="#ffffff" fontSize="11" fontFamily="monospace" fontWeight="900" textAnchor="middle" dominantBaseline="middle">
                    {h}
                  </text>
                </g>
@@ -104,9 +104,9 @@ export function SolarMeridian() {
            })}
            
            {/* The Pointer (Gnomon Hand) */}
-           <line x1={cx} y1={cy} x2={x} y2={y} stroke="#1e293b" strokeWidth="4" strokeLinecap="round" />
-           <circle cx={cx} cy={cy} r="8" fill="#fcf8ec" stroke="#1e293b" strokeWidth="3" />
-           <circle cx={cx} cy={cy} r="3" fill="#1e293b" />
+           <line x1={cx} y1={cy} x2={x} y2={y} stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+           <circle cx={cx} cy={cy} r="8" fill="#fcf8ec" stroke="#ffffff" strokeWidth="3" />
+           <circle cx={cx} cy={cy} r="3" fill="#ffffff" />
         </svg>
 
         {/* Chunky Hand-drawn Celestial Body Token */}
