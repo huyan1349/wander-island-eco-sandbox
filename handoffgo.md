@@ -1,32 +1,27 @@
-# Handoff Notes
+# Handoff - 多人联机前端完成
 
-## Completed
-- App.tsx 多人联机核心集成完成
-  - 添加 LoginScreen, SocialPanel, Toast, VisitOverlay 组件导入
-  - 添加 api, socket (connectSocket, onUserOnline, onUserOffline, onFriendRequest, onIslandVisitData, onIslandVisitError) 导入
-  - 添加 store 状态读取: authUser, setAuthUser, addToast, visitingIsland, setVisitingIsland, setUnreadCount, serverIslandMap, setServerIslandMap, islandId
-  - 添加自动登录 useEffect (从 saved token 恢复登录)
-  - 添加 Socket.IO 事件监听 useEffect (上线/离线/好友请求/串门数据/串门错误)
-  - 添加未读消息轮询 useEffect (15秒间隔)
-  - 添加服务器同步 useEffect (60秒间隔同步岛屿数据到服务器)
-  - JSX 渲染添加: LoginScreen, SocialPanel, Toast, VisitOverlay
-- SaveSelectScreen.tsx 联机存档部署功能完成
-  - 添加 api, Globe, Check 导入
-  - 添加 store 状态读取: authUser, serverIslandMap, setServerIslandMap
-  - 添加部署状态: deployingId, deployedIds
-  - 添加 handleDeploy 函数 (创建/更新服务器岛屿，持久化映射)
-  - useEffect 中加载 serverIslandMap 映射
-  - 存档卡片添加部署按钮 (Globe/Check 图标，仅登录用户可见)
-  - 已部署存档显示"已部署"绿色标记
-- Git 已提交并推送
+## 已完成任务
+1. **store.ts** — 添加 ToastItem/VisitingIsland 接口、toasts/addToast/removeToast、visitingIsland/setVisitingIsland、unreadCount/setUnreadCount、serverIslandMap/setServerIslandMap
+2. **Toast.tsx** — 手绘风格通知组件，4种类型（online/offline/friend_request/info），右上角定位，3秒自动消失
+3. **VisitOverlay.tsx** — 串门加载界面，罗盘旋转动画，"正在前往 {岛屿名}..."，返回按钮
+4. **App.tsx** — 核心集成：LoginScreen/SocialPanel/Toast/VisitOverlay 渲染、自动登录、Socket 事件监听→addToast、未读消息轮询、服务器同步
+5. **SaveSelectScreen.tsx** — 联机存档部署按钮（Globe/Check 图标）、已部署标记、serverIslandMap 持久化
+6. **PlayerPanel.tsx** — 版本号 v2.0.0 Multiplayer、联机状态显示、退出登录按钮
+7. **SocialPanel.tsx** — 未读消息红点（badge）、打开聊天标签时清除未读
+8. **index.css** — slideInFromRight/slideOutToRight/compassSpin 动画
 
-## Not Completed
-- Toast 组件和 VisitOverlay 组件的具体实现（已导入但可能需要确认组件文件存在）
-- store.ts 中需要确认 authUser, visitingIsland, serverIslandMap, addToast, setUnreadCount 等状态已定义
-- 实际联机测试需要后端服务器运行
+## 未完成任务
+- **Git commit + push** — 终端暂时不可用，需要手动执行 git add -A && git commit && git push
 
-## How to Run
-```bash
-npm run server    # 后端 localhost:3001
-npm run dev       # 前端 localhost:3000
-```
+## TypeScript 编译
+- `npx tsc --noEmit` 通过，无错误
+
+## 文件变更列表
+- src/store.ts（修改）
+- src/App.tsx（修改）
+- src/components/Toast.tsx（新增）
+- src/components/VisitOverlay.tsx（新增）
+- src/components/SocialPanel.tsx（修改）
+- src/components/SaveSelectScreen.tsx（修改）
+- src/components/PlayerPanel.tsx（修改）
+- src/index.css（修改）

@@ -1,3 +1,6 @@
+// Use Vite proxy in dev mode (relative path), or direct backend URL otherwise.
+// The Vite proxy is configured in vite.config.ts to forward /api and /socket.io to localhost:3001.
+// In production/preview mode, we connect directly to the backend.
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 interface ApiResponse<T = any> {

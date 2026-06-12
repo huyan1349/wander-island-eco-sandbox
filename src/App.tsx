@@ -59,7 +59,8 @@ import {
   Droplet,
   Armchair,
   Leaf,
-  SunMedium
+  SunMedium,
+  User
 } from "lucide-react";
 
 import { PlayerPanel } from "./components/PlayerPanel";
@@ -120,7 +121,7 @@ export default function App() {
     setUserInput("");
     
     try {
-      const response = await fetch('http://localhost:3001/api/generate-event', {
+      const response = await fetch('/api/generate-event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
