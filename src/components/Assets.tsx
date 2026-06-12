@@ -2582,54 +2582,54 @@ export function Tent(props: any) {
       {/* Wooden Frame */}
       <mesh position={[0, 0.8, -0.9]} rotation={[0, 0, Math.PI / 4]} castShadow>
         <boxGeometry args={[0.1, 2.4, 0.1]} />
-        <meshStandardMaterial color="#5c4033" />
+        <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
       <mesh position={[0, 0.8, -0.9]} rotation={[0, 0, -Math.PI / 4]} castShadow>
         <boxGeometry args={[0.1, 2.4, 0.1]} />
-        <meshStandardMaterial color="#5c4033" />
+        <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
       <mesh position={[0, 0.8, 0.9]} rotation={[0, 0, Math.PI / 4]} castShadow>
         <boxGeometry args={[0.1, 2.4, 0.1]} />
-        <meshStandardMaterial color="#5c4033" />
+        <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
       <mesh position={[0, 0.8, 0.9]} rotation={[0, 0, -Math.PI / 4]} castShadow>
         <boxGeometry args={[0.1, 2.4, 0.1]} />
-        <meshStandardMaterial color="#5c4033" />
+        <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
       <mesh position={[0, 1.6, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.06, 0.06, 2.2]} />
-        <meshStandardMaterial color="#5c4033" />
+        <cylinderGeometry args={[0.06, 0.06, 2.2, 6]} />
+        <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
       
       {/* Canvas */}
       {/* Left side */}
       <mesh position={[-0.45, 0.8, 0]} rotation={[0, 0, Math.PI / 4]} castShadow receiveShadow>
         <boxGeometry args={[0.05, 2.2, 2.0]} />
-        <meshStandardMaterial color="#fcd34d" roughness={0.9} />
+        <meshStandardMaterial color="#fcd34d" roughness={0.9} flatShading />
       </mesh>
       {/* Right side */}
       <mesh position={[0.45, 0.8, 0]} rotation={[0, 0, -Math.PI / 4]} castShadow receiveShadow>
         <boxGeometry args={[0.05, 2.2, 2.0]} />
-        <meshStandardMaterial color="#fcd34d" roughness={0.9} />
+        <meshStandardMaterial color="#fcd34d" roughness={0.9} flatShading />
       </mesh>
       {/* Back flap */}
       <mesh position={[0, 0.8, -0.95]} rotation={[Math.PI / 12, 0, 0]} castShadow>
         <planeGeometry args={[1.6, 1.8]} />
-        <meshStandardMaterial color="#fbbf24" roughness={0.9} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#fbbf24" roughness={0.9} side={THREE.DoubleSide} flatShading />
       </mesh>
       {/* Floor blanket */}
       <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[1.6, 1.8]} />
-        <meshStandardMaterial color="#78350f" roughness={1} />
+        <meshStandardMaterial color="#78350f" roughness={1} flatShading />
       </mesh>
       {/* Pillows/Bags inside */}
       <mesh position={[-0.3, 0.15, -0.5]} rotation={[0, Math.PI/6, 0]} castShadow>
         <boxGeometry args={[0.5, 0.2, 0.3]} />
-        <meshStandardMaterial color="#e2e8f0" />
+        <meshStandardMaterial color="#e2e8f0" flatShading />
       </mesh>
       <mesh position={[0.4, 0.15, -0.4]} rotation={[0, -Math.PI/4, 0]} castShadow>
         <boxGeometry args={[0.4, 0.3, 0.4]} />
-        <meshStandardMaterial color="#3b82f6" />
+        <meshStandardMaterial color="#3b82f6" flatShading />
       </mesh>
     </group>
   );
@@ -2660,7 +2660,7 @@ export function Campfire(props: any) {
           return (
              <mesh key={i} position={[Math.cos(angle)*r, 0.1, Math.sin(angle)*r]} rotation={[Math.random(), Math.random(), Math.random()]} castShadow>
                <dodecahedronGeometry args={[0.15, 0]} />
-               <meshStandardMaterial color="#94a3b8" roughness={0.9} />
+               <meshStandardMaterial color="#94a3b8" roughness={0.9} flatShading />
              </mesh>
           );
       })}
@@ -2668,21 +2668,21 @@ export function Campfire(props: any) {
       {/* Ash base */}
       <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
          <circleGeometry args={[0.5, 16]} />
-         <meshStandardMaterial color="#1c1917" />
+         <meshStandardMaterial color="#1c1917" flatShading />
       </mesh>
 
       {/* Logs */}
       {[...Array(4)].map((_, i) => (
           <mesh key={i} position={[0, 0.15, 0]} rotation={[0, (i * Math.PI / 4) + 0.2, Math.PI / 6]} castShadow>
-             <cylinderGeometry args={[0.06, 0.06, 0.8]} />
-             <meshStandardMaterial color="#451a03" roughness={1} />
+             <cylinderGeometry args={[0.06, 0.06, 0.8, 6]} />
+             <meshStandardMaterial color="#451a03" roughness={1} flatShading />
           </mesh>
       ))}
 
       {/* Fire */}
       <mesh position={[0, 0.4, 0]} ref={fireRef}>
         <coneGeometry args={[0.25, 0.8, 5]} />
-        <meshStandardMaterial color="#f97316" emissive="#ea580c" emissiveIntensity={2} transparent opacity={0.9} />
+        <meshStandardMaterial color="#f97316" emissive="#ea580c" emissiveIntensity={2} transparent opacity={0.9} flatShading />
       </mesh>
       
       <pointLight ref={lightRef} color="#fbbf24" distance={8} position={[0, 0.5, 0]} castShadow />
@@ -2702,21 +2702,21 @@ export function Fence(props: any) {
       {/* Posts */}
       <mesh position={[-0.8, 0.6, 0]} castShadow>
         <cylinderGeometry args={[0.08, 0.08, 1.2, 5]} />
-        <meshStandardMaterial color="#78350f" roughness={0.9} />
+        <meshStandardMaterial color="#78350f" roughness={0.9} flatShading />
       </mesh>
       <mesh position={[0.8, 0.6, 0]} rotation={[0, 0.5, 0]} castShadow>
         <cylinderGeometry args={[0.08, 0.08, 1.2, 5]} />
-        <meshStandardMaterial color="#78350f" roughness={0.9} />
+        <meshStandardMaterial color="#78350f" roughness={0.9} flatShading />
       </mesh>
       
       {/* Planks */}
       <mesh position={[0, 0.8, 0.1]} rotation={[0, 0, r1]} castShadow>
         <boxGeometry args={[2.0, 0.15, 0.05]} />
-        <meshStandardMaterial color="#8b5a2b" roughness={0.8} />
+        <meshStandardMaterial color="#8b5a2b" roughness={0.8} flatShading />
       </mesh>
       <mesh position={[0, 0.4, -0.1]} rotation={[0, 0, r2]} castShadow>
         <boxGeometry args={[2.0, 0.15, 0.05]} />
-        <meshStandardMaterial color="#8b5a2b" roughness={0.8} />
+        <meshStandardMaterial color="#8b5a2b" roughness={0.8} flatShading />
       </mesh>
     </group>
   );
@@ -2729,56 +2729,56 @@ export function Well(props: any) {
       {/* Stone Base Ring */}
       <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.8, 0.8, 0.8, 12]} />
-        <meshStandardMaterial color="#64748b" roughness={0.8} />
+        <meshStandardMaterial color="#64748b" roughness={0.8} flatShading />
       </mesh>
       {/* Inner Hole */}
       <mesh position={[0, 0.41, 0]} receiveShadow>
         <cylinderGeometry args={[0.6, 0.6, 0.81, 12]} />
-        <meshStandardMaterial color="#0f172a" roughness={1} />
+        <meshStandardMaterial color="#0f172a" roughness={1} flatShading />
       </mesh>
       {/* Water inside */}
       <mesh position={[0, 0.6, 0]} rotation={[-Math.PI/2, 0, 0]}>
         <circleGeometry args={[0.55, 12]} />
-        <meshStandardMaterial color="#0ea5e9" transparent opacity={0.8} />
+        <meshStandardMaterial color="#0ea5e9" transparent opacity={0.8} flatShading />
       </mesh>
 
       {/* Pillars */}
       <mesh position={[-0.65, 1.2, 0]} castShadow>
         <boxGeometry args={[0.15, 2.4, 0.15]} />
-        <meshStandardMaterial color="#5c4033" />
+        <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
       <mesh position={[0.65, 1.2, 0]} castShadow>
         <boxGeometry args={[0.15, 2.4, 0.15]} />
-        <meshStandardMaterial color="#5c4033" />
+        <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
       
       {/* Roof crossbeam */}
       <mesh position={[0, 2.1, 0]} castShadow>
         <boxGeometry args={[1.6, 0.1, 0.1]} />
-        <meshStandardMaterial color="#5c4033" />
+        <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
       {/* Roof */}
       <mesh position={[-0.4, 2.4, 0]} rotation={[0, 0, Math.PI/6]} castShadow>
         <boxGeometry args={[1.2, 0.1, 1.5]} />
-        <meshStandardMaterial color="#991b1b" roughness={0.9} />
+        <meshStandardMaterial color="#991b1b" roughness={0.9} flatShading />
       </mesh>
       <mesh position={[0.4, 2.4, 0]} rotation={[0, 0, -Math.PI/6]} castShadow>
         <boxGeometry args={[1.2, 0.1, 1.5]} />
-        <meshStandardMaterial color="#991b1b" roughness={0.9} />
+        <meshStandardMaterial color="#991b1b" roughness={0.9} flatShading />
       </mesh>
       
       {/* Roller & Rope & Bucket */}
       <mesh position={[0, 1.8, 0]} rotation={[Math.PI/2, 0, Math.PI/2]} castShadow>
-        <cylinderGeometry args={[0.08, 0.08, 1.4]} />
-        <meshStandardMaterial color="#78350f" />
+        <cylinderGeometry args={[0.08, 0.08, 1.4, 6]} />
+        <meshStandardMaterial color="#78350f" flatShading />
       </mesh>
       <mesh position={[0, 1.4, 0]} castShadow>
-        <cylinderGeometry args={[0.02, 0.02, 0.8]} />
-        <meshStandardMaterial color="#e2e8f0" />
+        <cylinderGeometry args={[0.02, 0.02, 0.8, 4]} />
+        <meshStandardMaterial color="#e2e8f0" flatShading />
       </mesh>
       <mesh position={[0, 1.0, 0]} castShadow>
-        <cylinderGeometry args={[0.2, 0.15, 0.3]} />
-        <meshStandardMaterial color="#b45309" />
+        <cylinderGeometry args={[0.2, 0.15, 0.3, 8]} />
+        <meshStandardMaterial color="#b45309" flatShading />
       </mesh>
     </group>
   );
@@ -2791,43 +2791,43 @@ export function Bench(props: any) {
       {/* Legs */}
       <mesh position={[-0.8, 0.25, -0.2]} castShadow>
         <boxGeometry args={[0.1, 0.5, 0.1]} />
-        <meshStandardMaterial color="#451a03" />
+        <meshStandardMaterial color="#451a03" flatShading />
       </mesh>
       <mesh position={[0.8, 0.25, -0.2]} castShadow>
         <boxGeometry args={[0.1, 0.5, 0.1]} />
-        <meshStandardMaterial color="#451a03" />
+        <meshStandardMaterial color="#451a03" flatShading />
       </mesh>
       <mesh position={[-0.8, 0.45, 0.2]} rotation={[-Math.PI/12, 0, 0]} castShadow>
         <boxGeometry args={[0.1, 0.9, 0.1]} />
-        <meshStandardMaterial color="#451a03" />
+        <meshStandardMaterial color="#451a03" flatShading />
       </mesh>
       <mesh position={[0.8, 0.45, 0.2]} rotation={[-Math.PI/12, 0, 0]} castShadow>
         <boxGeometry args={[0.1, 0.9, 0.1]} />
-        <meshStandardMaterial color="#451a03" />
+        <meshStandardMaterial color="#451a03" flatShading />
       </mesh>
 
       {/* Seat Planks */}
       <mesh position={[0, 0.5, -0.2]} castShadow>
         <boxGeometry args={[2.0, 0.08, 0.15]} />
-        <meshStandardMaterial color="#b45309" roughness={0.8} />
+        <meshStandardMaterial color="#b45309" roughness={0.8} flatShading />
       </mesh>
       <mesh position={[0, 0.5, 0]} castShadow>
         <boxGeometry args={[2.0, 0.08, 0.15]} />
-        <meshStandardMaterial color="#b45309" roughness={0.8} />
+        <meshStandardMaterial color="#b45309" roughness={0.8} flatShading />
       </mesh>
       <mesh position={[0, 0.5, 0.2]} castShadow>
         <boxGeometry args={[2.0, 0.08, 0.15]} />
-        <meshStandardMaterial color="#b45309" roughness={0.8} />
+        <meshStandardMaterial color="#b45309" roughness={0.8} flatShading />
       </mesh>
 
       {/* Backrest Planks */}
       <mesh position={[0, 0.7, 0.3]} rotation={[-Math.PI/12, 0, 0]} castShadow>
         <boxGeometry args={[2.0, 0.12, 0.05]} />
-        <meshStandardMaterial color="#b45309" roughness={0.8} />
+        <meshStandardMaterial color="#b45309" roughness={0.8} flatShading />
       </mesh>
       <mesh position={[0, 0.85, 0.35]} rotation={[-Math.PI/12, 0, 0]} castShadow>
         <boxGeometry args={[2.0, 0.12, 0.05]} />
-        <meshStandardMaterial color="#b45309" roughness={0.8} />
+        <meshStandardMaterial color="#b45309" roughness={0.8} flatShading />
       </mesh>
     </group>
   );

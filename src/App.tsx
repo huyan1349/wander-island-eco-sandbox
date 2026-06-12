@@ -434,8 +434,14 @@ export default function App() {
 
   const activeCatObj = categories.find(c => c.name === activeCategory);
 
+  const handleFullscreen = () => {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+    }
+  };
+
   return (
-    <div className="w-full h-screen relative bg-slate-950 overflow-hidden font-sans text-slate-100 flex">
+    <div className="w-full h-screen relative bg-slate-950 overflow-hidden font-sans text-slate-100 flex" onClick={handleFullscreen}>
       {/* Center Canvas */}
       <div className={`absolute inset-0 z-0 transition-all duration-1000 ${screen !== 'PLAYING' ? 'blur-none brightness-100' : 'blur-none brightness-100'}`}>
         <GameCanvas />
