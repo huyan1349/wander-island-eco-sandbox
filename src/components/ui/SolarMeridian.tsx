@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useGameStore } from '../../store';
 import { Sun, Moon } from 'lucide-react';
 
@@ -8,15 +8,19 @@ export function SolarMeridian() {
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const cx = 130;
+  const cy = 130;
+  const R = 90;
+
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
-    updateTimeFromPointer(e.clientX);
+    updateTimeFromPointer(e.clientX, e.clientY);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (isDragging) {
-      updateTimeFromPointer(e.clientX);
+      updateTimeFromPointer(e.clientX, e.clientY);
     }
   };
 
@@ -25,138 +29,107 @@ export function SolarMeridian() {
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
   };
 
-  const updateTimeFromPointer = (clientX: number) => {
+  const updateTimeFromPointer = (clientX: number, clientY: number) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    let normalized = (clientX - rect.left) / rect.width;
-    normalized = Math.max(0, Math.min(1, normalized));
-    setTimeOfDay(normalized * 24);
+    const center_x = rect.left + cx;
+    const center_y = rect.top + cy;
+    
+    const dx = clientX - center_x;
+    const dy = clientY - center_y;
+    
+    // Calculate angle from 0 to PI
+    let angle = Math.atan2(-dy, dx);
+    // Clamp values if dragged below the sundial horizon
+    if (angle < 0) {
+      angle = dx > 0 ? 0 : Math.PI;
+    }
+    
+    const newTime = 24 * (1 - angle / Math.PI);
+    setTimeOfDay(newTime);
   };
 
-  const progress = timeOfDay / 24; // 0 to 1
+  const progress = timeOfDay / 24; 
   const theta = Math.PI * (1 - progress);
-  const cx = 140;
-  const cy = 60;
-  const rx = 130;
-  const ry = 50;
-
-  const x = cx + rx * Math.cos(theta);
-  const y = cy - ry * Math.sin(theta);
+  const x = cx + R * Math.cos(theta);
+  const y = cy - R * Math.sin(theta);
 
   const isNight = timeOfDay < 6 || timeOfDay > 18;
-  const isTwilight = (timeOfDay >= 5 && timeOfDay <= 7) || (timeOfDay >= 17 && timeOfDay <= 19);
-
-  const ticks = Array.from({length: 13}).map((_, i) => i * 2);
+  const ticks = [0, 4, 8, 12, 16, 20, 24]; 
 
   return (
-    <div className="absolute top-16 right-12 flex flex-col items-center pointer-events-none z-40 group">
+    <div className="absolute top-16 right-6 flex flex-col items-center pointer-events-none z-40">
+      
+      {/* Sundial Panel */}
       <div 
         ref={containerRef}
-        className="relative w-[280px] h-[100px] pointer-events-auto cursor-pointer touch-none"
+        className="relative w-[260px] h-[150px] pointer-events-auto cursor-pointer touch-none hand-drawn-panel mb-2"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
-        {/* Astrolabe Arc */}
-        <svg className="absolute top-0 left-0 w-full h-full drop-shadow-md" overflow="visible">
-           <defs>
-             <linearGradient id="skyGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-               <stop offset="0%" stopColor="#1e293b" /> {/* Midnight */}
-               <stop offset="20%" stopColor="#8b5cf6" /> {/* Dawn */}
-               <stop offset="30%" stopColor="#f59e0b" /> {/* Morning */}
-               <stop offset="50%" stopColor="#fbbf24" /> {/* Noon */}
-               <stop offset="70%" stopColor="#f97316" /> {/* Evening */}
-               <stop offset="80%" stopColor="#6366f1" /> {/* Dusk */}
-               <stop offset="100%" stopColor="#1e293b" /> {/* Midnight */}
-             </linearGradient>
-           </defs>
+        {/* Sketchy Sundial SVG */}
+        <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" overflow="visible">
+           {/* Outer rims */}
+           <path d={`M ${cx - R},${cy} A ${R} ${R} 0 0 1 ${cx + R} ${cy}`} fill="none" stroke="#1e293b" strokeWidth="3" />
+           <path d={`M ${cx - R - 6},${cy + 2} A ${R+6} ${R+6} 0 0 1 ${cx + R + 6} ${cy + 2}`} fill="none" stroke="#1e293b" strokeWidth="1.5" strokeDasharray="6 4" opacity="0.5" />
            
-           {/* Background thick arc */}
-           <path 
-             d={`M ${cx - rx},${cy} A ${rx} ${ry} 0 0 1 ${cx + rx} ${cy}`} 
-             fill="none" 
-             stroke="#cbd5e1" 
-             strokeWidth="8" 
-             strokeLinecap="round"
-             className="opacity-50"
-           />
-           {/* Foreground gradient arc */}
-           <path 
-             d={`M ${cx - rx},${cy} A ${rx} ${ry} 0 0 1 ${cx + rx} ${cy}`} 
-             fill="none" 
-             stroke="url(#skyGradient)" 
-             strokeWidth="6" 
-             strokeLinecap="round"
-           />
+           {/* Inner rim */}
+           <path d={`M ${cx - 20},${cy} A 20 20 0 0 1 ${cx + 20} ${cy}`} fill="none" stroke="#1e293b" strokeWidth="3" />
+           
+           {/* Base line */}
+           <line x1={15} y1={cy} x2={245} y2={cy} stroke="#1e293b" strokeWidth="3" strokeLinecap="round" />
+           <line x1={15} y1={cy + 4} x2={245} y2={cy + 4} stroke="#1e293b" strokeWidth="1" strokeDasharray="8 6" opacity="0.4" />
 
-           {/* Tick marks */}
+           {/* Radial Ticks */}
            {ticks.map(h => {
-             const p = h / 24;
-             const t = Math.PI * (1 - p);
-             const x1 = cx + (rx + 6) * Math.cos(t);
-             const y1 = cy - (ry + 6) * Math.sin(t);
-             const x2 = cx + (rx + 12) * Math.cos(t);
-             const y2 = cy - (ry + 12) * Math.sin(t);
+             const t = Math.PI * (1 - h / 24);
+             const x1 = cx + 20 * Math.cos(t);
+             const y1 = cy - 20 * Math.sin(t);
+             const x2 = cx + R * Math.cos(t);
+             const y2 = cy - R * Math.sin(t);
              
-             const tx = cx + (rx + 22) * Math.cos(t);
-             const ty = cy - (ry + 22) * Math.sin(t);
-             
-             const isMajor = h % 6 === 0;
+             // Text position slightly outside
+             const tx = cx + (R + 18) * Math.cos(t);
+             const ty = cy - (R + 18) * Math.sin(t);
 
              return (
                <g key={h}>
-                 <line 
-                    x1={x1} y1={y1} x2={x2} y2={y2} 
-                    stroke={isMajor ? "#334155" : "#94a3b8"} 
-                    strokeWidth={isMajor ? "3" : "2"} 
-                    strokeLinecap="round" 
-                 />
-                 {isMajor && (
-                    <text 
-                      x={tx} y={ty} 
-                      fill="#475569" 
-                      fontSize="10" 
-                      fontWeight="bold"
-                      fontFamily="monospace" 
-                      textAnchor="middle" 
-                      dominantBaseline="middle"
-                      className="tracking-tighter"
-                    >
-                       {h.toString().padStart(2, '0')}:00
-                    </text>
-                 )}
+                 <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#1e293b" strokeWidth="2" strokeDasharray="3 3" opacity="0.6" />
+                 <text x={tx} y={ty} fill="#1e293b" fontSize="11" fontFamily="monospace" fontWeight="900" textAnchor="middle" dominantBaseline="middle">
+                   {h}
+                 </text>
                </g>
              )
            })}
+           
+           {/* The Pointer (Gnomon Hand) */}
+           <line x1={cx} y1={cy} x2={x} y2={y} stroke="#1e293b" strokeWidth="4" strokeLinecap="round" />
+           <circle cx={cx} cy={cy} r="8" fill="#fcf8ec" stroke="#1e293b" strokeWidth="3" />
+           <circle cx={cx} cy={cy} r="3" fill="#1e293b" />
         </svg>
 
-        {/* The Celestial Body (Sun/Moon) */}
+        {/* Chunky Hand-drawn Celestial Body Token */}
         <div 
-          className={`absolute w-10 h-10 -ml-5 -mt-5 flex items-center justify-center rounded-full bg-slate-900 border-2 transition-all duration-200 ease-out z-10
-            ${isTwilight ? 'border-purple-400 shadow-[0_0_20px_rgba(192,132,252,0.6)]' : 
-              isNight ? 'border-sky-300 shadow-[0_0_20px_rgba(125,211,252,0.6)]' : 
-              'border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)]'}
-          `}
+          className={`absolute w-10 h-10 -ml-5 -mt-5 flex items-center justify-center rounded-full bg-[#fcf8ec] border-[3px] border-slate-800 transition-shadow duration-100 ease-out`}
           style={{ 
             left: `${x}px`, 
             top: `${y}px`,
-            transform: isDragging ? 'scale(1.25)' : 'scale(1)'
+            transform: isDragging ? 'scale(1.15)' : 'scale(1)',
+            boxShadow: isDragging ? '0 8px 0 rgba(30,41,59,1)' : '0 4px 0 rgba(30,41,59,1)'
           }}
         >
-          {isTwilight ? (
-            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-orange-400 to-purple-500 animate-pulse" />
-          ) : isNight ? (
-            <Moon size={20} className="text-sky-200" fill="currentColor" />
+          {isNight ? (
+            <Moon size={22} className="text-slate-800" strokeWidth={2.5} />
           ) : (
-            <Sun size={20} className="text-amber-400" fill="currentColor" />
+            <Sun size={22} className="text-slate-800" strokeWidth={2.5} />
           )}
         </div>
       </div>
       
       {/* Current Time Display */}
-      <div className="absolute top-[80px] flex flex-col items-center pointer-events-none transition-transform duration-300 group-hover:-translate-y-2">
-        <span className="text-[9px] text-slate-500 font-bold tracking-[0.3em] uppercase mb-1 drop-shadow-sm">LOCAL TIME</span>
-        <div className="text-2xl font-mono text-slate-800 font-bold tracking-widest bg-[#fcf8ec] px-5 py-2 rounded-2xl border-2 border-slate-800 shadow-[0_6px_0_rgba(30,41,59,1)]">
+      <div className="pointer-events-none relative z-10">
+        <div className="px-6 py-1.5 bg-[#fcf8ec] border-[3px] border-slate-800 text-slate-800 font-mono font-black text-xl shadow-[4px_4px_0_rgba(30,41,59,1)] rotate-[-1deg]">
           {Math.floor(timeOfDay).toString().padStart(2, '0')}:
           {Math.floor((timeOfDay % 1) * 60).toString().padStart(2, '0')}
         </div>
