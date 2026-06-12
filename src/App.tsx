@@ -163,6 +163,17 @@ export default function App() {
   const lastToolRef = useRef<ToolType>('none');
   const lastCategoryRef = useRef<string | null>(null);
 
+  const incrementPlaytime = useGameStore(state => state.incrementPlaytime);
+
+  // Playtime loop
+  useEffect(() => {
+      if (screen !== 'PLAYING') return;
+      const interval = setInterval(() => {
+          incrementPlaytime(1);
+      }, 1000); 
+      return () => clearInterval(interval);
+  }, [screen, incrementPlaytime]);
+
   // Ecology loop
   useEffect(() => {
     const interval = setInterval(() => {
@@ -301,7 +312,7 @@ export default function App() {
   return (
     <div className="w-full h-screen relative bg-slate-950 overflow-hidden font-sans text-slate-100 flex">
       {/* Center Canvas */}
-      <div className={`absolute inset-0 z-0 transition-all duration-1000 ${screen !== 'PLAYING' ? 'blur-md brightness-50' : 'blur-none brightness-100'}`}>
+      <div className={`absolute inset-0 z-0 transition-all duration-1000 ${screen !== 'PLAYING' ? 'blur-none brightness-100' : 'blur-none brightness-100'}`}>
         <GameCanvas />
       </div>
 
@@ -315,10 +326,10 @@ export default function App() {
         <div className="absolute top-6 left-6 z-50 flex items-start gap-4 transition-opacity duration-300">
            <button 
               onClick={() => setIsImmersive(!isImmersive)}
-              className="group relative w-14 h-14 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-md rounded-3xl shrink-0 transition-all shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] text-white/80 hover:text-white"
+              className="group relative w-14 h-14 flex items-center justify-center hand-drawn-btn hand-drawn-ghost shrink-0 text-white group-hover:text-slate-800 transition-colors"
            >
               {isImmersive ? <EyeOff size={24} /> : <Eye size={24} />}
-              <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md text-white text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+              <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                   {isImmersive ? "退出沉浸模式" : "沉浸模式"}
               </span>
            </button>
@@ -474,11 +485,11 @@ export default function App() {
         <div className="absolute right-6 top-6 bottom-6 flex flex-col items-end z-50 pointer-events-none w-80">
           <button 
             onClick={() => setEnvMenuOpen(!envMenuOpen)}
-            className={`hand-drawn-btn px-4 py-2 pointer-events-auto flex items-center gap-2 ${envMenuOpen ? 'hand-drawn-btn-active' : ''}`}
+            className={`group hand-drawn-btn hand-drawn-ghost px-4 py-2 pointer-events-auto flex items-center gap-2 transition-colors ${envMenuOpen ? 'hand-drawn-ghost-active' : ''}`}
           >
-            <Globe size={20} className="text-slate-800" />
-            <span className="font-bold tracking-widest text-slate-800">生态面板</span>
-            <ChevronRight size={16} className={`transition-transform duration-300 text-slate-800 ${envMenuOpen ? 'rotate-90' : ''}`} />
+            <Globe size={20} className={`transition-colors ${envMenuOpen ? 'text-slate-800' : 'text-white group-hover:text-slate-800'}`} />
+            <span className={`font-bold tracking-widest transition-colors ${envMenuOpen ? 'text-slate-800' : 'text-white group-hover:text-slate-800'}`}>生态面板</span>
+            <ChevronRight size={16} className={`transition-transform duration-300 ${envMenuOpen ? 'text-slate-800 rotate-90' : 'text-white group-hover:text-slate-800'}`} />
           </button>
 
           {/* Collapsible Ecology Menu */}

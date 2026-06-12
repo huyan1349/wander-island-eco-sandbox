@@ -5,6 +5,8 @@ import { AudioSystem } from '../lib/audio';
 
 export const TitleScreen: React.FC = () => {
     const setScreen = useGameStore(state => state.setScreen);
+    const titleTheme = useGameStore(state => state.titleTheme);
+    const setTitleTheme = useGameStore(state => state.setTitleTheme);
     const [activeModal, setActiveModal] = useState<'NONE' | 'SETTINGS' | 'CREDITS'>('NONE');
     
     const [masterVol, setMasterVol] = useState(0.6);
@@ -23,12 +25,12 @@ export const TitleScreen: React.FC = () => {
     };
 
     return (
-        <div className="absolute inset-0 z-50 flex pointer-events-none cinematic-vignette p-16">
+        <div className="absolute inset-0 z-50 flex pointer-events-none p-16">
             
             {/* Top Right Version / Info */}
-            <div className="absolute top-16 right-16 opacity-30 flex flex-col items-end gap-1">
-                <span className="font-mono text-[10px] tracking-[0.4em] text-white uppercase">Wander Island</span>
-                <span className="text-xs font-light tracking-[0.3em] text-white">生态沙盒模拟 . 早期测试版 v1.0</span>
+            <div className="absolute top-16 right-16 flex flex-col items-end gap-1">
+                <span className={"text-sm font-bold hand-drawn-title " + (titleTheme === 'white' ? "text-slate-700" : "text-slate-700")}>Wander Island</span>
+                <span className={"text-xs font-bold " + (titleTheme === 'white' ? "text-slate-600" : "text-slate-600")}>流浪岛 . 测试版 v1.0</span>
             </div>
 
             {/* Left-Aligned Main Layout */}
@@ -36,46 +38,43 @@ export const TitleScreen: React.FC = () => {
                 
                 {/* Titles */}
                 <div className="mt-20 animate-slide-up" style={{ opacity: 0 }}>
-                    <h1 className="text-[9rem] leading-[0.8] font-light cinematic-text text-white tracking-[0.1em]">
+                    <h1 className={"text-[8rem] leading-[0.8] font-bold hand-drawn-title tracking-[0.1em] " + (titleTheme === 'white' ? "text-white/90" : "text-slate-900")}>
                         WANDER
                     </h1>
-                    <h1 className="text-[7rem] leading-none font-light cinematic-text text-white/60 tracking-[0.2em]">
+                    <h1 className={"text-[6rem] leading-none font-bold hand-drawn-title tracking-[0.2em] " + (titleTheme === 'white' ? "text-white/70" : "text-slate-900/60")}>
                         ISLAND
                     </h1>
                     <div className="flex items-center gap-6 mt-12 opacity-80 pl-2">
-                        <div className="h-px w-12 bg-white/50" />
-                        <span className="text-xl font-light tracking-[1em] text-white">生态沙盒模拟系统</span>
+                        <div className="h-px w-12 0" />
+                        <span className={"text-2xl font-bold tracking-[0.2em] hand-drawn-title " + (titleTheme === 'white' ? "text-white/80" : "text-slate-400")}>流浪岛</span>
                     </div>
                 </div>
 
                 {/* Cinematic Chinese Menu */}
-                <div className="pointer-events-auto animate-slide-up mb-20 flex flex-col items-start gap-8 pl-4" style={{ animationDelay: '0.4s', opacity: 0, animationFillMode: 'forwards' }}>
+                <div className="pointer-events-auto animate-slide-up mb-20 flex flex-col items-start gap-6 pl-4 mt-12">
                     <button 
                         onClick={() => setScreen('SAVE_SELECT')}
-                        className="group relative flex items-center gap-4 hover:translate-x-4 transition-all duration-500"
+                        className="group w-64 flex justify-center items-center hand-drawn-btn hand-drawn-ghost px-6 py-4 -rotate-2"
                     >
-                        <span className="text-white/0 group-hover:text-emerald-400 text-sm transition-colors duration-500">◆</span>
-                        <span className="text-2xl font-light tracking-[0.5em] text-white/60 group-hover:text-white transition-colors duration-500">
+                        <span className={"text-2xl font-bold group-hover:text-slate-900 transition-colors " + (titleTheme === 'white' ? "text-white/90" : "text-slate-400")}>
                             开始旅程
                         </span>
                     </button>
                     
                     <button 
                         onClick={() => setActiveModal('SETTINGS')}
-                        className="group relative flex items-center gap-4 hover:translate-x-4 transition-all duration-500"
+                        className="group w-64 flex justify-center items-center hand-drawn-btn hand-drawn-ghost px-6 py-4 rotate-1"
                     >
-                        <span className="text-white/0 group-hover:text-white/80 text-sm transition-colors duration-500">◆</span>
-                        <span className="text-xl font-light tracking-[0.4em] text-white/40 group-hover:text-white/90 transition-colors duration-500">
+                        <span className={"text-2xl font-bold group-hover:text-slate-900 transition-colors " + (titleTheme === 'white' ? "text-white/90" : "text-slate-400")}>
                             游戏设置
                         </span>
                     </button>
 
                     <button 
                         onClick={() => setActiveModal('CREDITS')}
-                        className="group relative flex items-center gap-4 hover:translate-x-4 transition-all duration-500"
+                        className="group w-64 flex justify-center items-center hand-drawn-btn hand-drawn-ghost px-6 py-4 -rotate-1"
                     >
-                        <span className="text-white/0 group-hover:text-white/80 text-sm transition-colors duration-500">◆</span>
-                        <span className="text-xl font-light tracking-[0.4em] text-white/40 group-hover:text-white/90 transition-colors duration-500">
+                        <span className={"text-2xl font-bold group-hover:text-slate-900 transition-colors " + (titleTheme === 'white' ? "text-white/90" : "text-slate-400")}>
                             制作组
                         </span>
                     </button>
@@ -84,43 +83,50 @@ export const TitleScreen: React.FC = () => {
 
             {/* Modals Overlay */}
             {activeModal !== 'NONE' && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md pointer-events-auto animate-in fade-in duration-500">
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/20 backdrop-blur-md pointer-events-auto animate-in fade-in duration-500">
                     
                     {/* SETTINGS MODAL */}
                     {activeModal === 'SETTINGS' && (
-                        <div className="flat-glass-panel w-[600px] p-12 flex flex-col gap-10 animate-slide-up">
-                            <div className="flex justify-between items-center border-b border-white/10 pb-6">
-                                <h2 className="text-2xl font-light tracking-[0.5em] text-white">游戏设置</h2>
-                                <button onClick={() => setActiveModal('NONE')} className="text-white/40 hover:text-white transition-colors">
-                                    <X size={24} strokeWidth={1} />
+                        <div className="hand-drawn-panel w-[600px] p-12 flex flex-col gap-10 animate-slide-up ring-1 ring-slate-800/10">
+                            <div className="flex justify-between items-center border-b-2 border-slate-800 pb-6">
+                                <h2 className="text-3xl hand-drawn-title">游戏设置</h2>
+                                <button onClick={() => setActiveModal('NONE')} className="hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200">
+                                    <X size={24} strokeWidth={3} className="text-slate-800" />
                                 </button>
                             </div>
                             
                             <div className="flex flex-col gap-8">
                                 <div className="flex flex-col gap-4">
-                                    <span className="text-sm tracking-[0.2em] text-white/60">主音量</span>
+                                    <span className="text-lg font-bold text-slate-800">主音量</span>
                                     <div className="relative w-full h-4 flex items-center">
-                                        <div className="absolute h-1 bg-white/10 rounded-full w-full pointer-events-none">
-                                            <div className="h-full bg-emerald-400/80 rounded-full" style={{ width: `${masterVol * 100}%` }} />
+                                        <div className="absolute h-3 border-2 border-slate-800 bg-white rounded-full w-full pointer-events-none overflow-hidden">
+                                            <div className="h-full bg-[#fdcb6e] border-r-2 border-slate-800" style={{ width: `${masterVol * 100}%` }} />
                                         </div>
                                         <input type="range" min="0" max="1" step="0.05" value={masterVol} onChange={handleMasterVol} className="w-full opacity-0 cursor-pointer absolute inset-0 h-full" />
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4">
-                                    <span className="text-sm tracking-[0.2em] text-white/60">音乐音量 (BGM)</span>
+                                    <span className="text-lg font-bold text-slate-800">音乐音量 (BGM)</span>
                                     <div className="relative w-full h-4 flex items-center">
-                                        <div className="absolute h-1 bg-white/10 rounded-full w-full pointer-events-none">
-                                            <div className="h-full bg-white/60 rounded-full" style={{ width: `${bgmVol * 100}%` }} />
+                                        <div className="absolute h-3 border-2 border-slate-800 bg-white rounded-full w-full pointer-events-none overflow-hidden">
+                                            <div className="h-full bg-[#74b9ff] border-r-2 border-slate-800" style={{ width: `${bgmVol * 100}%` }} />
                                         </div>
                                         <input type="range" min="0" max="1" step="0.05" value={bgmVol} onChange={handleBgmVol} className="w-full opacity-0 cursor-pointer absolute inset-0 h-full" />
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4">
-                                    <span className="text-sm tracking-[0.2em] text-white/60">画质预设</span>
+                                    <span className="text-lg font-bold text-slate-800">画质预设</span>
                                     <div className="flex gap-4">
-                                        <button className="px-6 py-2 border border-white/10 text-white/40 hover:text-white hover:border-white/30 transition-colors tracking-widest text-sm">性能优先</button>
-                                        <button className="px-6 py-2 border border-emerald-400/50 text-emerald-400 bg-emerald-400/10 transition-colors tracking-widest text-sm">平衡</button>
-                                        <button className="px-6 py-2 border border-white/10 text-white/40 hover:text-white hover:border-white/30 transition-colors tracking-widest text-sm">极致画质</button>
+                                        <button className="hand-drawn-btn px-6 py-2 text-sm text-slate-800 font-bold">性能优先</button>
+                                        <button className="hand-drawn-btn-active px-6 py-2 text-sm text-slate-800 font-bold">平衡</button>
+                                        <button className="hand-drawn-btn px-6 py-2 text-sm text-slate-800 font-bold">极致画质</button>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-4">
+                                    <span className="text-lg font-bold text-slate-800">主页配色</span>
+                                    <div className="flex gap-4">
+                                        <button onClick={() => setTitleTheme('white')} className={`hand-drawn-btn px-6 py-2 text-sm text-slate-800 font-bold ${titleTheme === 'white' ? 'hand-drawn-btn-active' : ''}`}>纸白 (White)</button>
+                                        <button onClick={() => setTitleTheme('blue')} className={`hand-drawn-btn px-6 py-2 text-sm text-slate-800 font-bold ${titleTheme === 'blue' ? 'hand-drawn-btn-active' : ''}`}>深蓝 (Blue)</button>
                                     </div>
                                 </div>
                             </div>
@@ -129,32 +135,32 @@ export const TitleScreen: React.FC = () => {
 
                     {/* CREDITS MODAL */}
                     {activeModal === 'CREDITS' && (
-                        <div className="flat-glass-panel w-[500px] p-12 flex flex-col items-center gap-10 animate-slide-up text-center">
+                        <div className="hand-drawn-panel w-[500px] p-12 flex flex-col items-center gap-10 animate-slide-up text-center ring-1 ring-slate-800/10">
                             <div className="w-full flex justify-end">
-                                <button onClick={() => setActiveModal('NONE')} className="text-white/40 hover:text-white transition-colors">
-                                    <X size={24} strokeWidth={1} />
+                                <button onClick={() => setActiveModal('NONE')} className="hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200">
+                                    <X size={24} strokeWidth={3} className="text-slate-800" />
                                 </button>
                             </div>
                             
-                            <h2 className="text-3xl font-light tracking-[0.4em] text-white mb-4">WANDER ISLAND</h2>
+                            <h2 className="text-5xl hand-drawn-title mb-4 -rotate-2">WANDER ISLAND</h2>
                             
                             <div className="flex flex-col gap-8 w-full">
-                                <div className="flex flex-col gap-2">
-                                    <span className="text-xs font-mono tracking-[0.3em] text-emerald-400/60 uppercase">核心开发 & 策划</span>
-                                    <span className="text-lg tracking-[0.2em] text-white/90 uppercase">huyan</span>
+                                <div className="flex flex-col gap-2 bg-[#ffeaa7] border-2 border-slate-800 p-4 -rotate-1 shadow-[4px_4px_0_#2d3436]">
+                                    <span className="text-sm font-bold text-slate-600">核心开发 & 策划</span>
+                                    <span className={"text-2xl font-bold group-hover:text-slate-900 transition-colors " + (titleTheme === 'white' ? "text-white/90" : "text-slate-400")}>huyan</span>
                                 </div>
-                                <div className="flex flex-col gap-2">
-                                    <span className="text-xs font-mono tracking-[0.3em] text-white/40 uppercase">AI 协力 & 视觉工程</span>
-                                    <span className="text-lg tracking-[0.2em] text-white/90">Antigravity</span>
+                                <div className="flex flex-col gap-2 bg-[#74b9ff] border-2 border-slate-800 p-4 rotate-1 shadow-[4px_4px_0_#2d3436]">
+                                    <span className="text-sm font-bold text-slate-800">AI 协力 & 视觉工程</span>
+                                    <span className="text-2xl font-bold text-slate-900">Antigravity</span>
                                 </div>
-                                <div className="flex flex-col gap-2">
-                                    <span className="text-xs font-mono tracking-[0.3em] text-white/40 uppercase">特别鸣谢</span>
-                                    <span className="text-sm tracking-[0.2em] text-white/60">Open Source Community</span>
+                                <div className="flex flex-col gap-2 p-4">
+                                    <span className="text-sm font-bold text-slate-500">特别鸣谢</span>
+                                    <span className="text-lg font-bold text-slate-700">Open Source Community</span>
                                 </div>
                             </div>
 
-                            <div className="mt-8 pt-8 border-t border-white/10 w-full">
-                                <span className="text-sm font-light tracking-[0.5em] text-white/30">在孤岛中寻找生态的呼吸</span>
+                            <div className="mt-4 pt-4 w-full">
+                                <span className="text-lg font-bold text-slate-800 underline decoration-wavy decoration-emerald-400">在孤岛中寻找生态的呼吸</span>
                             </div>
                         </div>
                     )}

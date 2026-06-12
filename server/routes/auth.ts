@@ -1,0 +1,92 @@
+import { Router, Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
+import getDb from '../db.js';
+import { generateToken, authMiddleware, AuthRequest } from '../auth.js';
+
+const router = Router();
+
+// POST /api/auth/register
+router.post('/register', (req: Request, res: Response) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    res.status(400).json({ error: '用户名和密码不能为空' });
+    return;
+  }
+
+  if (username.length < 2 || username.length > 20) {
+    res.status(400).json({ error: '用户名长度需在2-20之间' });
+    return;
+  }
+
+  if (password.length < 4) {
+    res.status(400).json({ error: '密码至少4位' });
+    return;
+  }
+
+  const db = getDb();
+
+  // Check if username exists
+  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+  if (existing) {
+    res.status(409).json({ error: '用户名已被占用' });
+    return;
+  }
+
+  const id = crypto.randomUUID();
+  const passwordHash = bcrypt.hashSync(password, 10);
+  const avatar = `https://api.dicebear.com/7.x/notionists/svg?seed=${username}&backgroundColor=b6e3f4`;
+
+  db.prepare('INSERT INTO users (id, username, password_hash, avatar) VALUES (?, ?, ?, ?)')
+    .run(id, username, passwordHash, avatar);
+
+  const token = generateToken(id);
+
+  res.json({
+    token,
+    user: { id, username, avatar }
+  });
+});
+
+// POST /api/auth/login
+router.post('/login', (req: Request, res: Response) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    res.status(400).json({ error: '用户名和密码不能为空' });
+    return;
+  }
+
+  const db = getDb();
+  const user: any = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+
+  if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+    res.status(401).json({ error: '用户名或密码错误' });
+    return;
+  }
+
+  // Update last online
+  db.prepare('UPDATE users SET last_online = unixepoch() WHERE id = ?').run(user.id);
+
+  const token = generateToken(user.id);
+
+  res.json({
+    token,
+    user: { id: user.id, username: user.username, avatar: user.avatar }
+  });
+});
+
+// GET /api/auth/me
+router.get('/me', authMiddleware, (req: AuthRequest, res: Response) => {
+  const db = getDb();
+  const user: any = db.prepare('SELECT id, username, avatar, created_at, last_online FROM users WHERE id = ?').get(req.userId);
+
+  if (!user) {
+    res.status(404).json({ error: '用户不存在' });
+    return;
+  }
+
+  res.json({ user });
+});
+
+export default router;

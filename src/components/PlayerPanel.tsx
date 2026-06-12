@@ -41,7 +41,7 @@ export const PlayerPanel: React.FC = () => {
       {/* Mini Widget */}
       <div 
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-4  hover:bg-white/20 backdrop-blur-2xl border  p-3 pr-6 rounded-3xl shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] cursor-pointer transition-all hover:scale-105 active:scale-95"
+        className="group flex items-center gap-4 hand-drawn-btn hand-drawn-ghost p-3 pr-6"
       >
         <div className="relative group">
           <div className="w-12 h-12 bg-gradient-to-tr from-emerald-500 to-cyan-500 rounded-full flex items-center justify-center border-2 border-slate-800 shadow-inner overflow-hidden">
@@ -57,7 +57,7 @@ export const PlayerPanel: React.FC = () => {
         </div>
 
         <div className="flex flex-col gap-1 min-w-[120px]">
-          <span className="text-sm font-bold text-slate-900 tracking-wide">{playerName}</span>
+          <span className="text-sm font-bold text-white group-hover:text-slate-900 transition-colors tracking-wide">{playerName}</span>
           <div className="flex items-center gap-2">
             <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden">
               <div 
@@ -71,7 +71,7 @@ export const PlayerPanel: React.FC = () => {
 
       {/* Full Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-slate-950/40 backdrop-blur-[32px] animate-in fade-in duration-500">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-500">
           <div className="hand-drawn-panel w-[900px] h-[600px] flex overflow-hidden shadow-2xl animate-slide-up  ring-1 ">
             
             {/* Sidebar (Sleek Glass) */}
@@ -88,35 +88,35 @@ export const PlayerPanel: React.FC = () => {
 
               <button 
                 onClick={() => setActiveTab('stats')}
-                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-light tracking-[0.2em] uppercase transition-all duration-300 ${activeTab === 'stats' ? ' text-slate-900  ring-1 ' : 'text-slate-500  hover:text-slate-600'}`}
+                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all duration-300 ${activeTab === 'stats' ? ' text-slate-900  ring-1 ' : 'text-slate-500  hover:text-slate-600'}`}
               >
                 <BarChart2 size={16} /> Passport
               </button>
               <button 
                 onClick={() => setActiveTab('ecology')}
-                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-light tracking-[0.2em] uppercase transition-all duration-300 ${activeTab === 'ecology' ? ' text-slate-900  ring-1 ' : 'text-slate-500  hover:text-slate-600'}`}
+                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all duration-300 ${activeTab === 'ecology' ? ' text-slate-900  ring-1 ' : 'text-slate-500  hover:text-slate-600'}`}
               >
                 <Leaf size={16} /> Ecology
               </button>
               <button 
                 onClick={() => setActiveTab('unlocks')}
-                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-light tracking-[0.2em] uppercase transition-all duration-300 ${activeTab === 'unlocks' ? ' text-slate-900  ring-1 ' : 'text-slate-500  hover:text-slate-600'}`}
+                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all duration-300 ${activeTab === 'unlocks' ? ' text-slate-900  ring-1 ' : 'text-slate-500  hover:text-slate-600'}`}
               >
                 <Unlock size={16} /> Unlocks
               </button>
               <button 
                 onClick={() => setActiveTab('system')}
-                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-light tracking-[0.2em] uppercase transition-all duration-300 mt-auto ${activeTab === 'system' ? ' text-slate-900  ring-1 ' : 'text-slate-500  hover:text-slate-600'}`}
+                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all duration-300 mt-auto ${activeTab === 'system' ? ' text-slate-900  ring-1 ' : 'text-slate-500  hover:text-slate-600'}`}
               >
                 <Settings size={16} /> System
               </button>
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 bg-gradient-to-br from-white/5 to-transparent p-12 relative">
+            <div className="flex-1 bg-gradient-to-br from-transparent to-transparent p-12 relative">
               <button 
                 onClick={() => setIsOpen(false)}
-                className="absolute top-8 right-8 p-3 text-slate-400 hover:text-slate-900  rounded-full transition-all duration-300 ring-1 ring-transparent hover:"
+                className="absolute top-8 right-8 hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0"
               >
                 <X size={20} />
               </button>
@@ -124,7 +124,7 @@ export const PlayerPanel: React.FC = () => {
               {/* Passport Tab */}
               {activeTab === 'stats' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 h-full flex flex-col">
-                  <h2 className="text-3xl font-light tracking-[0.2em] text-slate-800 mb-10 border-b border-slate-800 pb-6 uppercase">huyan Passport</h2>
+                  <h2 className="text-4xl hand-drawn-title mb-10 border-b-2 border-slate-800 pb-6 -rotate-1">huyan Passport</h2>
                   
                   <div className="grid grid-cols-2 gap-6 flex-1">
                     <div className="hand-drawn-panel p-8 flex flex-col justify-center ">
@@ -160,7 +160,7 @@ export const PlayerPanel: React.FC = () => {
               {/* Ecology Tab */}
               {activeTab === 'ecology' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 h-full flex flex-col">
-                  <h2 className="text-3xl font-light tracking-[0.2em] text-slate-800 mb-10 border-b border-slate-800 pb-6 uppercase">Island Ecology</h2>
+                  <h2 className="text-4xl hand-drawn-title mb-10 border-b-2 border-slate-800 pb-6 -rotate-1">Island Ecology</h2>
                   
                   <div className="hand-drawn-panel p-8  mb-8">
                     <div className="flex justify-between items-center mb-4">
@@ -191,7 +191,7 @@ export const PlayerPanel: React.FC = () => {
               {/* Unlocks Tab */}
               {activeTab === 'unlocks' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 h-full flex flex-col">
-                  <h2 className="text-3xl font-light tracking-[0.2em] text-slate-800 mb-10 border-b border-slate-800 pb-6 uppercase">Unlocked Blueprints</h2>
+                  <h2 className="text-4xl hand-drawn-title mb-10 border-b-2 border-slate-800 pb-6 -rotate-1">Unlocked Blueprints</h2>
                   <div className="flex-1 overflow-y-auto no-scrollbar pr-4">
                     <div className="grid grid-cols-2 gap-4">
                       {unlockedAssets.map(asset => (
@@ -210,7 +210,7 @@ export const PlayerPanel: React.FC = () => {
               {/* System Tab */}
               {activeTab === 'system' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 h-full flex flex-col">
-                  <h2 className="text-3xl font-light tracking-[0.2em] text-slate-800 mb-10 border-b border-slate-800 pb-6 uppercase">System Menu</h2>
+                  <h2 className="text-4xl hand-drawn-title mb-10 border-b-2 border-slate-800 pb-6 -rotate-1">System Menu</h2>
                   
                   <div className="flex flex-col gap-6 max-w-sm mt-4">
                     <button 
@@ -218,7 +218,7 @@ export const PlayerPanel: React.FC = () => {
                         saveGame();
                         alert("Game Saved Successfully!");
                       }}
-                      className="hand-drawn-btn"
+                      className="hand-drawn-btn px-8 py-4 text-xl font-bold w-full"
                     >
                       <span>Save Progress</span>
                     </button>
@@ -230,7 +230,7 @@ export const PlayerPanel: React.FC = () => {
                           setScreen('TITLE');
                         }
                       }}
-                      className="hand-drawn-panel px-8 py-4 border-red-500/20 bg-red-500/5 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors flex items-center justify-center gap-3 group mt-12"
+                      className="w-full flex items-center justify-center gap-3 hand-drawn-btn px-8 py-4 mt-12 text-red-600 font-bold"
                     >
                       <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" /> 
                       <span className="font-light tracking-[0.2em] uppercase text-sm">Return to Title</span>

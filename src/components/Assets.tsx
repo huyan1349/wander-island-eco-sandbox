@@ -394,7 +394,7 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
   const currentScale = useRef(0);
   
   const hunger = useRef(Math.random() * 50);
-  const stateRef = useRef<'wander' | 'flee' | 'eat'>('wander');
+  const stateRef = useRef<any>('wander');
   
   useFrame((state, delta) => {
     if (!groupRef.current) return;
@@ -628,7 +628,7 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
   const currentPos = useRef(new THREE.Vector3(position.x, position.y, position.z));
   const currentScale = useRef(0);
   
-  const stateRef = useRef<'wander' | 'chase'>('wander');
+  const stateRef = useRef<any>('wander');
   
   useFrame((state, delta) => {
     if (!groupRef.current) return;
@@ -2300,6 +2300,62 @@ function Crop({ position, scale = 1, type, growthProgress = 1, id }: any) {
            </mesh>
          )}
        </group>
+    </group>
+  );
+}
+
+
+export function Tent(props: any) {
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]}>
+      <mesh position={[0, 1, 0]}>
+        <coneGeometry args={[1.5, 2, 4]} />
+        <meshStandardMaterial color="#c0392b" />
+      </mesh>
+    </group>
+  );
+}
+export function Campfire(props: any) {
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]}>
+      <mesh position={[0, 0.2, 0]}>
+        <cylinderGeometry args={[0.5, 0.5, 0.4, 6]} />
+        <meshStandardMaterial color="#7f8c8d" />
+      </mesh>
+      <mesh position={[0, 0.8, 0]}>
+        <coneGeometry args={[0.4, 1, 4]} />
+        <meshStandardMaterial color="#e67e22" emissive="#d35400" />
+      </mesh>
+    </group>
+  );
+}
+export function Fence(props: any) {
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]}>
+      <mesh position={[0, 0.5, 0]}>
+        <boxGeometry args={[2, 1, 0.2]} />
+        <meshStandardMaterial color="#8e44ad" />
+      </mesh>
+    </group>
+  );
+}
+export function Well(props: any) {
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]}>
+      <mesh position={[0, 0.5, 0]}>
+        <cylinderGeometry args={[1, 1, 1, 8]} />
+        <meshStandardMaterial color="#34495e" />
+      </mesh>
+    </group>
+  );
+}
+export function Bench(props: any) {
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]}>
+      <mesh position={[0, 0.3, 0]}>
+        <boxGeometry args={[2, 0.2, 0.8]} />
+        <meshStandardMaterial color="#d35400" />
+      </mesh>
     </group>
   );
 }

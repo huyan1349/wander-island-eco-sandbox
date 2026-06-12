@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+const fs = require('fs');
+
+const code = `import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store';
-import { Plus, Trash2, ArrowLeft, TreePine, Mountain, Waves, Bird, Fish, Cloud, Sun } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft } from 'lucide-react';
 
 export const SaveSelectScreen: React.FC = () => {
     const store = useGameStore();
@@ -27,7 +29,7 @@ export const SaveSelectScreen: React.FC = () => {
             const newSaves = saves.filter(s => s.id !== id);
             setSaves(newSaves);
             localStorage.setItem('eco_saves_index', JSON.stringify(newSaves));
-            localStorage.removeItem(`eco_save_${id}`);
+            localStorage.removeItem(\`eco_save_\${id}\`);
         }
     };
 
@@ -73,23 +75,13 @@ export const SaveSelectScreen: React.FC = () => {
                     </button>
 
                     {/* Save Cards */}
-                    {saves.map((save, i) => {
-                        const icons = [TreePine, Mountain, Waves, Bird, Fish, Cloud, Sun];
-                        // Select an icon deterministically based on save.id length or char codes
-                        const Icon = icons[(save.id.charCodeAt(0) + save.id.charCodeAt(save.id.length-1)) % icons.length];
-                        
-                        return (
+                    {saves.map((save, i) => (
                         <div 
                             key={save.id}
                             onClick={() => handleLoad(save.id)}
-                            className="hand-drawn-panel group h-64 flex flex-col p-6 cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] shadow-md hover:shadow-xl shadow-black/10 relative overflow-hidden"
+                            className="hand-drawn-panel group h-64 flex flex-col p-6 cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] shadow-md hover:shadow-xl shadow-black/10 relative"
                         >
-                            {/* Random Doodle Watermark (Bottom Right, partially hidden) */}
-                            <div className="absolute -bottom-8 -right-8 text-slate-900 opacity-[0.04] group-hover:opacity-[0.08] transition-all duration-500 pointer-events-none group-hover:scale-110 group-hover:-rotate-6">
-                                <Icon size={160} strokeWidth={1} />
-                            </div>
-
-                            <div className="flex justify-between items-start mb-auto z-10">
+                            <div className="flex justify-between items-start mb-auto">
                                 <span className="text-sm font-bold text-slate-400">
                                     {String(i + 1).padStart(2, '0')}
                                 </span>
@@ -116,14 +108,17 @@ export const SaveSelectScreen: React.FC = () => {
                                 </div>
                             </div>
                             
-                            <div className="stamp absolute right-4 bottom-4 group-hover:scale-110 transition-transform origin-bottom-right z-10">
-                                {save.lastPlayed ? new Date(save.lastPlayed).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase() : 'APPROVED'}
+                            <div className="stamp absolute right-4 bottom-4 group-hover:scale-110 transition-transform origin-bottom-right">
+                                {save.lastSaved ? new Date(save.lastSaved).toLocaleDateString() : 'APPROVED'}
                             </div>
                         </div>
-                        );
-                    })}
+                    ))}
                 </div>
             </div>
         </div>
     );
 };
+`;
+
+fs.writeFileSync('src/components/SaveSelectScreen.tsx', code);
+console.log("Rewrote SaveSelectScreen with grid cards layout");

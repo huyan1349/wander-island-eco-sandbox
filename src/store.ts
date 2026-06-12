@@ -65,6 +65,8 @@ interface GameState {
 
   biome: 'default' | 'forest' | 'desert' | 'tundra' | 'volcanic';
   setBiome: (biome: 'default' | 'forest' | 'desert' | 'tundra' | 'volcanic') => void;
+  titleTheme: 'white' | 'blue';
+  setTitleTheme: (theme: 'white' | 'blue') => void;
   
   selectedTool: ToolType;
   setSelectedTool: (tool: ToolType) => void;
@@ -143,7 +145,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   incrementPlaytime: (delta) => set((state) => ({ stats: { ...state.stats, playtime: state.stats.playtime + delta } })),
   incrementItemsPlaced: () => set((state) => ({ stats: { ...state.stats, itemsPlaced: state.stats.itemsPlaced + 1 } })),
 
-  timeOfDay: 12,
+  timeOfDay: 6,
   setTimeOfDay: (time) => set({ timeOfDay: time }),
   
   weather: 'sunny',
@@ -154,6 +156,8 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   biome: 'default',
   setBiome: (biome) => set({ biome: biome }),
+  titleTheme: 'white',
+  setTitleTheme: (theme) => set({ titleTheme: theme }),
   
   selectedTool: 'none',
   setSelectedTool: (tool) => set({ selectedTool: tool, connectingPillarId: null }),
@@ -162,7 +166,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   
   playerName: 'huyan',
   setPlayerName: (name) => set({ playerName: name }),
-  playerAvatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Felix&backgroundColor=b6e3f4',
+  playerAvatar: 'https://api.dicebear.com/7.x/micah/svg?seed=Felix&backgroundColor=fcf8ec',
   setPlayerAvatar: (avatar) => set({ playerAvatar: avatar }),
   playerXP: 0,
   playerLevel: 1,
@@ -401,7 +405,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           };
           
           const defaultData = {
-              timeOfDay: 15,
+              timeOfDay: 6,
               weather: 'sunny',
               assets: [
                   { id: 'a1', type: 'house', position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: 1.2 },
@@ -423,7 +427,7 @@ export const useGameStore = create<GameState>((set, get) => ({
               deerCount: 2,
               wolfCount: 1,
               playerName: 'huyan',
-              playerAvatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Felix&backgroundColor=b6e3f4',
+              playerAvatar: 'https://api.dicebear.com/7.x/micah/svg?seed=Felix&backgroundColor=fcf8ec',
               playerXP: 500,
               playerLevel: 5,
               ecoPoints: 5000,
@@ -519,14 +523,14 @@ export const useGameStore = create<GameState>((set, get) => ({
           screen: keepTitleScreen ? 'TITLE' : 'PLAYING',
           islandId: targetId,
           islandName: slot.name,
-          timeOfDay: data.timeOfDay,
+          timeOfDay: 6, // Forced to 6 AM
           weather: data.weather,
           assets: data.assets,
           grassHealth: data.grassHealth,
           deerCount: data.deerCount,
           wolfCount: data.wolfCount,
           playerName: data.playerName || 'huyan',
-          playerAvatar: data.playerAvatar || 'https://api.dicebear.com/7.x/notionists/svg?seed=Felix&backgroundColor=b6e3f4',
+          playerAvatar: data.playerAvatar || 'https://api.dicebear.com/7.x/micah/svg?seed=Felix&backgroundColor=fcf8ec',
           playerXP: data.playerXP || 0,
           playerLevel: data.playerLevel || 1,
           ecoPoints: data.ecoPoints !== undefined ? data.ecoPoints : 200,
@@ -552,7 +556,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       assets: [], 
       deerCount: 0, 
       wolfCount: 0, 
-      timeOfDay: 12, 
+      timeOfDay: 6, 
       weather: 'sunny',
       grassHealth: 100,
       ecoPoints: 200,
