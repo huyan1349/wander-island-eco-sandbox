@@ -447,14 +447,9 @@ export default function App() {
 
       {screen === 'PLAYING' && (
         <>
-          {/* Cinematic Entry Effects */}
-          <div className="absolute inset-0 pointer-events-none z-[100] animate-out fade-out duration-[2000ms] bg-white mix-blend-overlay" />
-          <div className="absolute top-0 left-0 w-full h-24 bg-slate-950 z-[90] pointer-events-none animate-out slide-out-to-top duration-[3000ms] ease-in-out fill-mode-forwards delay-1000" />
-          <div className="absolute bottom-0 left-0 w-full h-24 bg-slate-950 z-[90] pointer-events-none animate-out slide-out-to-bottom duration-[3000ms] ease-in-out fill-mode-forwards delay-1000" />
-
           {/* Top Left Header & HUD */}
       {!isImmersive && (
-        <div className="absolute top-6 left-6 z-50 flex flex-col items-start gap-4 animate-in fade-in slide-in-from-left-8 duration-1000 delay-[1500ms] fill-mode-both">
+        <div className="absolute top-6 left-6 z-50 flex flex-col items-start gap-4 transition-opacity duration-300">
            {/* Profile / Avatar (Top Left) */}
            <PlayerPanel />
 
@@ -487,11 +482,11 @@ export default function App() {
         
       {/* Global UI Overlays */}
       {!isImmersive && (
-        <div className="animate-in fade-in duration-1000 delay-[2000ms] fill-mode-both">
+        <>
           <TimeWeatherSystem />
           <SolarMeridian />
           <WeatherForecast />
-        </div>
+        </>
       )}
 
       {/* High-End Cinematic Standby / Immersive Mode */}
