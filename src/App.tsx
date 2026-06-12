@@ -69,6 +69,9 @@ import { LoginScreen } from "./components/LoginScreen";
 import { SocialPanel } from "./components/SocialPanel";
 import { Toast } from "./components/Toast";
 import { VisitOverlay } from "./components/VisitOverlay";
+import { TimeWeatherSystem } from "./components/systems/TimeWeatherSystem";
+import { SolarMeridian } from "./components/ui/SolarMeridian";
+import { WeatherForecast } from "./components/ui/WeatherForecast";
 import { api } from "./lib/api";
 import { connectSocket, onUserOnline, onUserOffline, onFriendRequest, onIslandVisitData, onIslandVisitError } from "./lib/socket";
 import { AudioSystem } from "./lib/audio";
@@ -458,6 +461,9 @@ export default function App() {
            </button>
            <PlayerPanel />
            <SocialPanel />
+           <TimeWeatherSystem />
+           <SolarMeridian />
+           <WeatherForecast />
         </div>
       )}
 
@@ -659,30 +665,8 @@ export default function App() {
 
             <div className="w-full h-px bg-slate-200" />
 
-            {/* Time */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                 <span className="text-xs text-slate-700 font-bold">时间</span>
-                 <span className="font-mono text-xs font-bold text-slate-800">{Math.floor(timeOfDay).toString().padStart(2, '0')}:00</span>
-              </div>
-              <input
-                type="range" min="0" max="24" step="0.5"
-                value={timeOfDay} onChange={(e) => setTimeOfDay(parseFloat(e.target.value))}
-                className="w-full h-1 bg-slate-200 rounded-full appearance-none cursor-pointer mt-1"
-              />
-            </div>
-
             <div className="w-full h-px bg-slate-200" />
 
-            {/* Weather */}
-            <div className="flex flex-col gap-2">
-              <span className="text-xs text-slate-700 font-bold">天气</span>
-              <div className="grid grid-cols-3 gap-2">
-                <button onClick={() => setWeather("sunny")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'sunny' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>晴天</button>
-                <button onClick={() => setWeather("rainy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'rainy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>雨天</button>
-                <button onClick={() => setWeather("snowy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'snowy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>雪天</button>
-              </div>
-            </div>
 
             {/* Wave Intensity */}
             <div className="flex flex-col gap-2">

@@ -65,12 +65,17 @@ let freezeScale = 1;
 
 // Current wave amplitude (weather + panel intensity + freeze ramp)
 export function getWaveAmplitude(weather: string) {
-  return (weather === 'rainy' ? 3.0 : 1.8) * (useGameStore.getState().waveIntensity ?? 1) * freezeScale;
+  let mult = 1.8;
+  if (weather === 'rainy') mult = 3.0;
+  if (weather === 'stormy') mult = 4.5;
+  return mult * (useGameStore.getState().waveIntensity ?? 1) * freezeScale;
 }
 
 // World-space ocean surface height at (x, z). Includes the mesh base at y=-0.4.
 export function getWaterHeight(x: number, z: number, time: number, weather: string) {
-  const flowSpeed = weather === 'rainy' ? 4.5 : 3.0;
+  let flowSpeed = 3.0;
+  if (weather === 'rainy') flowSpeed = 4.5;
+  if (weather === 'stormy') flowSpeed = 6.0;
   return -0.4 + sampleOceanWave(x, -z, time, flowSpeed, getWaveAmplitude(weather));
 }
 
@@ -152,7 +157,9 @@ export function Water() {
     if (oceanGeomRef.current && oceanMeshRef.current && freezeScale > 0.005) {
         const time = state.clock.elapsedTime;
         const oPos = oceanGeomRef.current.attributes.position;
-        const flowSpeed = weather === 'rainy' ? 4.5 : 3.0;
+        let flowSpeed = 3.0;
+        if (weather === 'rainy') flowSpeed = 4.5;
+        if (weather === 'stormy') flowSpeed = 6.0;
         const baseAmp = getWaveAmplitude(weather);
 
         // Vertex colors for whitecaps on wave crests
@@ -255,7 +262,7 @@ export function Water() {
     }
 
     // b. Rain addition
-    const isRainy = weather === 'rainy';
+    const isRainy = weather === 'rainy' || weather === 'stormy';
     if (isRainy) {
        for (let i = 0; i < w.length; i++) {
            if (terrainHeights[i * 3 + 1] > 0.5) {
@@ -352,8 +359,8 @@ export function Water() {
 
   // Cloud-sea look: the island floats on a sea of clouds. Near-white base,
   // fully diffuse, fog-colored glow so the far field melts into the sky.
-  let oceanColor = weather === 'rainy' ? '#aab8c8' : '#f4f9fd';
-  let oceanEmissive = weather === 'rainy' ? '#64748b' : '#dbeafe';
+  let oceanColor = (weather === 'rainy' || weather === 'stormy') ? '#aab8c8' : '#f4f9fd';
+  let oceanEmissive = (weather === 'rainy' || weather === 'stormy') ? '#64748b' : '#dbeafe';
   let emissiveInt = 0.3;
   let rough = 1.0;
   let metal = 0.0;
