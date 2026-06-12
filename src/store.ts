@@ -40,6 +40,20 @@ export interface AuthUser {
   avatar: string;
 }
 
+export interface ToastItem {
+  id: string;
+  message: string;
+  type: 'online' | 'offline' | 'friend_request' | 'info';
+  createdAt: number;
+}
+
+export interface VisitingIsland {
+  islandId: string;
+  islandName: string;
+  ownerName: string;
+  data: any;
+}
+
 export interface SaveSlot {
   id: string;
   name: string;
@@ -56,6 +70,23 @@ interface GameState {
   authUser: AuthUser | null;
   setAuthUser: (user: AuthUser | null) => void;
   clearAuthUser: () => void;
+
+  // Toasts
+  toasts: ToastItem[];
+  addToast: (message: string, type?: ToastItem['type']) => void;
+  removeToast: (id: string) => void;
+
+  // Visiting
+  visitingIsland: VisitingIsland | null;
+  setVisitingIsland: (island: VisitingIsland | null) => void;
+
+  // Unread
+  unreadCount: number;
+  setUnreadCount: (count: number) => void;
+
+  // Server island ID mapping (local save id -> server island id)
+  serverIslandMap: Record<string, string>;
+  setServerIslandMap: (map: Record<string, string>) => void;
 
   islandId: string | null;
   islandName: string;
@@ -152,6 +183,31 @@ export const useGameStore = create<GameState>((set, get) => ({
   authUser: null,
   setAuthUser: (user) => set({ authUser: user }),
   clearAuthUser: () => set({ authUser: null, screen: 'LOGIN' as GameScreen }),
+
+  // Toasts
+  toasts: [],
+  addToast: (message, type = 'info') => {
+    const id = Date.now().toString() + Math.random().toString(36).substring(2, 6);
+    const toast: ToastItem = { id, message, type, createdAt: Date.now() };
+    set((state) => ({ toasts: [...state.toasts, toast] }));
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+      set((state) => ({ toasts: state.toasts.filter(t => t.id !== id) }));
+    }, 3000);
+  },
+  removeToast: (id) => set((state) => ({ toasts: state.toasts.filter(t => t.id !== id) })),
+
+  // Visiting
+  visitingIsland: null,
+  setVisitingIsland: (island) => set({ visitingIsland: island }),
+
+  // Unread
+  unreadCount: 0,
+  setUnreadCount: (count) => set({ unreadCount: count }),
+
+  // Server island mapping
+  serverIslandMap: {},
+  setServerIslandMap: (map) => set({ serverIslandMap: map }),
 
   islandId: null,
   islandName: 'Wander Island',
