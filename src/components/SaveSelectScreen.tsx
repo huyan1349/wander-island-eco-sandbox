@@ -1,15 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store';
-import { Plus, Trash2, ArrowLeft, TreePine, Mountain, Waves, Bird, Fish, Cloud, Sun } from 'lucide-react';
+import { api } from '../lib/api';
+import { Plus, Trash2, ArrowLeft, TreePine, Mountain, Waves, Bird, Fish, Cloud, Sun, Globe, Check } from 'lucide-react';
 
 export const SaveSelectScreen: React.FC = () => {
     const store = useGameStore();
     const [saves, setSaves] = useState<any[]>([]);
+    const authUser = useGameStore(state => state.authUser);
+    const serverIslandMap = useGameStore(state => state.serverIslandMap);
+    const setServerIslandMap = useGameStore(state => state.setServerIslandMap);
+    const [deployingId, setDeployingId] = useState<string | null>(null);
+    const [deployedIds, setDeployedIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         const indexStr = localStorage.getItem('eco_saves_index');
         if (indexStr) {
             setSaves(JSON.parse(indexStr));
+        }
+        // Load server island mapping
+        const mapStr = localStorage.getItem('wander_server_island_map');
+        if (mapStr) {
+            try {
+                setServerIslandMap(JSON.parse(mapStr));
+            } catch {}
         }
     }, []);
 
@@ -28,6 +41,36 @@ export const SaveSelectScreen: React.FC = () => {
             setSaves(newSaves);
             localStorage.setItem('eco_saves_index', JSON.stringify(newSaves));
             localStorage.removeItem(`eco_save_${id}`);
+        }
+    };
+
+    const handleDeploy = async (saveId: string, saveName: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!authUser) return;
+
+        setDeployingId(saveId);
+        try {
+            // Load save data from localStorage
+            const saved = localStorage.getItem(`eco_save_${saveId}`);
+            if (!saved) return;
+            const saveData = JSON.parse(saved);
+
+            // Check if already deployed
+            if (serverIslandMap[saveId]) {
+                // Update existing island
+                await api.updateIsland(serverIslandMap[saveId], { data: saveData });
+            } else {
+                // Create new island on server
+                const res = await api.createIsland(saveName, true, saveData);
+                setServerIslandMap({ ...serverIslandMap, [saveId]: res.island.id });
+                // Persist mapping
+                localStorage.setItem('wander_server_island_map', JSON.stringify({ ...serverIslandMap, [saveId]: res.island.id }));
+            }
+            setDeployedIds(prev => new Set([...prev, saveId]));
+        } catch (err) {
+            console.error('Deploy failed:', err);
+        } finally {
+            setDeployingId(null);
         }
     };
 
@@ -93,7 +136,26 @@ export const SaveSelectScreen: React.FC = () => {
                                 <span className="text-sm font-bold text-slate-400">
                                     {String(i + 1).padStart(2, '0')}
                                 </span>
-                                <button 
+                                {authUser && (
+                                <button
+                                    onClick={(e) => handleDeploy(save.id, save.name, e)}
+                                    disabled={deployingId === save.id}
+                                    className={`p-2 rounded-full border-2 transition-all z-10 ${
+                                        deployedIds.has(save.id) || serverIslandMap[save.id]
+                                            ? 'text-emerald-500 border-emerald-500 bg-emerald-50'
+                                            : 'text-blue-400 hover:text-white hover:bg-blue-500 border-transparent'
+                                    }`}
+                                >
+                                    {deployingId === save.id ? (
+                                        <span className="animate-spin text-sm">⏳</span>
+                                    ) : deployedIds.has(save.id) || serverIslandMap[save.id] ? (
+                                        <Check size={20} strokeWidth={2.5} />
+                                    ) : (
+                                        <Globe size={20} strokeWidth={2.5} />
+                                    )}
+                                </button>
+                                )}
+                                <button
                                     onClick={(e) => handleDelete(save.id, e)}
                                     className="p-2 text-red-400 hover:text-white hover:bg-red-500 rounded-full border-2 border-transparent transition-all z-10"
                                 >
@@ -116,6 +178,11 @@ export const SaveSelectScreen: React.FC = () => {
                                 </div>
                             </div>
                             
+                            {(deployedIds.has(save.id) || serverIslandMap[save.id]) && (
+                                <div className="absolute left-4 bottom-4 text-emerald-600 border-2 border-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold font-mono tracking-widest uppercase opacity-70">
+                                    已部署
+                                </div>
+                            )}
                             <div className="stamp absolute right-4 bottom-4 group-hover:scale-110 transition-transform origin-bottom-right z-10">
                                 {save.lastPlayed ? new Date(save.lastPlayed).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase() : 'APPROVED'}
                             </div>
