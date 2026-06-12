@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Nunito', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: 'Nunito', sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow: hidden;
+    background-color: #f0fdf4;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.6);
+  }
+  /* Cinematic Text / Ambient Elements */
+  .cinematic-vignette {
+    background: radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.4) 100%);
+    pointer-events: none;
+  }
+
+  .cinematic-text {
+    @apply text-white uppercase;
+    font-family: 'Raleway', sans-serif;
+    font-weight: 100;
+    letter-spacing: 0.5em;
+    text-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  }
+
+  /* Hand-Drawn / Sketchy UI Styles */
+  .hand-drawn-panel {
+    background-color: #fcf8ec; /* warm paper/parchment */
+    border: 3px solid #2d3436;
+    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px; /* Sketchy irregular border */
+    box-shadow: 4px 4px 0px #2d3436;
+    color: #2d3436;
+    font-family: 'ZCOOL KuaiLe', 'Nunito', sans-serif;
+    transition: all 0.3s ease;
+  }
+  
+  .hand-drawn-panel:hover {
+    box-shadow: 6px 6px 0px #2d3436;
+  }
+  
+  .hand-drawn-btn {
+    background-color: transparent;
+    border: 3px solid transparent;
+    border-radius: 15px 225px 15px 255px/255px 15px 225px 15px;
+    color: #2d3436;
+    font-family: 'ZCOOL KuaiLe', 'Nunito', sans-serif;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: pointer;
+  }
+
+  .hand-drawn-btn:hover {
+    border-color: #2d3436;
+    transform: translate(-2px, -2px) rotate(-1deg);
+    box-shadow: 3px 3px 0px #2d3436;
+    background-color: #ffeaa7; /* warm highlight */
+  }
+
+  .hand-drawn-btn:active {
+    transform: translate(2px, 2px) rotate(1deg);
+    box-shadow: 0px 0px 0px #2d3436;
+    background-color: #fdcb6e;
+  }
+
+  .hand-drawn-btn-active {
+    background-color: #ffeaa7;
+    border: 3px solid #2d3436;
+    box-shadow: 3px 3px 0px #2d3436;
+    transform: translate(-2px, -2px) rotate(1deg);
+  }
+
+  /* Keep legacy glass styles just in case for overlays, but mostly unused now */
+  .glass-panel {
+    @apply bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl transition-all duration-500 relative overflow-hidden;
+  }
+  .glass-pill {
+    @apply bg-black/60 backdrop-blur-xl border border-white/10 rounded-full transition-all duration-500 relative overflow-hidden;
+  }
+}
+
+@keyframes slideUpFade {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUpFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

@@ -1,0 +1,567 @@
+import { create } from 'zustand';
+import { AudioSystem } from './lib/audio';
+
+export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench';
+
+export interface Vector3Data {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface PlacedAsset {
+  id: string;
+  type: 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'streetlamp' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'sub_island' | 'birdhouse' | 'hoe' | 'farmland' | 'crop_wheat' | 'crop_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench';
+  position: Vector3Data;
+  rotation: Vector3Data;
+  scale?: number;
+  customState?: string;
+  growthProgress?: number;
+  connections?: string[]; // IDs of connected objects (for ropes/bridges)
+  terrain?: {
+    positions: number[];
+    types: number[];
+    size: number;
+    segments: number;
+  };
+}
+
+export interface VFX {
+    id: number;
+    type: 'dust' | 'splash' | 'blood';
+    position: Vector3Data;
+}
+
+export type GameScreen = 'TITLE' | 'SAVE_SELECT' | 'PLAYING';
+
+export interface SaveSlot {
+  id: string;
+  name: string;
+  lastPlayed: number;
+  ecoPoints: number;
+  playtime: number;
+}
+
+interface GameState {
+  screen: GameScreen;
+  setScreen: (screen: GameScreen) => void;
+
+  islandId: string | null;
+  islandName: string;
+  setIslandInfo: (id: string, name: string) => void;
+  
+  stats: { playtime: number; itemsPlaced: number };
+  incrementPlaytime: (delta: number) => void;
+  incrementItemsPlaced: () => void;
+
+  timeOfDay: number; // 0-24
+  setTimeOfDay: (time: number) => void;
+  
+  weather: 'sunny' | 'rainy' | 'snowy';
+  setWeather: (weather: 'sunny' | 'rainy' | 'snowy') => void;
+  
+  season: 'spring' | 'summer' | 'autumn' | 'winter';
+  setSeason: (season: 'spring' | 'summer' | 'autumn' | 'winter') => void;
+
+  biome: 'default' | 'forest' | 'desert' | 'tundra' | 'volcanic';
+  setBiome: (biome: 'default' | 'forest' | 'desert' | 'tundra' | 'volcanic') => void;
+  
+  selectedTool: ToolType;
+  setSelectedTool: (tool: ToolType) => void;
+  connectingPillarId: string | null;
+  setConnectingPillarId: (id: string | null) => void;
+  
+  assets: PlacedAsset[];
+  addAsset: (asset: Omit<PlacedAsset, 'id'>) => void;
+  updateAsset: (id: string, updater: (asset: PlacedAsset) => PlacedAsset) => void;
+  removeAsset: (id: string) => void;
+  removeAssetAt: (position: Vector3Data, radius: number) => void;
+  
+  grassHealth: number; // 0-100
+  setGrassHealth: (health: number) => void;
+  
+  deerCount: number;
+  wolfCount: number;
+  updateEcology: () => void;
+
+  terrainData: {
+    positions: Float32Array | null;
+    types: Uint8Array | null;
+    size: number;
+    segments: number;
+  };
+  setTerrainData: (positions: Float32Array, types: Uint8Array, size: number, segments: number) => void;
+
+  isDrawing: boolean;
+  setIsDrawing: (isDrawing: boolean) => void;
+
+  getSavedSlots: () => SaveSlot[];
+  createSaveSlot: (name: string) => void;
+  deleteSaveSlot: (id: string) => void;
+  saveGame: () => void;
+  loadGame: (id?: string, keepTitleScreen?: boolean) => void;
+  clearAll: () => void;
+
+  playerName: string;
+  setPlayerName: (name: string) => void;
+  playerAvatar: string;
+  setPlayerAvatar: (avatar: string) => void;
+  playerXP: number;
+  playerLevel: number;
+  addXP: (amount: number) => void;
+  
+  ecoPoints: number;
+  setEcoPoints: (points: number) => void;
+  spendEcoPoints: (amount: number) => boolean;
+
+  unlockedAssets: string[];
+  unlockAsset: (assetId: string, cost: number) => boolean;
+
+  selectedEntityId: string | null;
+  setSelectedEntityId: (id: string | null) => void;
+  
+  aiNarration: string | null;
+  setAiNarration: (narration: string | null) => void;
+
+  lastPlacedSynergy: { type: string, position: Vector3Data, id: number } | null;
+  setLastPlacedSynergy: (synergy: { type: string, position: Vector3Data, id: number } | null) => void;
+
+  vfxQueue: VFX[];
+  spawnVFX: (type: VFX['type'], position: Vector3Data) => void;
+  removeVFX: (id: number) => void;
+}
+
+export const useGameStore = create<GameState>((set, get) => ({
+  screen: 'TITLE',
+  setScreen: (screen) => set({ screen }),
+
+  islandId: null,
+  islandName: 'Wander Island',
+  setIslandInfo: (id, name) => set({ islandId: id, islandName: name }),
+
+  stats: { playtime: 0, itemsPlaced: 0 },
+  incrementPlaytime: (delta) => set((state) => ({ stats: { ...state.stats, playtime: state.stats.playtime + delta } })),
+  incrementItemsPlaced: () => set((state) => ({ stats: { ...state.stats, itemsPlaced: state.stats.itemsPlaced + 1 } })),
+
+  timeOfDay: 12,
+  setTimeOfDay: (time) => set({ timeOfDay: time }),
+  
+  weather: 'sunny',
+  setWeather: (weather) => set({ weather: weather }),
+  
+  season: 'summer',
+  setSeason: (season) => set({ season: season }),
+
+  biome: 'default',
+  setBiome: (biome) => set({ biome: biome }),
+  
+  selectedTool: 'none',
+  setSelectedTool: (tool) => set({ selectedTool: tool, connectingPillarId: null }),
+  connectingPillarId: null,
+  setConnectingPillarId: (id) => set({ connectingPillarId: id }),
+  
+  playerName: 'huyan',
+  setPlayerName: (name) => set({ playerName: name }),
+  playerAvatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Felix&backgroundColor=b6e3f4',
+  setPlayerAvatar: (avatar) => set({ playerAvatar: avatar }),
+  playerXP: 0,
+  playerLevel: 1,
+  addXP: (amount) => set((state) => {
+     const newXP = state.playerXP + amount;
+     const newLevel = Math.floor(newXP / 100) + 1;
+     return { playerXP: newXP, playerLevel: newLevel };
+  }),
+  
+  ecoPoints: 200, // Initial budget
+  setEcoPoints: (points) => set({ ecoPoints: points }),
+  spendEcoPoints: (amount) => {
+     const state = get();
+     if (state.ecoPoints >= amount) {
+         set({ ecoPoints: state.ecoPoints - amount });
+         return true;
+     }
+     return false;
+  },
+
+  unlockedAssets: [
+    'treeA', 'treeB', 'rock', 'terrainUp', 'terrainDown', 'eraser',
+    'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'streetlamp', 'house', 'windmill', 
+    'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
+    'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench'
+  ],
+  unlockAsset: (assetId, cost) => {
+      const state = get();
+      if (state.ecoPoints >= cost && !state.unlockedAssets.includes(assetId)) {
+          set({ 
+              ecoPoints: state.ecoPoints - cost, 
+              unlockedAssets: [...state.unlockedAssets, assetId] 
+          });
+          return true;
+      }
+      return false;
+  },
+
+  selectedEntityId: null,
+  setSelectedEntityId: (id) => set({ selectedEntityId: id }),
+  
+  aiNarration: null,
+  setAiNarration: (narration) => set({ aiNarration: narration }),
+
+  lastPlacedSynergy: null,
+  setLastPlacedSynergy: (synergy) => set({ lastPlacedSynergy: synergy }),
+
+  vfxQueue: [],
+  spawnVFX: (type, position) => set((state) => ({ 
+      vfxQueue: [...state.vfxQueue, { id: Date.now() + Math.random(), type, position }] 
+  })),
+  removeVFX: (id) => set((state) => ({ 
+      vfxQueue: state.vfxQueue.filter(v => v.id !== id) 
+  })),
+
+  assets: [],
+  updateAsset: (id, updater) => set((state) => ({
+    assets: state.assets.map((asset) => asset.id === id ? updater(asset) : asset)
+  })),
+  addAsset: (assetData) => set((state) => {
+    const asset: PlacedAsset = { ...assetData, id: Math.random().toString(36).substring(2, 9) };
+
+    const newAssets = [...state.assets, asset];
+    const deerCount = newAssets.filter(a => a.type === 'deer').length;
+    const wolfCount = newAssets.filter(a => a.type === 'wolf').length;
+    const newXP = state.playerXP + 10;
+    const newLevel = Math.floor(newXP / 100) + 1;
+    
+    // Trigger Shockwave for Synergy Assets
+    let synergy = state.lastPlacedSynergy;
+    if (asset.type === 'spring' || asset.type === 'windmill' || asset.type === 'treeA' || asset.type === 'treeB') {
+        synergy = { type: asset.type, position: asset.position, id: Date.now() };
+        AudioSystem.playSynergyChord();
+    }
+    
+    // Auto-spawn visual effects for placed objects
+    let newVfxQueue = [...state.vfxQueue];
+    const waterAssets = ['pier', 'platform', 'boat', 'bridge_pillar', 'bridge', 'rope'];
+    const landAssets = ['house', 'windmill', 'lighthouse', 'treeA', 'treeB', 'rock'];
+    
+    if (waterAssets.includes(asset.type)) {
+        newVfxQueue.push({ id: Date.now() + Math.random(), type: 'splash', position: asset.position });
+    } else if (landAssets.includes(asset.type)) {
+        newVfxQueue.push({ id: Date.now() + Math.random(), type: 'dust', position: asset.position });
+    }
+
+    return { 
+      assets: newAssets, 
+      deerCount, 
+      wolfCount, 
+      playerXP: newXP, 
+      playerLevel: newLevel,
+      lastPlacedSynergy: synergy,
+      vfxQueue: newVfxQueue,
+      stats: { ...state.stats, itemsPlaced: state.stats.itemsPlaced + 1 } 
+    };
+  }),
+  removeAsset: (id) => set((state) => {
+    const newAssets = state.assets.filter(a => a.id !== id);
+    const deerCount = newAssets.filter(a => a.type === 'deer').length;
+    const wolfCount = newAssets.filter(a => a.type === 'wolf').length;
+    return { assets: newAssets, deerCount, wolfCount };
+  }),
+  removeAssetAt: (position, radius) => set((state) => {
+    const newAssets = state.assets.filter(a => {
+        const dx = a.position.x - position.x;
+        const dz = a.position.z - position.z;
+        const dist = Math.sqrt(dx*dx + dz*dz);
+        return dist > radius;
+    });
+    const deerCount = newAssets.filter(a => a.type === 'deer').length;
+    const wolfCount = newAssets.filter(a => a.type === 'wolf').length;
+    return { assets: newAssets, deerCount, wolfCount };
+  }),
+  
+  grassHealth: 100,
+  setGrassHealth: (health) => set({ grassHealth: health }),
+  
+  deerCount: 0,
+  wolfCount: 0,
+  
+  updateEcology: () => set((state) => {
+    let newHealth = state.grassHealth;
+    let currentAssets = [...state.assets];
+    let dCount = state.deerCount;
+    let wCount = state.wolfCount;
+    
+    const springs = currentAssets.filter(a => a.type === 'spring');
+    const trees = currentAssets.filter(a => a.type === 'treeA' || a.type === 'treeB');
+    const windmills = currentAssets.filter(a => a.type === 'windmill');
+    
+    // Zen Logic: Springs and Rain heal grass.
+    newHealth += springs.length * 0.5 + 0.2; 
+    if (state.weather === 'rainy') newHealth += 1.0;
+    
+    // Forest Synergy Logic: Find clusters of 3+ trees within 4 units.
+    let forestClusters = 0;
+    const checkedTrees = new Set<string>();
+    
+    for (const tree of trees) {
+        if (checkedTrees.has(tree.id)) continue;
+        let clusterSize = 1;
+        const clusterPos = { x: tree.position.x, y: tree.position.y, z: tree.position.z };
+        
+        for (const other of trees) {
+            if (other.id === tree.id || checkedTrees.has(other.id)) continue;
+            const dx = tree.position.x - other.position.x;
+            const dz = tree.position.z - other.position.z;
+            if (dx*dx + dz*dz < 25) { // Radius 5
+                clusterSize++;
+                checkedTrees.add(other.id);
+            }
+        }
+        
+        if (clusterSize >= 3) {
+            forestClusters++;
+            // Automatically spawn a deer occasionally if population is low!
+            if (dCount < (forestClusters * 2 + 2) && Math.random() < 0.05) {
+                const deer: PlacedAsset = {
+                    id: Math.random().toString(36).substring(2, 9),
+                    type: 'deer',
+                    position: { x: clusterPos.x + (Math.random()-0.5)*2, y: clusterPos.y, z: clusterPos.z + (Math.random()-0.5)*2 },
+                    rotation: { x: 0, y: Math.random() * Math.PI * 2, z: 0 },
+                    scale: 0.8 + Math.random() * 0.4
+                };
+                currentAssets.push(deer);
+                dCount++;
+            }
+        }
+    }
+
+    // Deer lightly consume grass if overpopulated, but won't die
+    const overgrazingThreshold = 3 + springs.length * 2 + trees.length;
+    if (dCount > overgrazingThreshold) {
+      newHealth -= (dCount - overgrazingThreshold) * 0.5;
+    }
+    
+    newHealth = Math.max(0, Math.min(100, newHealth));
+
+    // Zen Economy Generation (Passive Eco-Points)
+    let passiveEP = 0;
+    passiveEP += trees.length * 1; // Trees generate EP automatically
+    
+    // Coastal Windmill Synergy
+    for (const wm of windmills) {
+        const distToCenter = Math.sqrt(wm.position.x * wm.position.x + wm.position.z * wm.position.z);
+        if (distToCenter > 12) {
+             passiveEP += 3; // Coastal winds give 3x EP
+        } else {
+             passiveEP += 1;
+        }
+    }
+
+    // Weather synergy: Rain makes plants produce double EP!
+    if (state.weather === 'rainy') passiveEP *= 2;
+    
+    // Reward for maintaining a healthy ecosystem
+    if (newHealth > 80) passiveEP += 2;
+    
+    // Animals generate Zen EP just by existing happily
+    if (dCount > 0 && dCount <= overgrazingThreshold) passiveEP += dCount * 2;
+    if (wCount > 0) passiveEP += wCount * 5; 
+
+    // Add generated EP to total
+    const finalEP = Math.max(0, state.ecoPoints + passiveEP);
+    
+    // Update Procedural Audio Env Mix
+    AudioSystem.updateEcologyState(springs.length, windmills.length, state.weather);
+    
+    return { grassHealth: newHealth, assets: currentAssets, deerCount: dCount, wolfCount: wCount, ecoPoints: finalEP };
+  }),
+
+  terrainData: {
+      positions: null,
+      types: null,
+      size: 40,
+      segments: 64
+  },
+  setTerrainData: (positions, types, size, segments) => set({ terrainData: { positions, types, size, segments } }),
+  isDrawing: false,
+  setIsDrawing: (isDrawing) => set({ isDrawing }),
+  
+  getSavedSlots: () => {
+    try {
+      const indexStr = localStorage.getItem('eco_saves_index');
+      if (indexStr) {
+          return JSON.parse(indexStr);
+      } else {
+          // Initialize pre-baked Save 1
+          const defaultSlot = {
+              id: 'default_01',
+              name: 'Wander Island (Demo)',
+              lastPlayed: Date.now(),
+              ecoPoints: 5000,
+              playtime: 3600
+          };
+          
+          const defaultData = {
+              timeOfDay: 15,
+              weather: 'sunny',
+              assets: [
+                  { id: 'a1', type: 'house', position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: 1.2 },
+                  { id: 'a2', type: 'windmill', position: { x: 8, y: 0, z: -8 }, rotation: { x: 0, y: 0.8, z: 0 }, scale: 1.2 },
+                  { id: 'a3', type: 'lighthouse', position: { x: -12, y: 0, z: 12 }, rotation: { x: 0, y: 0, z: 0 }, scale: 1.5 },
+                  { id: 'a4', type: 'spring', position: { x: -4, y: 0, z: -4 }, rotation: { x: 0, y: 0, z: 0 }, scale: 1 },
+                  { id: 't1', type: 'treeA', position: { x: -5, y: 0, z: -5 }, rotation: { x: 0, y: 1, z: 0 }, scale: 1.1 },
+                  { id: 't2', type: 'treeB', position: { x: -3, y: 0, z: -7 }, rotation: { x: 0, y: 2, z: 0 }, scale: 0.9 },
+                  { id: 't3', type: 'treeA', position: { x: -6, y: 0, z: -3 }, rotation: { x: 0, y: 3, z: 0 }, scale: 1.3 },
+                  { id: 't4', type: 'treeB', position: { x: 4, y: 0, z: 5 }, rotation: { x: 0, y: 4, z: 0 }, scale: 1 },
+                  { id: 't5', type: 'treeA', position: { x: 5, y: 0, z: 3 }, rotation: { x: 0, y: 5, z: 0 }, scale: 0.8 },
+                  { id: 't6', type: 'treeB', position: { x: 3, y: 0, z: 7 }, rotation: { x: 0, y: 6, z: 0 }, scale: 1.2 },
+                  { id: 'r1', type: 'rock', position: { x: 8, y: 0, z: 2 }, rotation: { x: 0, y: 0, z: 0 }, scale: 1.4 },
+                  { id: 'd1', type: 'deer', position: { x: -2, y: 0, z: 5 }, rotation: { x: 0, y: 1, z: 0 }, scale: 1 },
+                  { id: 'd2', type: 'deer', position: { x: 2, y: 0, z: 6 }, rotation: { x: 0, y: 2, z: 0 }, scale: 1 },
+                  { id: 'w1', type: 'wolf', position: { x: -8, y: 0, z: 8 }, rotation: { x: 0, y: -1, z: 0 }, scale: 1 },
+              ],
+              grassHealth: 100,
+              deerCount: 2,
+              wolfCount: 1,
+              playerName: 'huyan',
+              playerAvatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=Felix&backgroundColor=b6e3f4',
+              playerXP: 500,
+              playerLevel: 5,
+              ecoPoints: 5000,
+              stats: { playtime: 3600, itemsPlaced: 14 }
+          };
+          
+          localStorage.setItem('eco_saves_index', JSON.stringify([defaultSlot]));
+          localStorage.setItem(`eco_save_${defaultSlot.id}`, JSON.stringify(defaultData));
+          
+          return [defaultSlot];
+      }
+    } catch {
+      return [];
+    }
+  },
+
+  createSaveSlot: (name) => {
+    const id = Date.now().toString();
+    const newSlot: SaveSlot = {
+      id,
+      name,
+      lastPlayed: Date.now(),
+      ecoPoints: 200,
+      playtime: 0
+    };
+    
+    const slots = get().getSavedSlots();
+    slots.push(newSlot);
+    localStorage.setItem('eco_saves_index', JSON.stringify(slots));
+    
+    get().clearAll();
+    set({ islandId: id, islandName: name, screen: 'PLAYING' });
+    get().saveGame();
+  },
+
+  deleteSaveSlot: (id) => {
+    const slots = get().getSavedSlots().filter(s => s.id !== id);
+    localStorage.setItem('eco_saves_index', JSON.stringify(slots));
+    localStorage.removeItem(`eco_save_${id}`);
+  },
+
+  saveGame: () => {
+    const state = get();
+    if (!state.islandId) return;
+
+    try {
+      const saveData = {
+        timeOfDay: state.timeOfDay,
+        weather: state.weather,
+        assets: state.assets,
+        grassHealth: state.grassHealth,
+        deerCount: state.deerCount,
+        wolfCount: state.wolfCount,
+        playerName: state.playerName,
+        playerAvatar: state.playerAvatar,
+        playerXP: state.playerXP,
+        playerLevel: state.playerLevel,
+        ecoPoints: state.ecoPoints,
+        unlockedAssets: state.unlockedAssets,
+        stats: state.stats,
+        terrainPositions: state.terrainData.positions ? Array.from(state.terrainData.positions) : null,
+        terrainTypes: state.terrainData.types ? Array.from(state.terrainData.types) : null
+      };
+      localStorage.setItem(`eco_save_${state.islandId}`, JSON.stringify(saveData));
+
+      // Update index
+      const slots = state.getSavedSlots();
+      const slotIndex = slots.findIndex(s => s.id === state.islandId);
+      if (slotIndex >= 0) {
+        slots[slotIndex].lastPlayed = Date.now();
+        slots[slotIndex].ecoPoints = state.ecoPoints;
+        slots[slotIndex].playtime = state.stats.playtime;
+        localStorage.setItem('eco_saves_index', JSON.stringify(slots));
+      }
+    } catch (e) {
+      console.error("Failed to save game", e);
+    }
+  },
+
+  loadGame: (id?: string, keepTitleScreen: boolean = false) => {
+    try {
+      const targetId = id || get().islandId;
+      if (!targetId) return;
+      
+      const slots = get().getSavedSlots();
+      const slot = slots.find(s => s.id === targetId);
+      if (!slot) return;
+
+      const saved = localStorage.getItem(`eco_save_${targetId}`);
+      if (saved) {
+        const data = JSON.parse(saved);
+        set({
+          screen: keepTitleScreen ? 'TITLE' : 'PLAYING',
+          islandId: targetId,
+          islandName: slot.name,
+          timeOfDay: data.timeOfDay,
+          weather: data.weather,
+          assets: data.assets,
+          grassHealth: data.grassHealth,
+          deerCount: data.deerCount,
+          wolfCount: data.wolfCount,
+          playerName: data.playerName || 'huyan',
+          playerAvatar: data.playerAvatar || 'https://api.dicebear.com/7.x/notionists/svg?seed=Felix&backgroundColor=b6e3f4',
+          playerXP: data.playerXP || 0,
+          playerLevel: data.playerLevel || 1,
+          ecoPoints: data.ecoPoints !== undefined ? data.ecoPoints : 200,
+          unlockedAssets: data.unlockedAssets || [
+            'treeA', 'treeB', 'rock', 'terrainUp', 'terrainDown', 'eraser',
+            'deer', 'wolf', 'spring', 'streetlamp', 'house', 'windmill', 
+            'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island'
+          ],
+          stats: data.stats || { playtime: 0, itemsPlaced: data.assets?.length || 0 },
+          terrainData: {
+             ...get().terrainData,
+             positions: data.terrainPositions ? new Float32Array(data.terrainPositions) : null,
+             types: data.terrainTypes ? new Uint8Array(data.terrainTypes) : null
+          }
+        });
+      }
+    } catch (e) {
+      console.error("Failed to load game", e);
+    }
+  },
+
+  clearAll: () => set({ 
+      assets: [], 
+      deerCount: 0, 
+      wolfCount: 0, 
+      timeOfDay: 12, 
+      weather: 'sunny',
+      grassHealth: 100,
+      ecoPoints: 200,
+      stats: { playtime: 0, itemsPlaced: 0 },
+      unlockedAssets: [
+          'treeA', 'treeB', 'rock', 'terrainUp', 'terrainDown', 'eraser',
+          'deer', 'wolf', 'spring', 'streetlamp', 'house', 'windmill', 
+          'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island'
+      ],
+      terrainData: { ...get().terrainData, positions: null, types: null } 
+  })
+}));
