@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../store';
-import { User, Edit2, Check, RefreshCw, X, BarChart2, Leaf, Unlock, Settings, LogOut, Clock, Layers } from 'lucide-react';
+import { api } from '../lib/api';
+import { disconnectSocket } from '../lib/socket';
+import { User, Edit2, Check, RefreshCw, X, BarChart2, Leaf, Unlock, Settings, LogOut, Clock, Layers, Wifi, WifiOff, Globe } from 'lucide-react';
 
 const avatarStyles = ['notionists', 'adventurer', 'fun-emoji', 'bottts', 'adventurer-neutral', 'thumbs', 'open-peeps'];
 
@@ -12,6 +14,9 @@ export const PlayerPanel: React.FC = () => {
     grassHealth, deerCount, wolfCount, weather, timeOfDay,
     setScreen, saveGame
   } = store;
+
+  const authUser = useGameStore(state => state.authUser);
+  const clearAuthUser = useGameStore(state => state.clearAuthUser);
 
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'stats' | 'ecology' | 'unlocks' | 'system'>('stats');
