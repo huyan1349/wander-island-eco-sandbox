@@ -49,7 +49,6 @@ export function WeatherForecast() {
 
   const handlePointerDown = (e: React.PointerEvent, isTop: boolean) => {
     if (!isTop) return;
-    e.stopPropagation(); // prevent handleNext from firing immediately
     setIsDragging(true);
     dragStartRef.current = { x: e.clientX, y: e.clientY };
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -68,18 +67,52 @@ export function WeatherForecast() {
     setIsDragging(false);
     e.currentTarget.releasePointerCapture(e.pointerId);
     
-    // If dragged to the left more than 250px (towards center screen)
-    if (dragPos.x < -250 && activeIndex > 0) {
-      for (let i = 0; i < activeIndex; i++) {
-        advanceDay();
-      }
-      setTimeOfDay(8); // Set time to 08:00 morning of that day
-      setActiveIndex(0);
+    // If it was just a click (dragPos is small), trigger handleNext
+    if (Math.abs(dragPos.x) < 15 && Math.abs(dragPos.y) < 15) {
+      handleNext();
+      setDragPos({ x: 0, y: 0 });
+      return;
     }
     
-    // If it was just a click (dragPos is small), trigger handleNext
-    if (Math.abs(dragPos.x) < 10 && Math.abs(dragPos.y) < 10) {
-      handleNext();
+    // If dragged to the left more than 200px (towards center screen)
+    if (dragPos.x < -200 && activeIndex > 0) {
+      const daysToAdvance = activeIndex;
+      const currentT = useGameStore.getState().timeOfDay;
+      // Target time is exactly 08:00 AM on the target day
+      const targetTotalTime = currentT + (24 - currentT) + (daysToAdvance - 1) * 24 + 8; 
+      
+      let scrubbedTime = currentT;
+      const durationMs = 1500; // 1.5 seconds smooth transition
+      const startMs = performance.now();
+      
+      setActiveIndex(0); // Reset UI immediately
+
+      const animate = (time: number) => {
+        const elapsed = time - startMs;
+        const progress = Math.min(1, elapsed / durationMs);
+        
+        // easeInOutQuad
+        const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+        
+        const newTotalTime = currentT + (targetTotalTime - currentT) * ease;
+        
+        // If we cross a midnight boundary, advance the game day
+        const dayCrossings = Math.floor(newTotalTime / 24) - Math.floor(scrubbedTime / 24);
+        for (let i = 0; i < dayCrossings; i++) {
+            useGameStore.getState().advanceDay();
+        }
+        
+        scrubbedTime = newTotalTime;
+        useGameStore.getState().setTimeOfDay(scrubbedTime % 24);
+        
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          useGameStore.getState().setTimeOfDay(8); // Ensure exact final time
+        }
+      };
+      
+      requestAnimationFrame(animate);
     }
     
     setDragPos({ x: 0, y: 0 });
