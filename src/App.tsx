@@ -449,7 +449,7 @@ export default function App() {
         <>
           {/* Top Left Header & HUD */}
       {!isImmersive && (
-        <div className="absolute top-6 left-6 z-50 flex items-start gap-4 transition-opacity duration-300">
+        <div className="absolute top-6 left-6 z-50 flex flex-col items-start gap-4 transition-opacity duration-300">
            <button 
               onClick={() => setIsImmersive(!isImmersive)}
               className="group relative w-14 h-14 flex items-center justify-center hand-drawn-btn hand-drawn-ghost shrink-0 text-white group-hover:text-slate-800 transition-colors"
