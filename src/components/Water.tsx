@@ -431,32 +431,6 @@ export function Water() {
             clearcoatRoughness={1}
             vertexColors
             flatShading
-            onBeforeCompile={(shader) => {
-              shader.vertexShader = shader.vertexShader.replace(
-                '#include <common>',
-                `#include <common>
-                varying vec3 vWPos;
-                `
-              ).replace(
-                '#include <worldpos_vertex>',
-                `#include <worldpos_vertex>
-                vWPos = (modelMatrix * vec4(position, 1.0)).xyz;
-                `
-              );
-              shader.fragmentShader = shader.fragmentShader.replace(
-                '#include <common>',
-                `#include <common>
-                varying vec3 vWPos;
-                `
-              ).replace(
-                '#include <dithering_fragment>',
-                `#include <dithering_fragment>
-                float waveHeight = vWPos.y + 0.4;
-                float foam = smoothstep(0.1, 0.8, waveHeight);
-                gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0, 1.0, 1.0), foam * 0.6);
-                `
-              );
-            }}
           />
         </mesh>
 
