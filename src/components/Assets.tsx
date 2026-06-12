@@ -1210,6 +1210,44 @@ export function Balloon(props: any) {
   const swayRef = useRef<THREE.Group>(null);
   const ropeRef = useRef<THREE.Mesh>(null);
   const plankRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const balloonMatShaders = useRef<any[]>([]);
+  const ropeMatShader = useRef<any>(null);
+
+  const balloonOnBeforeCompile = useMemo(() => (shader: any) => {
+    shader.uniforms.time = { value: 0 };
+    shader.uniforms.waveInt = { value: 1.0 };
+    shader.vertexShader = `
+      uniform float time;
+      uniform float waveInt;
+      ${shader.vertexShader}
+    `.replace(
+      '#include <begin_vertex>',
+      `
+      #include <begin_vertex>
+      transformed.x += sin(position.y * 3.0 + time * 2.0) * 0.05 * waveInt;
+      transformed.z += cos(position.x * 2.0 + time * 2.5) * 0.05 * waveInt;
+      `
+    );
+    balloonMatShaders.current.push(shader);
+  }, []);
+
+  const ropeOnBeforeCompile = useMemo(() => (shader: any) => {
+    shader.uniforms.time = { value: 0 };
+    shader.vertexShader = `
+      uniform float time;
+      ${shader.vertexShader}
+    `.replace(
+      '#include <begin_vertex>',
+      `
+      #include <begin_vertex>
+      float bend = 1.0 - abs(position.y * 2.0);
+      transformed.x += sin(time * 1.5) * 0.3 * bend;
+      transformed.z += cos(time * 1.2) * 0.3 * bend;
+      `
+    );
+    ropeMatShader.current = shader;
+  }, []);
+
   const mode = props.type === 'balloon_ladder' ? 'ladder'
              : props.type === 'balloon_bridge' ? 'bridge' : 'rope';
   const H = 11; // float altitude above the anchor point
@@ -1227,6 +1265,18 @@ export function Balloon(props: any) {
   useFrame((state) => {
     const t = state.clock.elapsedTime;
     const g = swayRef.current;
+
+    if (balloonMatShaders.current.length > 0) {
+      const waveInt = useGameStore.getState().waveIntensity || 1.0;
+      balloonMatShaders.current.forEach(shader => {
+        shader.uniforms.time.value = t;
+        shader.uniforms.waveInt.value = waveInt;
+      });
+    }
+    if (ropeMatShader.current) {
+      ropeMatShader.current.uniforms.time.value = t;
+    }
+
     if (!g) return;
 
     if (mode === 'ladder') {
@@ -1316,7 +1366,7 @@ export function Balloon(props: any) {
         {[...Array(6)].map((_, i) => (
           <mesh key={i} castShadow scale={[1, 1.25, 1]}>
             <sphereGeometry args={[2, 12, 16, (i * Math.PI * 2) / 6, Math.PI * 2 / 6]} />
-            <meshStandardMaterial color={duo[i % 2]} roughness={0.6} />
+            <meshStandardMaterial color={duo[i % 2]} roughness={0.6} onBeforeCompile={balloonOnBeforeCompile} />
           </mesh>
         ))}
         {/* Skirt funneling down to the basket */}
@@ -1360,8 +1410,8 @@ export function Balloon(props: any) {
             <meshStandardMaterial color="#713f12" roughness={1} />
           </mesh>
           <mesh ref={ropeRef}>
-            <cylinderGeometry args={[0.025, 0.025, 1]} />
-            <meshStandardMaterial color="#d6c8a8" roughness={1} />
+            <cylinderGeometry args={[0.025, 0.025, 1, 8, 16]} />
+            <meshStandardMaterial color="#d6c8a8" roughness={1} onBeforeCompile={ropeOnBeforeCompile} />
           </mesh>
         </group>
       )}

@@ -6,7 +6,7 @@ import { Water } from './Water';
 import { SkySystem, WeatherSystem, FirefliesSystem } from './SkySystem';
 import { Assets } from './Assets';
 import * as THREE from 'three';
-import { EffectComposer, Bloom, Vignette, HueSaturation } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Vignette, HueSaturation, DepthOfField } from '@react-three/postprocessing';
 import { useGameStore } from '../store';
 
 // WASD pans the camera (and orbit target) along the camera's horizontal axes
@@ -103,6 +103,7 @@ export function GameCanvas() {
 
           {/* Post-processing for cinematic aesthetic */}
           <EffectComposer multisampling={4}>
+             <DepthOfField focusDistance={0.0} focalLength={0.02} bokehScale={5} height={480} />
              <Bloom luminanceThreshold={1.2} luminanceSmoothing={0.8} intensity={1.5} mipmapBlur />
              <HueSaturation saturation={0.3} hue={0} />
              <Vignette eskil={false} offset={0.15} darkness={0.8} />
