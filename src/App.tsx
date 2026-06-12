@@ -69,6 +69,9 @@ import { LoginScreen } from "./components/LoginScreen";
 import { SocialPanel } from "./components/SocialPanel";
 import { Toast } from "./components/Toast";
 import { VisitOverlay } from "./components/VisitOverlay";
+import { TimeWeatherSystem } from "./components/systems/TimeWeatherSystem";
+import { SolarMeridian } from "./components/ui/SolarMeridian";
+import { WeatherForecast } from "./components/ui/WeatherForecast";
 import { api } from "./lib/api";
 import { connectSocket, onUserOnline, onUserOffline, onFriendRequest, onIslandVisitData, onIslandVisitError } from "./lib/socket";
 import { AudioSystem } from "./lib/audio";
@@ -431,8 +434,14 @@ export default function App() {
 
   const activeCatObj = categories.find(c => c.name === activeCategory);
 
+  const handleFullscreen = () => {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+    }
+  };
+
   return (
-    <div className="w-full h-screen relative bg-slate-950 overflow-hidden font-sans text-slate-100 flex">
+    <div className="w-full h-screen relative bg-slate-950 overflow-hidden font-sans text-slate-100 flex" onClick={handleFullscreen}>
       {/* Center Canvas */}
       <div className={`absolute inset-0 z-0 transition-all duration-1000 ${screen !== 'PLAYING' ? 'blur-none brightness-100' : 'blur-none brightness-100'}`}>
         <GameCanvas />
@@ -446,19 +455,44 @@ export default function App() {
         <>
           {/* Top Left Header & HUD */}
       {!isImmersive && (
-        <div className="absolute top-6 left-6 z-50 flex items-start gap-4 transition-opacity duration-300">
-           <button 
-              onClick={() => setIsImmersive(!isImmersive)}
-              className="group relative w-14 h-14 flex items-center justify-center hand-drawn-btn hand-drawn-ghost shrink-0 text-white group-hover:text-slate-800 transition-colors"
-           >
-              {isImmersive ? <EyeOff size={24} /> : <Eye size={24} />}
-              <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                  {isImmersive ? "退出沉浸模式" : "沉浸模式"}
-              </span>
-           </button>
+        <div className="absolute top-6 left-6 z-50 flex flex-col items-start gap-4 transition-opacity duration-300">
+           {/* Profile / Avatar (Top Left) */}
            <PlayerPanel />
-           <SocialPanel />
+
+           {/* Tool Column (Below Avatar) */}
+           <div className="flex flex-col gap-4">
+             <button 
+                onClick={() => setIsImmersive(!isImmersive)}
+                className="group relative w-12 h-12 flex items-center justify-center hand-drawn-btn shrink-0"
+             >
+                {isImmersive ? <EyeOff size={24} className="text-slate-800" /> : <Eye size={24} className="text-slate-800" />}
+                <span className="absolute -right-24 top-1/2 -translate-y-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                    {isImmersive ? "退出沉浸模式" : "沉浸模式"}
+                </span>
+             </button>
+             
+             <button 
+                onClick={() => setEnvMenuOpen(!envMenuOpen)}
+                className={`group relative w-12 h-12 flex items-center justify-center hand-drawn-btn shrink-0 ${envMenuOpen ? 'hand-drawn-btn-active' : ''}`}
+             >
+                <Globe size={24} className={envMenuOpen ? 'text-amber-700' : 'text-slate-800'} />
+                <span className="absolute -right-20 top-1/2 -translate-y-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                    生态面板
+                </span>
+             </button>
+
+             <SocialPanel />
+           </div>
         </div>
+      )}
+        
+      {/* Global UI Overlays */}
+      {!isImmersive && (
+        <>
+          <TimeWeatherSystem />
+          <SolarMeridian />
+          <WeatherForecast />
+        </>
       )}
 
       {/* High-End Cinematic Standby / Immersive Mode */}
@@ -619,21 +653,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Right Panel - Ecology Menu */}
+      {/* Right Panel - Ecology Menu Content */}
       {!isImmersive && (
         <div className="absolute right-6 top-6 bottom-6 flex flex-col items-end z-50 pointer-events-none w-80">
-          <button 
-            onClick={() => setEnvMenuOpen(!envMenuOpen)}
-            className={`group hand-drawn-btn hand-drawn-ghost px-4 py-2 pointer-events-auto flex items-center gap-2 transition-colors ${envMenuOpen ? 'hand-drawn-ghost-active' : ''}`}
-          >
-            <Globe size={20} className={`transition-colors ${envMenuOpen ? 'text-slate-800' : 'text-white group-hover:text-slate-800'}`} />
-            <span className={`font-bold tracking-widest transition-colors ${envMenuOpen ? 'text-slate-800' : 'text-white group-hover:text-slate-800'}`}>生态面板</span>
-            <ChevronRight size={16} className={`transition-transform duration-300 ${envMenuOpen ? 'text-slate-800 rotate-90' : 'text-white group-hover:text-slate-800'}`} />
-          </button>
-
           {/* Collapsible Ecology Menu */}
           {envMenuOpen && (
-            <div className="hand-drawn-panel p-5 pointer-events-auto flex flex-col gap-5 w-72 max-h-[70vh] overflow-y-auto custom-scrollbar origin-top-right animate-in fade-in zoom-in-95 duration-200 mt-4">
+            <div className="hand-drawn-panel p-5 pointer-events-auto flex flex-col gap-5 w-72 max-h-[70vh] overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-200">
             
             {/* Environment Stats */}
             <div className="flex flex-col gap-2">
@@ -681,9 +706,11 @@ export default function App() {
                 <button onClick={() => setWeather("sunny")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'sunny' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>晴天</button>
                 <button onClick={() => setWeather("rainy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'rainy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>雨天</button>
                 <button onClick={() => setWeather("snowy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'snowy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>雪天</button>
+                <button onClick={() => setWeather("cloudy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'cloudy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>多云</button>
+                <button onClick={() => setWeather("foggy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'foggy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>浓雾</button>
+                <button onClick={() => setWeather("stormy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'stormy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>雷暴</button>
               </div>
             </div>
-
             {/* Wave Intensity */}
             <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center">

@@ -148,10 +148,10 @@ export const SocialPanel: React.FC = () => {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="hand-drawn-btn hand-drawn-ghost w-14 h-14 flex items-center justify-center relative"
+        className="group relative w-12 h-12 flex items-center justify-center hand-drawn-btn shrink-0"
         title="社交"
       >
-        <Users size={24} className="text-white group-hover:text-slate-800 transition-colors" />
+        <Users size={24} className="text-slate-800" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-slate-950">
             {unreadCount > 9 ? '9+' : unreadCount}

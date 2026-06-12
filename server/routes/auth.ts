@@ -26,7 +26,7 @@ const avatarUpload = multer({
   limits: { fileSize: 2 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('Only image files allowed'));
+    else cb(new Error('只支持图片文件'));
   }
 });
 
@@ -111,12 +111,18 @@ router.get('/me', authMiddleware, (req: AuthRequest, res: Response) => {
     return;
   }
 
-  const visitorCount: any = db.prepare(`
-    SELECT COUNT(DISTINCT visitor_id) as count FROM visitor_log
-    WHERE island_id IN (SELECT id FROM islands WHERE owner_id = ?)
-  `).get(req.userId);
+  // Get visitor count for user's islands
+  let visitorCount = 0;
+  try {
+    const result = db.prepare(`
+      SELECT COUNT(DISTINCT visitor_id) as cnt FROM visitor_log v
+      JOIN islands i ON v.island_id = i.id
+      WHERE i.owner_id = ?
+    `).get(req.userId) as any;
+    visitorCount = result?.cnt || 0;
+  } catch { /* visitor_log table may not exist yet */ }
 
-  res.json({ user: { ...user, visitorCount: visitorCount?.count || 0 } });
+  res.json({ user: { ...user, visitorCount } });
 });
 
 // PUT /api/auth/profile - Update profile with multer avatar upload

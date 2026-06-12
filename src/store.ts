@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { AudioSystem } from './lib/audio';
 
 export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge';
+export type WeatherType = 'sunny' | 'cloudy' | 'rainy' | 'foggy' | 'snowy' | 'stormy';
 
 export interface Vector3Data {
   x: number;
@@ -68,6 +69,9 @@ interface GameState {
   screen: GameScreen;
   setScreen: (screen: GameScreen) => void;
 
+  isSplashDone: boolean;
+  setIsSplashDone: (val: boolean) => void;
+
   // Auth
   authUser: AuthUser | null;
   setAuthUser: (user: AuthUser | null) => void;
@@ -100,9 +104,13 @@ interface GameState {
 
   timeOfDay: number; // 0-24
   setTimeOfDay: (time: number) => void;
+  timeSpeed: number; // 1 = 1 real minute per game hour
+  setTimeSpeed: (speed: number) => void;
   
-  weather: 'sunny' | 'rainy' | 'snowy';
-  setWeather: (weather: 'sunny' | 'rainy' | 'snowy') => void;
+  weather: WeatherType;
+  setWeather: (weather: WeatherType) => void;
+  forecast: WeatherType[];
+  advanceDay: () => void;
 
   waveIntensity: number;
   setWaveIntensity: (v: number) => void;
@@ -189,6 +197,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   screen: 'TITLE',
   setScreen: (screen) => set({ screen }),
 
+  isSplashDone: false,
+  setIsSplashDone: (val) => set({ isSplashDone: val }),
+
   // Auth
   authUser: null,
   setAuthUser: (user) => set({ authUser: user }),
@@ -229,9 +240,19 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   timeOfDay: 6,
   setTimeOfDay: (time) => set({ timeOfDay: time }),
+  timeSpeed: 1,
+  setTimeSpeed: (speed) => set({ timeSpeed: speed }),
   
   weather: 'sunny',
   setWeather: (weather) => set({ weather: weather }),
+  forecast: ['cloudy', 'rainy', 'sunny'],
+  advanceDay: () => set((state) => {
+    const types: WeatherType[] = ['sunny', 'cloudy', 'rainy', 'foggy', 'snowy', 'stormy'];
+    const nextForecast = [...state.forecast];
+    const today = nextForecast.shift() || 'sunny';
+    nextForecast.push(types[Math.floor(Math.random() * types.length)]);
+    return { weather: today, forecast: nextForecast };
+  }),
 
   waveIntensity: 1.0,
   setWaveIntensity: (v) => set({ waveIntensity: v }),

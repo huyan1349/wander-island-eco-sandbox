@@ -69,8 +69,15 @@ export function SkySystem() {
     }, [timeOfDay]);
 
     const weather = useGameStore(state => state.weather);
-    const sceneFogColor = weather === 'rainy' ? '#64748b' : fogColor;
-    const finalCloudColor = weather === 'rainy' ? '#475569' : cloudColor.getStyle();
+    let sceneFogColor = fogColor;
+    let finalCloudColor = cloudColor.getStyle();
+    let fogDensity = 0.012;
+
+    if (weather === 'rainy') { sceneFogColor = '#64748b'; finalCloudColor = '#475569'; fogDensity = 0.025; }
+    else if (weather === 'stormy') { sceneFogColor = '#334155'; finalCloudColor = '#1e293b'; fogDensity = 0.035; }
+    else if (weather === 'foggy') { sceneFogColor = '#cbd5e1'; finalCloudColor = '#f1f5f9'; fogDensity = 0.06; }
+    else if (weather === 'cloudy') { finalCloudColor = '#94a3b8'; }
+    else if (weather === 'snowy') { sceneFogColor = '#e2e8f0'; finalCloudColor = '#ffffff'; fogDensity = 0.02; }
 
     // Position of the sun/moon directional light
     const theta = Math.PI * (timeOfDay / 24) * 2 - Math.PI / 2;
@@ -80,7 +87,7 @@ export function SkySystem() {
 
     return (
         <>
-           <fogExp2 attach="fog" color={sceneFogColor} density={weather === 'rainy' ? 0.025 : 0.012} />
+           <fogExp2 attach="fog" color={sceneFogColor} density={fogDensity} />
            <Sky 
               distance={450000} 
               sunPosition={[sunX, sunY, sunZ]} 
@@ -192,7 +199,7 @@ export function RainSystem() {
 
     useFrame((_, delta) => {
         if (!meshRef.current) return;
-        const targetOpacity = weather === 'rainy' ? 0.6 : 0;
+        const targetOpacity = weather === 'stormy' ? 1.0 : (weather === 'rainy' ? 0.6 : 0);
         const mat = meshRef.current.material as THREE.MeshBasicMaterial;
         mat.opacity = THREE.MathUtils.damp(mat.opacity, targetOpacity, 4, delta);
         if (mat.opacity < 0.01) {

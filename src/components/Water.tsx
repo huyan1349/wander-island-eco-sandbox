@@ -7,6 +7,7 @@ import { Edges } from '@react-three/drei';
 
 const ISAND_SIZE = 40;
 const SEGMENTS = 64;
+const DYNAMIC_WATER_DT = 1 / 20;
 
 // --- Shared ocean wave model ---
 // Single source of truth for the ocean surface: the visual mesh and all
@@ -65,12 +66,17 @@ let freezeScale = 1;
 
 // Current wave amplitude (weather + panel intensity + freeze ramp)
 export function getWaveAmplitude(weather: string) {
-  return (weather === 'rainy' ? 3.0 : 1.8) * (useGameStore.getState().waveIntensity ?? 1) * freezeScale;
+  let mult = 1.8;
+  if (weather === 'rainy') mult = 3.0;
+  if (weather === 'stormy') mult = 4.5;
+  return mult * (useGameStore.getState().waveIntensity ?? 1) * freezeScale;
 }
 
 // World-space ocean surface height at (x, z). Includes the mesh base at y=-0.4.
 export function getWaterHeight(x: number, z: number, time: number, weather: string) {
-  const flowSpeed = weather === 'rainy' ? 4.5 : 3.0;
+  let flowSpeed = 3.0;
+  if (weather === 'rainy') flowSpeed = 4.5;
+  if (weather === 'stormy') flowSpeed = 6.0;
   return -0.4 + sampleOceanWave(x, -z, time, flowSpeed, getWaveAmplitude(weather));
 }
 
@@ -85,6 +91,8 @@ export function Water() {
   // Dynamic accumulated water
   const dynamicWaterRef = useRef<THREE.Mesh>(null);
   const waterLevels = useRef<Float32Array>(new Float32Array((SEGMENTS + 1) * (SEGMENTS + 1)));
+  const waterScratch = useRef<Float32Array>(new Float32Array((SEGMENTS + 1) * (SEGMENTS + 1)));
+  const waterSimAccumulator = useRef(0);
 
   // Generate dynamic water plane geometry matching the terrain
   const { positions, uvs, indices } = useMemo(() => {
@@ -152,7 +160,9 @@ export function Water() {
     if (oceanGeomRef.current && oceanMeshRef.current && freezeScale > 0.005) {
         const time = state.clock.elapsedTime;
         const oPos = oceanGeomRef.current.attributes.position;
-        const flowSpeed = weather === 'rainy' ? 4.5 : 3.0;
+        let flowSpeed = 3.0;
+        if (weather === 'rainy') flowSpeed = 4.5;
+        if (weather === 'stormy') flowSpeed = 6.0;
         const baseAmp = getWaveAmplitude(weather);
 
         // Vertex colors for whitecaps on wave crests
@@ -223,31 +233,35 @@ export function Water() {
 
     const terrainHeights = terrainData.positions;
     const w = waterLevels.current;
-    const nextW = new Float32Array(w);
     const size = SEGMENTS + 1;
-    
+    waterSimAccumulator.current = Math.min(waterSimAccumulator.current + delta, DYNAMIC_WATER_DT * 3);
+    if (waterSimAccumulator.current < DYNAMIC_WATER_DT) return;
+    waterSimAccumulator.current -= DYNAMIC_WATER_DT;
+
+    const nextW = waterScratch.current;
+    nextW.set(w);
+
     // a. Add Water from Springs
     const assets = useGameStore.getState().assets;
     let hasSprings = false;
     for (let i = 0; i < assets.length; i++) {
-        if (assets[i].type === 'spring') {
-            hasSprings = true;
-            const asset = assets[i];
-            const u = (asset.position.x + ISAND_SIZE / 2) / ISAND_SIZE;
-            const v = (asset.position.z + ISAND_SIZE / 2) / ISAND_SIZE;
+        if (assets[i].type !== 'spring') continue;
+        hasSprings = true;
+        const asset = assets[i];
+        const u = (asset.position.x + ISAND_SIZE / 2) / ISAND_SIZE;
+        const v = (asset.position.z + ISAND_SIZE / 2) / ISAND_SIZE;
+        
+        if (u >= 0 && u <= 1 && v >= 0 && v <= 1) {
+            const col = Math.floor(u * SEGMENTS);
+            const row = Math.floor(v * SEGMENTS);
             
-            if (u >= 0 && u <= 1 && v >= 0 && v <= 1) {
-                const col = Math.floor(u * SEGMENTS);
-                const row = Math.floor(v * SEGMENTS);
-                
-                // Spring fills 3x3 area
-                for (let dr = -1; dr <= 1; dr++) {
-                    for (let dc = -1; dc <= 1; dc++) {
-                        const rr = row + dr;
-                        const cc = col + dc;
-                        if (rr >= 0 && rr < size && cc >= 0 && cc < size) {
-                             nextW[rr * size + cc] += 0.02; // Water source
-                        }
+            // Spring fills 3x3 area
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    const rr = row + dr;
+                    const cc = col + dc;
+                    if (rr >= 0 && rr < size && cc >= 0 && cc < size) {
+                         nextW[rr * size + cc] += 0.02;
                     }
                 }
             }
@@ -255,84 +269,81 @@ export function Water() {
     }
 
     // b. Rain addition
-    const isRainy = weather === 'rainy';
+    const isRainy = weather === 'rainy' || weather === 'stormy';
     if (isRainy) {
        for (let i = 0; i < w.length; i++) {
            if (terrainHeights[i * 3 + 1] > 0.5) {
-               nextW[i] += 0.005; 
+               nextW[i] += 0.005;
            }
        }
     }
 
     // c. Flow Simulation (Cellular Automata on Terrain Gradients)
-    const maxFlowRate = 0.4; 
+    const maxFlowRate = 0.4;
     let activeCells = false;
 
     for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
             const idx = r * size + c;
-            const th = terrainHeights[idx * 3 + 1];
-            
-            if (w[idx] <= 0.001) continue; 
+            if (w[idx] <= 0.001) continue;
             activeCells = true;
-            
+
             const currentHeight = terrainHeights[idx * 3 + 1] + w[idx];
             let totalDiff = 0;
             const diffs = [0, 0, 0, 0];
             const neighbors = [-1, -1, -1, -1];
-            
-            if (r > 0) neighbors[0] = (r - 1) * size + c;         // Top
-            if (r < size - 1) neighbors[1] = (r + 1) * size + c;  // Bottom
-            if (c > 0) neighbors[2] = r * size + (c - 1);         // Left
-            if (c < size - 1) neighbors[3] = r * size + (c + 1);  // Right
-            
+
+            if (r > 0) neighbors[0] = (r - 1) * size + c;
+            if (r < size - 1) neighbors[1] = (r + 1) * size + c;
+            if (c > 0) neighbors[2] = r * size + (c - 1);
+            if (c < size - 1) neighbors[3] = r * size + (c + 1);
+
             for (let i = 0; i < 4; i++) {
-                if (neighbors[i] !== -1) {
-                    const nIdx = neighbors[i];
-                    const neighborHeight = terrainHeights[nIdx * 3 + 1] + w[nIdx];
-                    if (currentHeight > neighborHeight) {
-                        diffs[i] = currentHeight - neighborHeight;
-                        totalDiff += diffs[i];
-                    }
+                if (neighbors[i] === -1) continue;
+                const nIdx = neighbors[i];
+                const neighborHeight = terrainHeights[nIdx * 3 + 1] + w[nIdx];
+                if (currentHeight > neighborHeight) {
+                    diffs[i] = currentHeight - neighborHeight;
+                    totalDiff += diffs[i];
                 }
             }
-            
+
             if (totalDiff > 0) {
                 const flowAmount = Math.min(w[idx], totalDiff / 4) * maxFlowRate;
                 for (let i = 0; i < 4; i++) {
-                    if (diffs[i] > 0) {
-                        const out = (diffs[i] / totalDiff) * flowAmount;
-                        nextW[idx] -= out;
-                        nextW[neighbors[i]] += out;
-                    }
+                    if (diffs[i] <= 0) continue;
+                    const out = (diffs[i] / totalDiff) * flowAmount;
+                    nextW[idx] -= out;
+                    nextW[neighbors[i]] += out;
                 }
             }
-            
-            // Ground absorption
+
             nextW[idx] -= 0.002;
             if (nextW[idx] < 0) nextW[idx] = 0;
         }
     }
-    
+
     // d. Update Geometry
     if (activeCells || hasSprings || isRainy) {
         const dynGeom = dynamicWaterRef.current.geometry;
         const dynPos = dynGeom.attributes.position;
         
         for (let i = 0; i < w.length; i++) {
-            w[i] = nextW[i];
             const th = terrainHeights[i * 3 + 1];
-            
-            // Drain at beach
+            let level = nextW[i];
+
             if (th <= 0.2) {
-                w[i] = 0;
+                level = 0;
+                nextW[i] = 0;
             }
-    
-            if (w[i] >= 0.01) {
-                dynPos.setY(i, th + w[i]);
+
+            w[i] = level;
+
+            if (level >= 0.01) {
+                dynPos.setY(i, th + level);
             } else {
-                dynPos.setY(i, -100); // Hide completely out of sight
-                if (w[i] < 0.01) { w[i] = 0; }
+                dynPos.setY(i, -100);
+                w[i] = 0;
             }
         }
         
@@ -352,8 +363,8 @@ export function Water() {
 
   // Cloud-sea look: the island floats on a sea of clouds. Near-white base,
   // fully diffuse, fog-colored glow so the far field melts into the sky.
-  let oceanColor = weather === 'rainy' ? '#aab8c8' : '#f4f9fd';
-  let oceanEmissive = weather === 'rainy' ? '#64748b' : '#dbeafe';
+  let oceanColor = (weather === 'rainy' || weather === 'stormy') ? '#aab8c8' : '#f4f9fd';
+  let oceanEmissive = (weather === 'rainy' || weather === 'stormy') ? '#64748b' : '#dbeafe';
   let emissiveInt = 0.3;
   let rough = 1.0;
   let metal = 0.0;
