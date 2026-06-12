@@ -1,17 +1,13 @@
 # Handoff
 
 ## 已完成
-- 在 App.tsx 右上角生态面板区域顶部添加了已登录用户头像+用户名+在线状态指示器
-- 在 lucide-react 导入中添加了 User 图标
-- 使用 hand-drawn-panel 样式保持手绘风格一致
-- 条件渲染：仅 authUser 存在时显示
-- 本地 git commit 完成 (3d730b8)
+- PlayerPanel.tsx: 添加本地头像上传功能（Camera图标悬浮覆盖层，2MB限制，仅图片）
+- PlayerPanel.tsx: 修改handleSaveName为async，登录用户名修改同步到服务器
+- PlayerPanel.tsx: 侧边栏头像条件渲染（authUser显示上传，guest显示点击切换）
+- PlayerPanel.tsx: Mini Widget头像区域添加上传覆盖层
+- api.ts: 添加updateProfile方法（PUT /api/auth/profile）
+- PR #1 已合并到main
 
 ## 未完成
-- git push 到远程仓库失败（需要 GitHub 认证），请手动执行 `git push origin main` 完成推送
-- feat/user-indicator 分支已创建但未推送，可删除或推送后合并
-
-## 修改文件
-- `/Users/huyan/Desktop/wander-island_-eco-sandbox/src/App.tsx`
-  - 第63行：添加 User 导入
-  - 第596-611行：添加用户信息指示器组件
+- 后端 /api/auth/profile PUT 路由尚未实现（前端已调用，需后端配合）
+- 名字编辑UI（isEditing）在侧边栏中未添加入口，仅函数已就绪
