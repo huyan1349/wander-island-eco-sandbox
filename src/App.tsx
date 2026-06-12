@@ -449,18 +449,23 @@ export default function App() {
         <>
           {/* Top Left Header & HUD */}
       {!isImmersive && (
-        <div className="absolute top-6 left-6 z-50 flex flex-col items-start gap-4 transition-opacity duration-300">
-           <button 
-              onClick={() => setIsImmersive(!isImmersive)}
-              className="group relative w-14 h-14 flex items-center justify-center hand-drawn-btn hand-drawn-ghost shrink-0 text-white group-hover:text-slate-800 transition-colors"
-           >
-              {isImmersive ? <EyeOff size={24} /> : <Eye size={24} />}
-              <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                  {isImmersive ? "退出沉浸模式" : "沉浸模式"}
-              </span>
-           </button>
+        <div className="absolute top-6 left-6 z-50 flex items-start gap-4 transition-opacity duration-300">
+           {/* Tool Column */}
+           <div className="flex flex-col gap-4">
+             <button 
+                onClick={() => setIsImmersive(!isImmersive)}
+                className="group relative w-14 h-14 flex items-center justify-center hand-drawn-btn hand-drawn-ghost shrink-0 text-white group-hover:text-slate-800 transition-colors"
+             >
+                {isImmersive ? <EyeOff size={24} /> : <Eye size={24} />}
+                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                    {isImmersive ? "退出沉浸模式" : "沉浸模式"}
+                </span>
+             </button>
+             <SocialPanel />
+           </div>
+           
+           {/* Profile / Avatar */}
            <PlayerPanel />
-           <SocialPanel />
         </div>
       )}
         
