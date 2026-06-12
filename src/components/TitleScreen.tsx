@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../store';
-import { X, Globe } from 'lucide-react';
+import { X, Globe, Wifi, WifiOff } from 'lucide-react';
 import { AudioSystem } from '../lib/audio';
 
 export const TitleScreen: React.FC = () => {
     const setScreen = useGameStore(state => state.setScreen);
     const titleTheme = useGameStore(state => state.titleTheme);
     const setTitleTheme = useGameStore(state => state.setTitleTheme);
+    const authUser = useGameStore(state => state.authUser);
     const [activeModal, setActiveModal] = useState<'NONE' | 'SETTINGS' | 'CREDITS'>('NONE');
     
     const [masterVol, setMasterVol] = useState(0.6);
@@ -31,6 +32,13 @@ export const TitleScreen: React.FC = () => {
             <div className="absolute top-16 right-16 flex flex-col items-end gap-1">
                 <span className={"text-sm font-bold hand-drawn-title " + (titleTheme === 'white' ? "text-slate-700" : "text-slate-700")}>Wander Island</span>
                 <span className={"text-xs font-bold " + (titleTheme === 'white' ? "text-slate-600" : "text-slate-600")}>流浪岛 . 测试版 v2.0.0 Multiplayer</span>
+                {authUser && (
+                  <div className="flex items-center gap-2 mt-2 hand-drawn-panel px-3 py-1.5">
+                    <Wifi size={12} className="text-emerald-500" />
+                    <span className="text-[10px] font-bold text-slate-800 tracking-wide">{authUser.username}</span>
+                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                  </div>
+                )}
             </div>
 
             {/* Left-Aligned Main Layout */}
@@ -53,11 +61,12 @@ export const TitleScreen: React.FC = () => {
                 {/* Cinematic Chinese Menu */}
                 <div className="pointer-events-auto animate-slide-up mb-20 flex flex-col items-start gap-6 pl-4 mt-12">
                     <button
-                        onClick={() => setScreen('LOGIN')}
+                        onClick={() => authUser ? setScreen('SAVE_SELECT') : setScreen('LOGIN')}
                         className="hand-drawn-btn flex items-center justify-center gap-3 w-full py-4 text-xl"
                     >
                         <Globe size={24} />
-                        联机模式
+                        {authUser ? '联机模式' : '联机模式'}
+                        {authUser && <span className="text-sm font-normal text-emerald-600 ml-1">({authUser.username})</span>}
                     </button>
                     <button
                         onClick={() => setScreen('SAVE_SELECT')}
