@@ -26,10 +26,16 @@ const httpServer = createServer(app);
 const PORT = process.env.PORT || 3001;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const allowedOrigins = [
+  'http://localhost:3000', 'http://localhost:3002', 'http://localhost:5173',
+  'http://127.0.0.1:3000', 'http://127.0.0.1:3002',
+  process.env.CLIENT_ORIGIN
+].filter(Boolean);
+
 // Socket.IO setup
 const io = new SocketServer(httpServer, {
   cors: {
-    origin: ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:3002'],
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -37,7 +43,12 @@ const io = new SocketServer(httpServer, {
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3002', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:3002'],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(null, true); // Allow all origins in production
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -117,6 +128,18 @@ app.get('/api/stats', (_req, res) => {
   const userCount = (db.prepare('SELECT COUNT(*) as count FROM users').get() as any).count;
   const islandCount = (db.prepare('SELECT COUNT(*) as count FROM islands').get() as any).count;
   res.json({ userCount, islandCount, onlineCount: io.sockets.sockets.size });
+});
+
+// Serve built frontend in production
+const distPath = path.join(__dirname, '..', 'dist');
+app.use(express.static(distPath));
+
+// SPA fallback - serve index.html for all non-API routes
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/socket.io') || req.path.startsWith('/avatars')) {
+    return next();
+  }
+  res.sendFile(path.join(distPath, 'index.html'));
 });
 
 // Setup Socket.IO
