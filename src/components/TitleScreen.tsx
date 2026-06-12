@@ -22,10 +22,9 @@ export const TitleScreen: React.FC = () => {
     const stats = useGameStore(state => state.stats);
     const islandName = useGameStore(state => state.islandName);
     const [activeModal, setActiveModal] = useState<'NONE' | 'SETTINGS' | 'CREDITS' | 'PROFILE'>('NONE');
-    const [splashPhase, setSplashPhase] = useState<'AUTHOR' | 'TITLE' | 'DONE'>(() => 
-        sessionStorage.getItem('splashSeen') ? 'DONE' : 'AUTHOR'
-    );
+    const [splashPhase, setSplashPhase] = useState<'AUTHOR' | 'TITLE' | 'DONE'>('AUTHOR');
     const [splashVisible, setSplashVisible] = useState(false);
+    const [splashOverlayVisible, setSplashOverlayVisible] = useState(true);
 
     const [isEditingName, setIsEditingName] = useState(false);
     const [tempName, setTempName] = useState(authUser?.username || playerName);
@@ -48,7 +47,7 @@ export const TitleScreen: React.FC = () => {
                 setSplashPhase('TITLE');
             } else if (splashPhase === 'TITLE') {
                 setSplashPhase('DONE');
-                sessionStorage.setItem('splashSeen', 'true');
+                setTimeout(() => setSplashOverlayVisible(false), 2000); // Overlay takes 2s to fade out completely
             }
         }, 4000);
         
@@ -70,30 +69,30 @@ export const TitleScreen: React.FC = () => {
         AudioSystem.setBGMVolume(v);
     };
 
-    // Render Splash Screen if not DONE
-    if (splashPhase !== 'DONE') {
-        return (
-            <div className="absolute inset-0 z-[100] flex items-center justify-center bg-slate-950 pointer-events-auto">
-                <div className={`transition-all duration-1000 transform ${splashVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
-                    {splashPhase === 'AUTHOR' && (
-                        <div className="flex flex-col items-center gap-4">
-                            <span className="text-slate-400 text-sm tracking-[0.4em] uppercase font-bold">A Game By</span>
-                            <h2 className="text-white text-3xl font-bold tracking-widest hand-drawn-title">HUYAN</h2>
-                        </div>
-                    )}
-                    {splashPhase === 'TITLE' && (
-                        <div className="flex flex-col items-center gap-4">
-                            <h1 className="text-white text-[5rem] font-bold tracking-[0.2em] hand-drawn-title">WANDER ISLAND</h1>
-                            <span className="text-slate-400 text-xl tracking-[0.5em] hand-drawn-title">流 浪 岛</span>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    }
-
     return (
-        <div className="absolute inset-0 z-50 flex pointer-events-none p-16 animate-in fade-in duration-[2000ms]">
+        <>
+            {/* Splash Overlay that fades out smoothly */}
+            {splashOverlayVisible && (
+                <div className={`absolute inset-0 z-[100] flex items-center justify-center pointer-events-auto transition-all duration-[2000ms] ease-out ${splashPhase === 'DONE' ? 'opacity-0 bg-transparent backdrop-blur-none' : 'opacity-100 bg-slate-950 backdrop-blur-2xl'}`}>
+                    <div className={`transition-all duration-1000 transform ${splashVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+                        {splashPhase === 'AUTHOR' && (
+                            <div className="flex flex-col items-center gap-4">
+                                <span className="text-slate-400 text-sm tracking-[0.4em] uppercase font-bold">A Game By</span>
+                                <h2 className="text-white text-3xl font-bold tracking-widest hand-drawn-title">HUYAN</h2>
+                            </div>
+                        )}
+                        {splashPhase === 'TITLE' && (
+                            <div className="flex flex-col items-center gap-4">
+                                <h1 className="text-white text-[5rem] font-bold tracking-[0.2em] hand-drawn-title">WANDER ISLAND</h1>
+                                <span className="text-slate-400 text-xl tracking-[0.5em] hand-drawn-title">流 浪 岛</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Title Menu */}
+            <div className={`absolute inset-0 z-50 flex pointer-events-none p-16 transition-opacity duration-1000 delay-1000 ${splashPhase === 'DONE' ? 'opacity-100' : 'opacity-0'}`}>
             
             {/* Top Right Version / Info */}
             <div className="absolute top-16 right-16 flex flex-col items-end gap-1">

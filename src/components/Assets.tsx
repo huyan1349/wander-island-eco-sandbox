@@ -208,7 +208,7 @@ function usePopIn(targetScale: number = 1) {
     const ref = useRef<THREE.Group>(null);
     useFrame((_, delta) => {
         if (ref.current && ref.current.scale.x < targetScale) {
-            const nextScale = THREE.MathUtils.damp(ref.current.scale.x, targetScale, 15, delta);
+            const nextScale = THREE.MathUtils.damp(ref.current.scale.x, targetScale, 7.5, delta);
             ref.current.scale.set(nextScale, nextScale, nextScale);
         }
     });
@@ -401,7 +401,7 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
     if (!groupRef.current) return;
     
     if (currentScale.current < scale * 0.5) {
-         currentScale.current = THREE.MathUtils.damp(currentScale.current, scale * 0.5, 15, delta);
+         currentScale.current = THREE.MathUtils.damp(currentScale.current, scale * 0.5, 7.5, delta);
          groupRef.current.scale.setScalar(currentScale.current);
     }
 
@@ -636,7 +636,7 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
     
     // Pop in scale
     if (currentScale.current < scale * 0.4) {
-         currentScale.current = THREE.MathUtils.damp(currentScale.current, scale * 0.4, 15, delta);
+         currentScale.current = THREE.MathUtils.damp(currentScale.current, scale * 0.4, 7.5, delta);
          groupRef.current.scale.setScalar(currentScale.current);
     }
     
