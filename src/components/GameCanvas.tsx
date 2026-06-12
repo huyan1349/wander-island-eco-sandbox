@@ -57,8 +57,8 @@ function WASDControls({ controlsRef }: { controlsRef: React.RefObject<any> }) {
 
 export function GameCanvas() {
   const isDrawing = useGameStore(state => state.isDrawing);
-  const selectedTool = useGameStore(state => state.selectedTool);
   const screen = useGameStore(state => state.screen);
+  const assetCount = useGameStore(state => state.assets.length);
   
   // Disable orbit controls if we are using brush, or if we have a tool selected maybe?
   // Let's only disable it while actively drawing, so user can still rotate if they drag outside terrain.
@@ -82,7 +82,7 @@ export function GameCanvas() {
           <Assets />
 
           {/* Little Bit ISLAND Rock */}
-          {useGameStore(state => state.assets.length) === 0 && (
+          {assetCount === 0 && (
              <group position={[15, -0.1, 15]}>
                 <mesh castShadow receiveShadow>
                    <dodecahedronGeometry args={[2, 1]} />
