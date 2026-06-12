@@ -1,11 +1,17 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useGameStore, WeatherType } from '../../store';
-import { Sun, CloudRain, Snowflake, Cloud, CloudFog, CloudLightning, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sun, CloudRain, Snowflake, Cloud, CloudFog, CloudLightning } from 'lucide-react';
 
 export function WeatherForecast() {
   const weather = useGameStore(state => state.weather);
   const forecast = useGameStore(state => state.forecast);
+  const advanceDay = useGameStore(state => state.advanceDay);
+  const setTimeOfDay = useGameStore(state => state.setTimeOfDay);
   const [activeIndex, setActiveIndex] = useState(0);
+  
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
+  const dragStartRef = useRef({ x: 0, y: 0 });
 
   const getWeatherIcon = (w: WeatherType, size = 20) => {
     switch (w) {
@@ -37,42 +43,76 @@ export function WeatherForecast() {
   ];
 
   const handleNext = () => {
+    if (isDragging) return;
     setActiveIndex(prev => (prev + 1) % cards.length);
+  };
+
+  const handlePointerDown = (e: React.PointerEvent, isTop: boolean) => {
+    if (!isTop) return;
+    e.stopPropagation(); // prevent handleNext from firing immediately
+    setIsDragging(true);
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    setDragPos({
+      x: e.clientX - dragStartRef.current.x,
+      y: e.clientY - dragStartRef.current.y
+    });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent, isTop: boolean) => {
+    if (!isTop) return;
+    setIsDragging(false);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    
+    // If dragged to the left more than 250px (towards center screen)
+    if (dragPos.x < -250 && activeIndex > 0) {
+      for (let i = 0; i < activeIndex; i++) {
+        advanceDay();
+      }
+      setTimeOfDay(8); // Set time to 08:00 morning of that day
+      setActiveIndex(0);
+    }
+    
+    // If it was just a click (dragPos is small), trigger handleNext
+    if (Math.abs(dragPos.x) < 10 && Math.abs(dragPos.y) < 10) {
+      handleNext();
+    }
+    
+    setDragPos({ x: 0, y: 0 });
   };
 
   return (
     <div className="absolute top-56 right-10 z-40 pointer-events-auto flex flex-col items-center group">
       {/* The Stacked Card Deck */}
-      <div 
-        className="relative w-32 h-40 cursor-pointer"
-        onClick={handleNext}
-      >
+      <div className="relative w-32 h-40">
         {cards.map((card, idx) => {
-          // Determine relative position
           let offset = idx - activeIndex;
-          
-          // If the card is "before" the active one, we wrap it around to the bottom of the deck visually,
-          // OR we can just let it fly off. Wrapping around is better so the user can cycle endlessly.
-          if (offset < 0) {
-            offset += cards.length;
-          }
-
-          // offset 0 = top card
-          // offset 1 = second card underneath
-          // offset 2 = third card underneath
-          // offset 3 = fourth card (hidden or at bottom)
+          if (offset < 0) offset += cards.length;
 
           const isTop = offset === 0;
           
+          let transformStyle = `translateY(${offset * 12}px) translateX(${offset * 6}px) rotate(${offset * 5}deg) scale(${1 - offset * 0.05})`;
+          if (isTop && isDragging) {
+            transformStyle = `translate(${dragPos.x}px, ${dragPos.y}px) rotate(${dragPos.x * 0.05}deg) scale(1.1)`;
+          }
+
           return (
             <div 
               key={idx} 
-              className={`absolute inset-0 flex flex-col items-center justify-center p-5 hand-drawn-panel transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
-                ${isTop ? 'hover:-translate-y-2 hover:shadow-xl' : ''}
+              onPointerDown={(e) => handlePointerDown(e, isTop)}
+              onPointerMove={handlePointerMove}
+              onPointerUp={(e) => handlePointerUp(e, isTop)}
+              className={`absolute inset-0 flex flex-col items-center justify-center p-5 hand-drawn-panel ease-[cubic-bezier(0.34,1.56,0.64,1)]
+                ${isTop ? 'cursor-grab active:cursor-grabbing hover:-translate-y-2 hover:shadow-xl' : 'cursor-pointer'}
+                ${(!isDragging && isTop) || !isTop ? 'transition-all duration-500' : ''}
               `}
               style={{
-                transform: `translateY(${offset * 12}px) translateX(${offset * 6}px) rotate(${offset * 5}deg) scale(${1 - offset * 0.05})`,
-                zIndex: 40 - offset,
+                transform: transformStyle,
+                zIndex: isTop && isDragging ? 50 : 40 - offset,
                 opacity: 1 - offset * 0.2,
               }}
             >
@@ -88,7 +128,7 @@ export function WeatherForecast() {
         })}
       </div>
       
-      <span className="text-slate-400 font-bold text-[10px] tracking-widest mt-8 opacity-0 group-hover:opacity-100 transition-opacity">点击切换</span>
+      <span className="text-slate-400 font-bold text-[10px] tracking-widest mt-8 opacity-0 group-hover:opacity-100 transition-opacity">拖拽卡片至屏幕中央应用</span>
     </div>
   );
 }
