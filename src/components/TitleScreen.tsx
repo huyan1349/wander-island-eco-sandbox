@@ -73,19 +73,26 @@ export const TitleScreen: React.FC = () => {
         <>
             {/* Splash Overlay that fades out smoothly */}
             {splashOverlayVisible && (
-                <div className={`absolute inset-0 z-[100] flex items-center justify-center pointer-events-auto transition-all duration-[2000ms] ease-out ${splashPhase === 'DONE' ? 'opacity-0 bg-transparent backdrop-blur-none' : 'opacity-100 bg-slate-950 backdrop-blur-2xl'}`}>
-                    <div className={`transition-all duration-1000 transform ${splashVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+                <div className={`absolute inset-0 z-[100] flex items-center justify-center pointer-events-auto transition-all duration-[2000ms] ease-out ${splashPhase === 'DONE' ? 'opacity-0 bg-transparent backdrop-blur-none' : 'opacity-100 bg-slate-950/40 backdrop-blur-md'}`}>
+                    <div 
+                        className="flex flex-col items-center gap-4 transition-all duration-[2000ms] ease-out"
+                        style={{
+                            opacity: splashVisible ? 1 : 0,
+                            filter: splashVisible ? 'blur(0px)' : 'blur(12px)',
+                            transform: splashVisible ? 'scale(1)' : 'scale(1.05)'
+                        }}
+                    >
                         {splashPhase === 'AUTHOR' && (
-                            <div className="flex flex-col items-center gap-4">
-                                <span className="text-slate-400 text-sm tracking-[0.4em] uppercase font-bold">A Game By</span>
-                                <h2 className="text-white text-3xl font-bold tracking-widest hand-drawn-title">HUYAN</h2>
-                            </div>
+                            <>
+                                <span className="text-slate-300 text-sm tracking-[0.4em] uppercase font-bold">A Game By</span>
+                                <h2 className="text-white text-4xl font-bold tracking-[0.3em] hand-drawn-title drop-shadow-lg">HUYAN</h2>
+                            </>
                         )}
                         {splashPhase === 'TITLE' && (
-                            <div className="flex flex-col items-center gap-4">
-                                <h1 className="text-white text-[5rem] font-bold tracking-[0.2em] hand-drawn-title">WANDER ISLAND</h1>
-                                <span className="text-slate-400 text-xl tracking-[0.5em] hand-drawn-title">流 浪 岛</span>
-                            </div>
+                            <>
+                                <h1 className="text-white text-[6rem] font-bold tracking-[0.2em] hand-drawn-title drop-shadow-2xl">WANDER ISLAND</h1>
+                                <span className="text-slate-300 text-2xl tracking-[0.5em] hand-drawn-title">流 浪 岛</span>
+                            </>
                         )}
                     </div>
                 </div>
