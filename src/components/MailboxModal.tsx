@@ -93,7 +93,7 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
         </div>
       </div>
       )}
-<div className={embedded ? "flex-1 overflow-y-auto custom-scrollbar" : "flex-1 overflow-y-auto p-8 custom-scrollbar"}>
+<div className={embedded ? "flex-1 overflow-y-auto custom-scrollbar p-6" : "flex-1 overflow-y-auto p-8 custom-scrollbar"}>
         {/* Compose Mode */}
         {isWriting ? (
           <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4">
@@ -189,6 +189,14 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
         ) : (
           /* Inbox List */
           <div className="flex flex-col gap-2">
+            {embedded && (
+              <button
+                onClick={() => { setIsWriting(true); setSelectedMail(null); }}
+                className="hand-drawn-btn px-4 py-2 flex items-center gap-2 text-sm self-start mb-2"
+              >
+                <Pen size={14} /> 写信
+              </button>
+            )}
             {loading ? (
               <div className="text-center py-12">
                 <div className="w-8 h-8 border-2 border-slate-800 border-t-transparent rounded-full animate-spin mx-auto mb-4" />

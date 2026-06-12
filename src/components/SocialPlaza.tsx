@@ -51,7 +51,7 @@ export const SocialPlaza: React.FC<{ onClose: () => void; embedded?: boolean }> 
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
         {activeSection === 'board' && <BulletinBoard />}
         {activeSection === 'bottle' && <BottleSection />}
         {activeSection === 'showcase' && <IslandShowcase />}

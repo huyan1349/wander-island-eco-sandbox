@@ -69,7 +69,7 @@ export const VisitorBookModal: React.FC<{ onClose: () => void; embedded?: boolea
       </div>
       )}
 
-      <div className={embedded ? "flex-1 overflow-y-auto custom-scrollbar" : "flex-1 overflow-y-auto p-8 custom-scrollbar"}>
+      <div className={embedded ? "flex-1 overflow-y-auto custom-scrollbar p-6" : "flex-1 overflow-y-auto p-8 custom-scrollbar"}>
         {/* Visitor Counter */}
         <div className="hand-drawn-panel p-6 mb-6 bg-gradient-to-r from-violet-50 to-amber-50" style={{ borderWidth: '2px' }}>
           <div className="flex items-center justify-between">

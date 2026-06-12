@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
-import { disconnectSocket, onChatMessage, onFriendRequest, onFriendAccepted, onIslandVisitor, emitChatSend, emitFriendRequest, emitFriendAccepted, emitPresenceCheck, emitIslandVisit } from '../lib/socket';
+import { disconnectSocket, onChatMessage, onFriendRequest, onFriendAccepted, onIslandVisitor, emitChatSend, emitFriendRequest, emitFriendAccepted, emitPresenceCheck, emitIslandVisit, onPresenceStatus, onUserOnline, onUserOffline } from '../lib/socket';
 import { MailboxModal } from './MailboxModal';
 import { VisitorBookModal } from './VisitorBookModal';
 import { SocialPlaza } from './SocialPlaza';
@@ -70,7 +70,10 @@ export const PlayerPanel: React.FC = () => {
     const unsubReq = onFriendRequest(() => loadFriends());
     const unsubAcc = onFriendAccepted(() => loadFriends());
     const unsubVisitor = onIslandVisitor(() => {});
-    return () => { unsubMsg(); unsubReq(); unsubAcc(); unsubVisitor(); };
+    const unsubPresence = onPresenceStatus((statuses) => setOnlineUsers(prev => ({ ...prev, ...statuses })));
+    const unsubOnline = onUserOnline((data) => setOnlineUsers(prev => ({ ...prev, [data.userId]: true })));
+    const unsubOffline = onUserOffline((data) => setOnlineUsers(prev => ({ ...prev, [data.userId]: false })));
+    return () => { unsubMsg(); unsubReq(); unsubAcc(); unsubVisitor(); unsubPresence(); unsubOnline(); unsubOffline(); };
   }, []);
 
   useEffect(() => {

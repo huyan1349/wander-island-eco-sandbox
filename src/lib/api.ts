@@ -169,32 +169,25 @@ class ApiClient {
 
   // Profile
   async updateProfile(updates: { username?: string; motto?: string; avatarFile?: File }) {
-    if (updates.avatarFile) {
-      const formData = new FormData();
-      if (updates.username) formData.append('username', updates.username);
-      if (updates.motto !== undefined) formData.append('motto', updates.motto);
-      formData.append('avatar', updates.avatarFile);
+    const formData = new FormData();
+    if (updates.username) formData.append('username', updates.username);
+    if (updates.motto !== undefined) formData.append('motto', updates.motto);
+    if (updates.avatarFile) formData.append('avatar', updates.avatarFile);
 
-      const headers: Record<string, string> = {};
-      if (this.getToken()) {
-        headers['Authorization'] = `Bearer ${this.getToken()}`;
-      }
-
-      const res = await fetch(`${API_BASE}/api/auth/profile`, {
-        method: 'PUT',
-        headers,
-        body: formData
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Update failed');
-      return data as { user: any };
+    const headers: Record<string, string> = {};
+    if (this.getToken()) {
+      headers['Authorization'] = `Bearer ${this.getToken()}`;
     }
 
-    return this.request<{ user: any }>('/api/auth/profile', {
+    const res = await fetch(`${API_BASE}/api/auth/profile`, {
       method: 'PUT',
-      body: JSON.stringify({ username: updates.username, motto: updates.motto })
+      headers,
+      body: formData
     });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Update failed');
+    return data as { user: any };
   }
 
   // Mailbox
@@ -235,7 +228,7 @@ class ApiClient {
 
   // Bottles
   async throwBottle(content: string, mood: string) {
-    return this.request<{ success: boolean; id: string }>('/api/bottles', {
+    return this.request<{ success: boolean; id: string; bottle: any }>('/api/bottles', {
       method: 'POST',
       body: JSON.stringify({ content, mood })
     });
