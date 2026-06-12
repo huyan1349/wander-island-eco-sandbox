@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../store';
-import { X, Globe, Wifi, WifiOff } from 'lucide-react';
+import { X, Globe, Wifi, WifiOff, User } from 'lucide-react';
 import { AudioSystem } from '../lib/audio';
 
 export const TitleScreen: React.FC = () => {
@@ -34,7 +34,13 @@ export const TitleScreen: React.FC = () => {
                 <span className={"text-xs font-bold " + (titleTheme === 'white' ? "text-slate-600" : "text-slate-600")}>流浪岛 . 测试版 v2.0.0 Multiplayer</span>
                 {authUser && (
                   <div className="flex items-center gap-2 mt-2 hand-drawn-panel px-3 py-1.5">
-                    <Wifi size={12} className="text-emerald-500" />
+                    <div className="w-6 h-6 rounded-full overflow-hidden border-2 border-slate-800 bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 shrink-0">
+                      {authUser.avatar ? (
+                        <img src={authUser.avatar} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <User size={14} className="text-slate-500 m-auto mt-1" />
+                      )}
+                    </div>
                     <span className="text-[10px] font-bold text-slate-800 tracking-wide">{authUser.username}</span>
                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                   </div>

@@ -89,4 +89,46 @@ router.get('/me', authMiddleware, (req: AuthRequest, res: Response) => {
   res.json({ user });
 });
 
+// PUT /api/auth/profile - Update profile (avatar and/or username)
+router.put('/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { username, avatar } = req.body;
+    const db = getDb();
+
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (username) {
+      // Check if username is taken by another user
+      const existing = db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(username, req.userId) as any;
+      if (existing) {
+        return res.status(400).json({ error: '用户名已被占用' });
+      }
+      if (username.length < 2 || username.length > 20) {
+        return res.status(400).json({ error: '用户名长度需在2-20之间' });
+      }
+      updates.push('username = ?');
+      values.push(username);
+    }
+
+    if (avatar !== undefined) {
+      updates.push('avatar = ?');
+      values.push(avatar);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: '没有需要更新的内容' });
+    }
+
+    values.push(req.userId);
+    db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+
+    const user = db.prepare('SELECT id, username, avatar FROM users WHERE id = ?').get(req.userId) as any;
+    res.json({ user });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({ error: '更新失败' });
+  }
+});
+
 export default router;

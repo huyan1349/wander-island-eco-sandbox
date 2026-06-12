@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { disconnectSocket } from '../lib/socket';
-import { User, Edit2, Check, RefreshCw, X, BarChart2, Leaf, Unlock, Settings, LogOut, Clock, Layers, Wifi, WifiOff, Globe } from 'lucide-react';
+import { User, Edit2, Check, RefreshCw, X, BarChart2, Leaf, Unlock, Settings, LogOut, Clock, Layers, Wifi, WifiOff, Globe, Camera } from 'lucide-react';
 
 const avatarStyles = ['notionists', 'adventurer', 'fun-emoji', 'bottts', 'adventurer-neutral', 'thumbs', 'open-peeps'];
 
@@ -17,6 +17,7 @@ export const PlayerPanel: React.FC = () => {
 
   const authUser = useGameStore(state => state.authUser);
   const clearAuthUser = useGameStore(state => state.clearAuthUser);
+  const setAuthUser = useGameStore(state => state.setAuthUser);
 
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'stats' | 'ecology' | 'unlocks' | 'system'>('stats');
@@ -28,9 +29,18 @@ export const PlayerPanel: React.FC = () => {
   const currentLevelXP = playerXP % 100;
   const xpPercentage = (currentLevelXP / 100) * 100;
 
-  const handleSaveName = () => {
-    if (tempName.trim()) setPlayerName(tempName.trim());
-    else setTempName(playerName);
+  const handleSaveName = async () => {
+    if (tempName.trim()) {
+      setPlayerName(tempName.trim());
+      if (authUser) {
+        try {
+          const res = await api.updateProfile({ username: tempName.trim() });
+          setAuthUser(res.user);
+        } catch {}
+      }
+    } else {
+      setTempName(authUser ? authUser.username : playerName);
+    }
     setIsEditing(false);
   };
 
@@ -39,6 +49,29 @@ export const PlayerPanel: React.FC = () => {
     const randomStyle = avatarStyles[Math.floor(Math.random() * avatarStyles.length)];
     const randomSeed = Math.random().toString(36).substring(7);
     setPlayerAvatar(`https://api.dicebear.com/7.x/${randomStyle}/svg?seed=${randomSeed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf`);
+  };
+
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validate file
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 2 * 1024 * 1024) return; // 2MB limit
+    
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const dataUrl = ev.target?.result as string;
+      if (authUser) {
+        // Update on server
+        try {
+          const res = await api.updateProfile({ avatar: dataUrl });
+          setAuthUser(res.user);
+        } catch {}
+      }
+      setPlayerAvatar(dataUrl);
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -61,6 +94,18 @@ export const PlayerPanel: React.FC = () => {
           </div>
           {authUser && (
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-800 animate-pulse" title="在线" />
+          )}
+          {/* Upload overlay */}
+          {authUser && (
+            <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+              <Camera size={16} className="text-white" />
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleAvatarUpload}
+                className="hidden" 
+              />
+            </label>
           )}
         </div>
 
@@ -87,9 +132,24 @@ export const PlayerPanel: React.FC = () => {
             {/* Sidebar (Sleek Glass) */}
             <div className="w-64  border-r border-slate-800 p-8 flex flex-col gap-2">
               <div className="flex items-center gap-4 mb-12">
-                <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-slate-800 ring-4 ring-slate-800 cursor-pointer shadow-inner" onClick={handleCycleAvatar}>
-                  <img src={authUser ? authUser.avatar : playerAvatar} alt="Avatar" className="w-full h-full object-cover bg-gradient-to-br from-emerald-500/20 to-cyan-500/20" />
-                </div>
+                {authUser ? (
+                  <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-slate-800 ring-4 ring-slate-800 shadow-inner relative group">
+                    <img src={authUser.avatar} alt="Avatar" className="w-full h-full object-cover bg-gradient-to-br from-emerald-500/20 to-cyan-500/20" />
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                      <Camera size={20} className="text-white" />
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleAvatarUpload}
+                        className="hidden" 
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-slate-800 ring-4 ring-slate-800 cursor-pointer shadow-inner" onClick={handleCycleAvatar}>
+                    <img src={playerAvatar} alt="Avatar" className="w-full h-full object-cover bg-gradient-to-br from-emerald-500/20 to-cyan-500/20" />
+                  </div>
+                )}
                 <div>
                   <h3 className="text-xl font-light tracking-widest text-slate-800">{authUser ? authUser.username : playerName}</h3>
                   <div className="flex items-center gap-2 mt-1">
