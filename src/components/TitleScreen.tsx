@@ -47,6 +47,7 @@ export const TitleScreen: React.FC = () => {
                 setSplashPhase('TITLE');
             } else if (splashPhase === 'TITLE') {
                 setSplashPhase('DONE');
+                useGameStore.getState().setIsSplashDone(true);
                 setTimeout(() => setSplashOverlayVisible(false), 2000); // Overlay takes 2s to fade out completely
             }
         }, 4000);

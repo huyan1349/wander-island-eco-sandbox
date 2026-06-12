@@ -205,8 +205,9 @@ function generateSubIslandTerrain(seedX: number, seedZ: number) {
 
 // Pop-in hook for assets
 function usePopIn(targetScale: number = 1) {
-    const ref = useRef<THREE.Group>(null);
+    const ref = useRef<any>(null);
     useFrame((_, delta) => {
+        if (!useGameStore.getState().isSplashDone) return;
         if (ref.current && ref.current.scale.x < targetScale) {
             const nextScale = THREE.MathUtils.damp(ref.current.scale.x, targetScale, 7.5, delta);
             ref.current.scale.set(nextScale, nextScale, nextScale);
@@ -256,8 +257,8 @@ function TreeB({ position, rotation, scale = 1 }: { position: any, rotation?: an
     if (biome === 'volcanic') { leafColor = '#7f1d1d'; trunkColor = '#1c1917'; }
     else if (biome === 'desert') leafColor = '#facc15';
     else if (biome === 'tundra' || season === 'winter') leafColor = '#e2e8f0';
-    else if (season === 'autumn') leafColor = '#b45309';
-    else if (season === 'spring') leafColor = '#fbbf24';
+    else if (biome === 'autumn') leafColor = '#b45309';
+    else if (biome === 'spring') leafColor = '#fbbf24';
   }
 
   return (
@@ -400,7 +401,8 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
     
-    if (currentScale.current < scale * 0.5) {
+    // Pop in scale
+    if (useGameStore.getState().isSplashDone && currentScale.current < scale * 0.5) {
          currentScale.current = THREE.MathUtils.damp(currentScale.current, scale * 0.5, 7.5, delta);
          groupRef.current.scale.setScalar(currentScale.current);
     }
@@ -635,7 +637,7 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
     if (!groupRef.current) return;
     
     // Pop in scale
-    if (currentScale.current < scale * 0.4) {
+    if (useGameStore.getState().isSplashDone && currentScale.current < scale * 0.4) {
          currentScale.current = THREE.MathUtils.damp(currentScale.current, scale * 0.4, 7.5, delta);
          groupRef.current.scale.setScalar(currentScale.current);
     }
