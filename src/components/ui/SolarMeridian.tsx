@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useGameStore } from '../../store';
-import { Sun, Moon, CloudRain, CloudSnow, Cloud, CloudFog, CloudLightning } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 
 export function SolarMeridian() {
   const timeOfDay = useGameStore(state => state.timeOfDay);
@@ -33,65 +33,133 @@ export function SolarMeridian() {
     setTimeOfDay(normalized * 24);
   };
 
-  // Convert timeOfDay (0-24) to a position along an arc.
-  // We'll treat 6:00 to 18:00 as the top half (day), and 18:00 to 6:00 as the bottom half (night).
-  // But visually, we can just show a single arc and switch the icon, 
-  // or a full ellipse. Let's do a single shallow arc that represents 0-24.
-  const arcHeight = 30; // Max height of the arc
   const progress = timeOfDay / 24; // 0 to 1
-  const x = progress * 100; // %
-  const y = Math.sin(progress * Math.PI) * arcHeight; // Pixel offset upwards
+  const theta = Math.PI * (1 - progress);
+  const cx = 140;
+  const cy = 60;
+  const rx = 130;
+  const ry = 50;
+
+  const x = cx + rx * Math.cos(theta);
+  const y = cy - ry * Math.sin(theta);
 
   const isNight = timeOfDay < 6 || timeOfDay > 18;
+  const isTwilight = (timeOfDay >= 5 && timeOfDay <= 7) || (timeOfDay >= 17 && timeOfDay <= 19);
+
+  const ticks = Array.from({length: 13}).map((_, i) => i * 2);
 
   return (
-    <div className="absolute top-24 right-6 flex flex-col items-end pointer-events-none z-40">
+    <div className="absolute top-16 right-12 flex flex-col items-center pointer-events-none z-40 group">
       <div 
         ref={containerRef}
-        className="relative w-64 h-16 pointer-events-auto cursor-pointer"
+        className="relative w-[280px] h-[100px] pointer-events-auto cursor-pointer touch-none"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
-        {/* The Arc Track */}
-        <svg className="absolute top-0 left-0 w-full h-full" overflow="visible">
+        {/* Astrolabe Arc */}
+        <svg className="absolute top-0 left-0 w-full h-full drop-shadow-md" overflow="visible">
+           <defs>
+             <linearGradient id="skyGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+               <stop offset="0%" stopColor="#1e293b" /> {/* Midnight */}
+               <stop offset="20%" stopColor="#8b5cf6" /> {/* Dawn */}
+               <stop offset="30%" stopColor="#f59e0b" /> {/* Morning */}
+               <stop offset="50%" stopColor="#fbbf24" /> {/* Noon */}
+               <stop offset="70%" stopColor="#f97316" /> {/* Evening */}
+               <stop offset="80%" stopColor="#6366f1" /> {/* Dusk */}
+               <stop offset="100%" stopColor="#1e293b" /> {/* Midnight */}
+             </linearGradient>
+           </defs>
+           
+           {/* Background thick arc */}
            <path 
-             d={`M 0,40 Q 128,10 256,40`} 
+             d={`M ${cx - rx},${cy} A ${rx} ${ry} 0 0 1 ${cx + rx} ${cy}`} 
              fill="none" 
-             stroke="rgba(30, 41, 59, 0.4)" 
-             strokeWidth="2" 
-             strokeDasharray="4 4"
+             stroke="#cbd5e1" 
+             strokeWidth="8" 
+             strokeLinecap="round"
+             className="opacity-50"
            />
-        </svg>
+           {/* Foreground gradient arc */}
+           <path 
+             d={`M ${cx - rx},${cy} A ${rx} ${ry} 0 0 1 ${cx + rx} ${cy}`} 
+             fill="none" 
+             stroke="url(#skyGradient)" 
+             strokeWidth="6" 
+             strokeLinecap="round"
+           />
 
-        {/* Time Markers */}
-        <div className="absolute top-10 left-0 text-[10px] text-slate-500 font-mono -translate-x-1/2">00:00</div>
-        <div className="absolute top-5 left-1/4 text-[10px] text-slate-500 font-mono -translate-x-1/2">06:00</div>
-        <div className="absolute top-2 left-1/2 text-[10px] text-slate-500 font-mono -translate-x-1/2">12:00</div>
-        <div className="absolute top-5 left-3/4 text-[10px] text-slate-500 font-mono -translate-x-1/2">18:00</div>
-        <div className="absolute top-10 right-0 text-[10px] text-slate-500 font-mono translate-x-1/2">24:00</div>
+           {/* Tick marks */}
+           {ticks.map(h => {
+             const p = h / 24;
+             const t = Math.PI * (1 - p);
+             const x1 = cx + (rx + 6) * Math.cos(t);
+             const y1 = cy - (ry + 6) * Math.sin(t);
+             const x2 = cx + (rx + 12) * Math.cos(t);
+             const y2 = cy - (ry + 12) * Math.sin(t);
+             
+             const tx = cx + (rx + 22) * Math.cos(t);
+             const ty = cy - (ry + 22) * Math.sin(t);
+             
+             const isMajor = h % 6 === 0;
+
+             return (
+               <g key={h}>
+                 <line 
+                    x1={x1} y1={y1} x2={x2} y2={y2} 
+                    stroke={isMajor ? "#334155" : "#94a3b8"} 
+                    strokeWidth={isMajor ? "3" : "2"} 
+                    strokeLinecap="round" 
+                 />
+                 {isMajor && (
+                    <text 
+                      x={tx} y={ty} 
+                      fill="#475569" 
+                      fontSize="10" 
+                      fontWeight="bold"
+                      fontFamily="monospace" 
+                      textAnchor="middle" 
+                      dominantBaseline="middle"
+                      className="tracking-tighter"
+                    >
+                       {h.toString().padStart(2, '0')}:00
+                    </text>
+                 )}
+               </g>
+             )
+           })}
+        </svg>
 
         {/* The Celestial Body (Sun/Moon) */}
         <div 
-          className="absolute w-8 h-8 -ml-4 -mt-4 flex items-center justify-center rounded-full hand-drawn-panel transition-transform"
+          className={`absolute w-10 h-10 -ml-5 -mt-5 flex items-center justify-center rounded-full bg-slate-900 border-2 transition-all duration-200 ease-out z-10
+            ${isTwilight ? 'border-purple-400 shadow-[0_0_20px_rgba(192,132,252,0.6)]' : 
+              isNight ? 'border-sky-300 shadow-[0_0_20px_rgba(125,211,252,0.6)]' : 
+              'border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)]'}
+          `}
           style={{ 
-            left: `${x}%`, 
-            top: `calc(40px - ${y}px)`,
-            transform: isDragging ? 'scale(1.2)' : 'scale(1)'
+            left: `${x}px`, 
+            top: `${y}px`,
+            transform: isDragging ? 'scale(1.25)' : 'scale(1)'
           }}
         >
-          {isNight ? (
-            <Moon size={16} className="text-slate-800" />
+          {isTwilight ? (
+            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-orange-400 to-purple-500 animate-pulse" />
+          ) : isNight ? (
+            <Moon size={20} className="text-sky-200" fill="currentColor" />
           ) : (
-            <Sun size={16} className="text-slate-800" />
+            <Sun size={20} className="text-amber-400" fill="currentColor" />
           )}
         </div>
       </div>
       
       {/* Current Time Display */}
-      <div className="mt-2 text-slate-800 font-mono text-sm tracking-widest font-bold hand-drawn-panel px-4 py-1.5 rounded-xl">
-        {Math.floor(timeOfDay).toString().padStart(2, '0')}:
-        {Math.floor((timeOfDay % 1) * 60).toString().padStart(2, '0')}
+      <div className="absolute top-[80px] flex flex-col items-center pointer-events-none transition-transform duration-300 group-hover:-translate-y-2">
+        <span className="text-[9px] text-slate-500 font-bold tracking-[0.3em] uppercase mb-1 drop-shadow-sm">LOCAL TIME</span>
+        <div className="text-2xl font-mono text-slate-800 font-bold tracking-widest bg-[#fcf8ec] px-5 py-2 rounded-2xl border-2 border-slate-800 shadow-[0_6px_0_rgba(30,41,59,1)]">
+          {Math.floor(timeOfDay).toString().padStart(2, '0')}:
+          {Math.floor((timeOfDay % 1) * 60).toString().padStart(2, '0')}
+        </div>
       </div>
     </div>
   );
