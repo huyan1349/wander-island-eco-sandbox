@@ -17,6 +17,8 @@ export const SocialPanel: React.FC = () => {
   const authUser = useGameStore(state => state.authUser);
   const clearAuthUser = useGameStore(state => state.clearAuthUser);
   const setScreen = useGameStore(state => state.setScreen);
+  const unreadCount = useGameStore(state => state.unreadCount);
+  const setUnreadCount = useGameStore(state => state.setUnreadCount);
 
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('friends');
@@ -44,6 +46,10 @@ export const SocialPanel: React.FC = () => {
     if (!isOpen) return;
     loadFriends();
     loadIslands();
+    // Clear unread when opening panel on chat tab
+    if (activeTab === 'chat') {
+      setUnreadCount(0);
+    }
   }, [isOpen, activeTab]);
 
   // Socket listeners
@@ -142,10 +148,15 @@ export const SocialPanel: React.FC = () => {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="hand-drawn-btn hand-drawn-ghost w-14 h-14 flex items-center justify-center"
+        className="hand-drawn-btn hand-drawn-ghost w-14 h-14 flex items-center justify-center relative"
         title="社交"
       >
         <Users size={24} className="text-white group-hover:text-slate-800 transition-colors" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-slate-950">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
       </button>
     );
   }

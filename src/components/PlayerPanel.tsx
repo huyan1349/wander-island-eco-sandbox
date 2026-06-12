@@ -218,6 +218,31 @@ export const PlayerPanel: React.FC = () => {
                   <h2 className="text-4xl hand-drawn-title mb-10 border-b-2 border-slate-800 pb-6 -rotate-1">System Menu</h2>
                   
                   <div className="flex flex-col gap-6 max-w-sm mt-4">
+                    {/* Version */}
+                    <div className="hand-drawn-panel p-4 mb-0" style={{ borderWidth: '2px' }}>
+                      <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-1">Version</p>
+                      <p className="text-sm font-bold text-slate-800 tracking-wider">v2.0.0 Multiplayer</p>
+                    </div>
+
+                    {/* Online Status */}
+                    <div className="hand-drawn-panel p-4 mb-0" style={{ borderWidth: '2px' }}>
+                      <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-2">Network</p>
+                      {authUser ? (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Wifi size={14} className="text-emerald-500" />
+                            <span className="text-sm font-bold text-slate-800">{authUser.username}</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">在线</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <WifiOff size={14} className="text-slate-400" />
+                          <span className="text-sm text-slate-500">离线模式</span>
+                        </div>
+                      )}
+                    </div>
+
                     <button 
                       onClick={() => {
                         saveGame();
@@ -228,6 +253,21 @@ export const PlayerPanel: React.FC = () => {
                       <span>Save Progress</span>
                     </button>
                     
+                    {authUser && (
+                      <button 
+                        onClick={() => {
+                          api.setToken(null);
+                          disconnectSocket();
+                          clearAuthUser();
+                          setIsOpen(false);
+                        }}
+                        className="w-full flex items-center justify-center gap-3 hand-drawn-btn px-8 py-4 text-red-600 font-bold"
+                      >
+                        <LogOut size={18} />
+                        <span className="font-light tracking-[0.2em] uppercase text-sm">退出登录</span>
+                      </button>
+                    )}
+
                     <button 
                       onClick={() => {
                         if (confirm("Return to Title Screen? Any unsaved progress will be lost!")) {

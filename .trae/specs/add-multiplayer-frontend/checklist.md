@@ -14,26 +14,26 @@
 - [x] SocialPanel Socket.IO 实时事件集成（聊天/好友/在线状态）
 - [x] TitleScreen 添加"联机模式"按钮（Globe 图标）
 - [x] TitleScreen 版本号显示 "v2.0.0 Multiplayer"
-- [ ] store.ts 中 Toast 接口和 toasts/addToast/removeToast 状态正确
-- [ ] store.ts 中 VisitingIsland 接口和 visitingIsland/setVisitingIsland 状态正确
-- [ ] store.ts 中 unreadCount/setUnreadCount 状态正确
-- [ ] Toast 组件使用 hand-drawn-panel 样式，右上角定位
-- [ ] Toast 组件支持入场/退场动画，3秒自动消失
-- [ ] VisitOverlay 全屏覆盖，cinematic-vignette 背景
-- [ ] VisitOverlay 罗盘旋转加载动画
-- [ ] VisitOverlay "正在前往 {岛屿名}..." 文字
-- [ ] VisitOverlay 返回按钮恢复自己岛屿数据
-- [ ] App.tsx 渲染 LOGIN 屏幕和 SocialPanel
-- [ ] App.tsx 自动登录逻辑（localStorage token 验证）
-- [ ] App.tsx Socket.IO 事件监听 → addToast（好友上线/下线/请求）
-- [ ] App.tsx 未读消息轮询和红点显示
-- [ ] App.tsx 保存岛屿时同步到服务器
-- [ ] 游戏内 HUD 社交按钮位于 PlayerPanel 旁边
-- [ ] 社交按钮显示未读消息红点
-- [ ] SaveSelectScreen 联机模式下显示"部署到服务器"按钮
-- [ ] SaveSelectScreen 部署成功后显示"已部署"标记
-- [ ] PlayerPanel System 标签页显示版本号和联机状态
-- [ ] PlayerPanel 已登录时显示"退出登录"按钮
-- [ ] index.css 包含 toast 入场/退场动画和罗盘旋转动画
-- [ ] 退出登录功能正常（清除 token、断开 socket、跳转 LOGIN）
-- [ ] 新代码不破坏现有游戏功能（离线模式、存档、3D 渲染等）
+- [x] store.ts 中 ToastItem 接口和 toasts/addToast/removeToast 状态正确
+- [x] store.ts 中 VisitingIsland 接口和 visitingIsland/setVisitingIsland 状态正确
+- [x] store.ts 中 unreadCount/setUnreadCount 状态正确
+- [x] Toast 组件使用 hand-drawn-panel 样式，右上角定位
+- [x] Toast 组件支持入场/退场动画，3秒自动消失
+- [x] VisitOverlay 全屏覆盖，cinematic-vignette 背景
+- [x] VisitOverlay 罗盘旋转加载动画
+- [x] VisitOverlay "正在前往 {岛屿名}..." 文字
+- [x] VisitOverlay 返回按钮恢复自己岛屿数据
+- [x] App.tsx 渲染 LOGIN 屏幕和 SocialPanel
+- [x] App.tsx 自动登录逻辑（localStorage token 验证）
+- [x] App.tsx Socket.IO 事件监听 → addToast（好友上线/下线/请求）
+- [x] App.tsx 未读消息轮询和红点显示
+- [x] App.tsx 保存岛屿时同步到服务器
+- [x] 游戏内 HUD 社交按钮位于 PlayerPanel 旁边
+- [x] 社交按钮显示未读消息红点
+- [x] SaveSelectScreen 联机模式下显示"部署到服务器"按钮
+- [x] SaveSelectScreen 部署成功后显示"已部署"标记
+- [x] PlayerPanel System 标签页显示版本号和联机状态
+- [x] PlayerPanel 已登录时显示"退出登录"按钮
+- [x] index.css 包含 toast 入场/退场动画和罗盘旋转动画
+- [x] 退出登录功能正常（清除 token、断开 socket、跳转 LOGIN）
+- [x] 新代码不破坏现有游戏功能（离线模式、存档、3D 渲染等）

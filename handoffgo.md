@@ -10,6 +10,14 @@
   - 添加未读消息轮询 useEffect (15秒间隔)
   - 添加服务器同步 useEffect (60秒间隔同步岛屿数据到服务器)
   - JSX 渲染添加: LoginScreen, SocialPanel, Toast, VisitOverlay
+- SaveSelectScreen.tsx 联机存档部署功能完成
+  - 添加 api, Globe, Check 导入
+  - 添加 store 状态读取: authUser, serverIslandMap, setServerIslandMap
+  - 添加部署状态: deployingId, deployedIds
+  - 添加 handleDeploy 函数 (创建/更新服务器岛屿，持久化映射)
+  - useEffect 中加载 serverIslandMap 映射
+  - 存档卡片添加部署按钮 (Globe/Check 图标，仅登录用户可见)
+  - 已部署存档显示"已部署"绿色标记
 - Git 已提交并推送
 
 ## Not Completed
