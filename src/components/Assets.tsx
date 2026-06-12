@@ -2576,55 +2576,258 @@ function Crop({ position, scale = 1, type, growthProgress = 1, id }: any) {
 
 
 export function Tent(props: any) {
+  const ref = usePopIn(props.scale || 1);
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]}>
-      <mesh position={[0, 1, 0]}>
-        <coneGeometry args={[1.5, 2, 4]} />
-        <meshStandardMaterial color="#c0392b" />
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+      {/* Wooden Frame */}
+      <mesh position={[0, 0.8, -0.9]} rotation={[0, 0, Math.PI / 4]} castShadow>
+        <boxGeometry args={[0.1, 2.4, 0.1]} />
+        <meshStandardMaterial color="#5c4033" />
+      </mesh>
+      <mesh position={[0, 0.8, -0.9]} rotation={[0, 0, -Math.PI / 4]} castShadow>
+        <boxGeometry args={[0.1, 2.4, 0.1]} />
+        <meshStandardMaterial color="#5c4033" />
+      </mesh>
+      <mesh position={[0, 0.8, 0.9]} rotation={[0, 0, Math.PI / 4]} castShadow>
+        <boxGeometry args={[0.1, 2.4, 0.1]} />
+        <meshStandardMaterial color="#5c4033" />
+      </mesh>
+      <mesh position={[0, 0.8, 0.9]} rotation={[0, 0, -Math.PI / 4]} castShadow>
+        <boxGeometry args={[0.1, 2.4, 0.1]} />
+        <meshStandardMaterial color="#5c4033" />
+      </mesh>
+      <mesh position={[0, 1.6, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.06, 0.06, 2.2]} />
+        <meshStandardMaterial color="#5c4033" />
+      </mesh>
+      
+      {/* Canvas */}
+      {/* Left side */}
+      <mesh position={[-0.45, 0.8, 0]} rotation={[0, 0, Math.PI / 4]} castShadow receiveShadow>
+        <boxGeometry args={[0.05, 2.2, 2.0]} />
+        <meshStandardMaterial color="#fcd34d" roughness={0.9} />
+      </mesh>
+      {/* Right side */}
+      <mesh position={[0.45, 0.8, 0]} rotation={[0, 0, -Math.PI / 4]} castShadow receiveShadow>
+        <boxGeometry args={[0.05, 2.2, 2.0]} />
+        <meshStandardMaterial color="#fcd34d" roughness={0.9} />
+      </mesh>
+      {/* Back flap */}
+      <mesh position={[0, 0.8, -0.95]} rotation={[Math.PI / 12, 0, 0]} castShadow>
+        <planeGeometry args={[1.6, 1.8]} />
+        <meshStandardMaterial color="#fbbf24" roughness={0.9} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Floor blanket */}
+      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[1.6, 1.8]} />
+        <meshStandardMaterial color="#78350f" roughness={1} />
+      </mesh>
+      {/* Pillows/Bags inside */}
+      <mesh position={[-0.3, 0.15, -0.5]} rotation={[0, Math.PI/6, 0]} castShadow>
+        <boxGeometry args={[0.5, 0.2, 0.3]} />
+        <meshStandardMaterial color="#e2e8f0" />
+      </mesh>
+      <mesh position={[0.4, 0.15, -0.4]} rotation={[0, -Math.PI/4, 0]} castShadow>
+        <boxGeometry args={[0.4, 0.3, 0.4]} />
+        <meshStandardMaterial color="#3b82f6" />
       </mesh>
     </group>
   );
 }
+
 export function Campfire(props: any) {
+  const ref = usePopIn(props.scale || 1);
+  const fireRef = useRef<any>(null);
+  const lightRef = useRef<any>(null);
+  
+  useFrame(({ clock }) => {
+     if (!useGameStore.getState().isSplashDone) return;
+     if (fireRef.current) {
+         const t = clock.elapsedTime * 5;
+         fireRef.current.scale.set(1 + Math.sin(t) * 0.1, 1 + Math.cos(t * 1.3) * 0.2, 1 + Math.sin(t * 0.8) * 0.1);
+     }
+     if (lightRef.current) {
+         lightRef.current.intensity = 2 + Math.sin(clock.elapsedTime * 10) * 0.5;
+     }
+  });
+
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]}>
-      <mesh position={[0, 0.2, 0]}>
-        <cylinderGeometry args={[0.5, 0.5, 0.4, 6]} />
-        <meshStandardMaterial color="#7f8c8d" />
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+      {/* Stone Ring */}
+      {[...Array(8)].map((_, i) => {
+          const angle = (i / 8) * Math.PI * 2;
+          const r = 0.6;
+          return (
+             <mesh key={i} position={[Math.cos(angle)*r, 0.1, Math.sin(angle)*r]} rotation={[Math.random(), Math.random(), Math.random()]} castShadow>
+               <dodecahedronGeometry args={[0.15, 0]} />
+               <meshStandardMaterial color="#94a3b8" roughness={0.9} />
+             </mesh>
+          );
+      })}
+      
+      {/* Ash base */}
+      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+         <circleGeometry args={[0.5, 16]} />
+         <meshStandardMaterial color="#1c1917" />
       </mesh>
-      <mesh position={[0, 0.8, 0]}>
-        <coneGeometry args={[0.4, 1, 4]} />
-        <meshStandardMaterial color="#e67e22" emissive="#d35400" />
+
+      {/* Logs */}
+      {[...Array(4)].map((_, i) => (
+          <mesh key={i} position={[0, 0.15, 0]} rotation={[0, (i * Math.PI / 4) + 0.2, Math.PI / 6]} castShadow>
+             <cylinderGeometry args={[0.06, 0.06, 0.8]} />
+             <meshStandardMaterial color="#451a03" roughness={1} />
+          </mesh>
+      ))}
+
+      {/* Fire */}
+      <mesh position={[0, 0.4, 0]} ref={fireRef}>
+        <coneGeometry args={[0.25, 0.8, 5]} />
+        <meshStandardMaterial color="#f97316" emissive="#ea580c" emissiveIntensity={2} transparent opacity={0.9} />
       </mesh>
+      
+      <pointLight ref={lightRef} color="#fbbf24" distance={8} position={[0, 0.5, 0]} castShadow />
     </group>
   );
 }
+
 export function Fence(props: any) {
+  const ref = usePopIn(props.scale || 1);
+  // Add some slight randomized variation based on position to look hand-made
+  const seed = (props.position.x * 13.1 + props.position.z * 7.9);
+  const r1 = Math.sin(seed) * 0.05;
+  const r2 = Math.cos(seed) * 0.05;
+  
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]}>
-      <mesh position={[0, 0.5, 0]}>
-        <boxGeometry args={[2, 1, 0.2]} />
-        <meshStandardMaterial color="#8e44ad" />
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+      {/* Posts */}
+      <mesh position={[-0.8, 0.6, 0]} castShadow>
+        <cylinderGeometry args={[0.08, 0.08, 1.2, 5]} />
+        <meshStandardMaterial color="#78350f" roughness={0.9} />
+      </mesh>
+      <mesh position={[0.8, 0.6, 0]} rotation={[0, 0.5, 0]} castShadow>
+        <cylinderGeometry args={[0.08, 0.08, 1.2, 5]} />
+        <meshStandardMaterial color="#78350f" roughness={0.9} />
+      </mesh>
+      
+      {/* Planks */}
+      <mesh position={[0, 0.8, 0.1]} rotation={[0, 0, r1]} castShadow>
+        <boxGeometry args={[2.0, 0.15, 0.05]} />
+        <meshStandardMaterial color="#8b5a2b" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 0.4, -0.1]} rotation={[0, 0, r2]} castShadow>
+        <boxGeometry args={[2.0, 0.15, 0.05]} />
+        <meshStandardMaterial color="#8b5a2b" roughness={0.8} />
       </mesh>
     </group>
   );
 }
+
 export function Well(props: any) {
+  const ref = usePopIn(props.scale || 1);
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]}>
-      <mesh position={[0, 0.5, 0]}>
-        <cylinderGeometry args={[1, 1, 1, 8]} />
-        <meshStandardMaterial color="#34495e" />
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+      {/* Stone Base Ring */}
+      <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.8, 0.8, 0.8, 12]} />
+        <meshStandardMaterial color="#64748b" roughness={0.8} />
+      </mesh>
+      {/* Inner Hole */}
+      <mesh position={[0, 0.41, 0]} receiveShadow>
+        <cylinderGeometry args={[0.6, 0.6, 0.81, 12]} />
+        <meshStandardMaterial color="#0f172a" roughness={1} />
+      </mesh>
+      {/* Water inside */}
+      <mesh position={[0, 0.6, 0]} rotation={[-Math.PI/2, 0, 0]}>
+        <circleGeometry args={[0.55, 12]} />
+        <meshStandardMaterial color="#0ea5e9" transparent opacity={0.8} />
+      </mesh>
+
+      {/* Pillars */}
+      <mesh position={[-0.65, 1.2, 0]} castShadow>
+        <boxGeometry args={[0.15, 2.4, 0.15]} />
+        <meshStandardMaterial color="#5c4033" />
+      </mesh>
+      <mesh position={[0.65, 1.2, 0]} castShadow>
+        <boxGeometry args={[0.15, 2.4, 0.15]} />
+        <meshStandardMaterial color="#5c4033" />
+      </mesh>
+      
+      {/* Roof crossbeam */}
+      <mesh position={[0, 2.1, 0]} castShadow>
+        <boxGeometry args={[1.6, 0.1, 0.1]} />
+        <meshStandardMaterial color="#5c4033" />
+      </mesh>
+      {/* Roof */}
+      <mesh position={[-0.4, 2.4, 0]} rotation={[0, 0, Math.PI/6]} castShadow>
+        <boxGeometry args={[1.2, 0.1, 1.5]} />
+        <meshStandardMaterial color="#991b1b" roughness={0.9} />
+      </mesh>
+      <mesh position={[0.4, 2.4, 0]} rotation={[0, 0, -Math.PI/6]} castShadow>
+        <boxGeometry args={[1.2, 0.1, 1.5]} />
+        <meshStandardMaterial color="#991b1b" roughness={0.9} />
+      </mesh>
+      
+      {/* Roller & Rope & Bucket */}
+      <mesh position={[0, 1.8, 0]} rotation={[Math.PI/2, 0, Math.PI/2]} castShadow>
+        <cylinderGeometry args={[0.08, 0.08, 1.4]} />
+        <meshStandardMaterial color="#78350f" />
+      </mesh>
+      <mesh position={[0, 1.4, 0]} castShadow>
+        <cylinderGeometry args={[0.02, 0.02, 0.8]} />
+        <meshStandardMaterial color="#e2e8f0" />
+      </mesh>
+      <mesh position={[0, 1.0, 0]} castShadow>
+        <cylinderGeometry args={[0.2, 0.15, 0.3]} />
+        <meshStandardMaterial color="#b45309" />
       </mesh>
     </group>
   );
 }
+
 export function Bench(props: any) {
+  const ref = usePopIn(props.scale || 1);
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]}>
-      <mesh position={[0, 0.3, 0]}>
-        <boxGeometry args={[2, 0.2, 0.8]} />
-        <meshStandardMaterial color="#d35400" />
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+      {/* Legs */}
+      <mesh position={[-0.8, 0.25, -0.2]} castShadow>
+        <boxGeometry args={[0.1, 0.5, 0.1]} />
+        <meshStandardMaterial color="#451a03" />
+      </mesh>
+      <mesh position={[0.8, 0.25, -0.2]} castShadow>
+        <boxGeometry args={[0.1, 0.5, 0.1]} />
+        <meshStandardMaterial color="#451a03" />
+      </mesh>
+      <mesh position={[-0.8, 0.45, 0.2]} rotation={[-Math.PI/12, 0, 0]} castShadow>
+        <boxGeometry args={[0.1, 0.9, 0.1]} />
+        <meshStandardMaterial color="#451a03" />
+      </mesh>
+      <mesh position={[0.8, 0.45, 0.2]} rotation={[-Math.PI/12, 0, 0]} castShadow>
+        <boxGeometry args={[0.1, 0.9, 0.1]} />
+        <meshStandardMaterial color="#451a03" />
+      </mesh>
+
+      {/* Seat Planks */}
+      <mesh position={[0, 0.5, -0.2]} castShadow>
+        <boxGeometry args={[2.0, 0.08, 0.15]} />
+        <meshStandardMaterial color="#b45309" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 0.5, 0]} castShadow>
+        <boxGeometry args={[2.0, 0.08, 0.15]} />
+        <meshStandardMaterial color="#b45309" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 0.5, 0.2]} castShadow>
+        <boxGeometry args={[2.0, 0.08, 0.15]} />
+        <meshStandardMaterial color="#b45309" roughness={0.8} />
+      </mesh>
+
+      {/* Backrest Planks */}
+      <mesh position={[0, 0.7, 0.3]} rotation={[-Math.PI/12, 0, 0]} castShadow>
+        <boxGeometry args={[2.0, 0.12, 0.05]} />
+        <meshStandardMaterial color="#b45309" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 0.85, 0.35]} rotation={[-Math.PI/12, 0, 0]} castShadow>
+        <boxGeometry args={[2.0, 0.12, 0.05]} />
+        <meshStandardMaterial color="#b45309" roughness={0.8} />
       </mesh>
     </group>
   );

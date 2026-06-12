@@ -53,25 +53,10 @@ export const PlayerPanel: React.FC = () => {
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    
-    // Validate file
-    if (!file.type.startsWith('image/')) return;
-    if (file.size > 2 * 1024 * 1024) return; // 2MB limit
-    
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const dataUrl = ev.target?.result as string;
-      if (authUser) {
-        // Update on server
-        try {
-          const res = await api.updateProfile({ avatar: dataUrl });
-          setAuthUser(res.user);
-        } catch {}
-      }
-      setPlayerAvatar(dataUrl);
-    };
-    reader.readAsDataURL(file);
+    if (!file || !file.type.startsWith('image/') || file.size > 2 * 1024 * 1024) return;
+    api.updateProfile({ avatarFile: file })
+      .then(res => setAuthUser(res.user))
+      .catch(err => console.error('Avatar upload failed:', err));
   };
 
   return (
@@ -291,7 +276,7 @@ export const PlayerPanel: React.FC = () => {
                     {/* Version */}
                     <div className="hand-drawn-panel p-4 mb-0" style={{ borderWidth: '2px' }}>
                       <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-1">Version</p>
-                      <p className="text-sm font-bold text-slate-800 tracking-wider">v2.0.0 Multiplayer</p>
+                      <p className="text-sm font-bold text-slate-800 tracking-wider">v2.1.0 Social</p>
                     </div>
 
                     {/* Online Status */}
