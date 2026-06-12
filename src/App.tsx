@@ -449,15 +449,18 @@ export default function App() {
         <>
           {/* Top Left Header & HUD */}
       {!isImmersive && (
-        <div className="absolute top-6 left-6 z-50 flex items-start gap-4 transition-opacity duration-300">
-           {/* Tool Column */}
+        <div className="absolute top-6 left-6 z-50 flex flex-col items-start gap-4 transition-opacity duration-300">
+           {/* Profile / Avatar (Top Left) */}
+           <PlayerPanel />
+
+           {/* Tool Column (Below Avatar) */}
            <div className="flex flex-col gap-4">
              <button 
                 onClick={() => setIsImmersive(!isImmersive)}
                 className="group relative w-12 h-12 flex items-center justify-center hand-drawn-btn shrink-0"
              >
                 {isImmersive ? <EyeOff size={24} className="text-slate-800" /> : <Eye size={24} className="text-slate-800" />}
-                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                <span className="absolute -right-24 top-1/2 -translate-y-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                     {isImmersive ? "退出沉浸模式" : "沉浸模式"}
                 </span>
              </button>
@@ -467,16 +470,13 @@ export default function App() {
                 className={`group relative w-12 h-12 flex items-center justify-center hand-drawn-btn shrink-0 ${envMenuOpen ? 'hand-drawn-btn-active' : ''}`}
              >
                 <Globe size={24} className={envMenuOpen ? 'text-amber-700' : 'text-slate-800'} />
-                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                <span className="absolute -right-20 top-1/2 -translate-y-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                     生态面板
                 </span>
              </button>
 
              <SocialPanel />
            </div>
-           
-           {/* Profile / Avatar */}
-           <PlayerPanel />
         </div>
       )}
         
