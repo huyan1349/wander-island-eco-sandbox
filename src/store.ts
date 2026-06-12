@@ -38,6 +38,8 @@ export interface AuthUser {
   id: string;
   username: string;
   avatar: string;
+  motto: string;
+  visitorCount?: number;
 }
 
 export interface ToastItem {
