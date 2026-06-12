@@ -450,17 +450,33 @@ export default function App() {
           {/* Top Left Header & HUD */}
       {!isImmersive && (
         <div className="absolute top-6 left-6 z-50 flex items-start gap-4 transition-opacity duration-300">
-           <button 
-              onClick={() => setIsImmersive(!isImmersive)}
-              className="group relative w-14 h-14 flex items-center justify-center hand-drawn-btn hand-drawn-ghost shrink-0 text-white group-hover:text-slate-800 transition-colors"
-           >
-              {isImmersive ? <EyeOff size={24} /> : <Eye size={24} />}
-              <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                  {isImmersive ? "退出沉浸模式" : "沉浸模式"}
-              </span>
-           </button>
+           {/* Tool Column */}
+           <div className="flex flex-col gap-4">
+             <button 
+                onClick={() => setIsImmersive(!isImmersive)}
+                className="group relative w-14 h-14 flex items-center justify-center hand-drawn-btn hand-drawn-ghost shrink-0 text-white group-hover:text-slate-800 transition-colors"
+             >
+                {isImmersive ? <EyeOff size={24} /> : <Eye size={24} />}
+                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                    {isImmersive ? "退出沉浸模式" : "沉浸模式"}
+                </span>
+             </button>
+             
+             <button 
+                onClick={() => setEnvMenuOpen(!envMenuOpen)}
+                className={`group relative w-14 h-14 flex items-center justify-center hand-drawn-btn hand-drawn-ghost shrink-0 transition-colors ${envMenuOpen ? 'hand-drawn-ghost-active' : ''}`}
+             >
+                <Globe size={24} className={envMenuOpen ? 'text-slate-800' : 'text-white group-hover:text-slate-800'} />
+                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                    生态面板
+                </span>
+             </button>
+
+             <SocialPanel />
+           </div>
+           
+           {/* Profile / Avatar */}
            <PlayerPanel />
-           <SocialPanel />
         </div>
       )}
         
@@ -631,21 +647,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Right Panel - Ecology Menu */}
+      {/* Right Panel - Ecology Menu Content */}
       {!isImmersive && (
         <div className="absolute right-6 top-6 bottom-6 flex flex-col items-end z-50 pointer-events-none w-80">
-          <button 
-            onClick={() => setEnvMenuOpen(!envMenuOpen)}
-            className={`group hand-drawn-btn hand-drawn-ghost px-4 py-2 pointer-events-auto flex items-center gap-2 transition-colors ${envMenuOpen ? 'hand-drawn-ghost-active' : ''}`}
-          >
-            <Globe size={20} className={`transition-colors ${envMenuOpen ? 'text-slate-800' : 'text-white group-hover:text-slate-800'}`} />
-            <span className={`font-bold tracking-widest transition-colors ${envMenuOpen ? 'text-slate-800' : 'text-white group-hover:text-slate-800'}`}>生态面板</span>
-            <ChevronRight size={16} className={`transition-transform duration-300 ${envMenuOpen ? 'text-slate-800 rotate-90' : 'text-white group-hover:text-slate-800'}`} />
-          </button>
-
           {/* Collapsible Ecology Menu */}
           {envMenuOpen && (
-            <div className="hand-drawn-panel p-5 pointer-events-auto flex flex-col gap-5 w-72 max-h-[70vh] overflow-y-auto custom-scrollbar origin-top-right animate-in fade-in zoom-in-95 duration-200 mt-4">
+            <div className="hand-drawn-panel p-5 pointer-events-auto flex flex-col gap-5 w-72 max-h-[70vh] overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-200">
             
             {/* Environment Stats */}
             <div className="flex flex-col gap-2">
