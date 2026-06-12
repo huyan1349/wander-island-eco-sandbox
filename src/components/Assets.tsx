@@ -6,6 +6,7 @@ import { SpotLight } from '@react-three/drei';
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
+import { getWaterHeight as getOceanHeight, getWaveAmplitude } from './Water';
 
 const subIslandNoise = createNoise2D();
 const MAIN_ISLAND_SIZE = 40;
@@ -231,7 +232,7 @@ function TreeA({ position, rotation, scale = 1 }: { position: any, rotation?: an
   }
 
   return (
-    <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(rotation?.x || 0, rotation?.y || 0, rotation?.z || 0, 'YXZ')} scale={0} ref={groupRef}>
+    <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0)} scale={0} ref={groupRef}>
       <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.1, 0.2, 1, 5]} />
         <meshStandardMaterial color={trunkColor} flatShading />
@@ -260,7 +261,7 @@ function TreeB({ position, rotation, scale = 1 }: { position: any, rotation?: an
   }
 
   return (
-    <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(rotation?.x || 0, rotation?.y || 0, rotation?.z || 0, 'YXZ')} scale={0} ref={groupRef}>
+    <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0)} scale={0} ref={groupRef}>
       <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.15, 0.25, 1, 6]} />
         <meshStandardMaterial color={trunkColor} flatShading />
@@ -1047,34 +1048,56 @@ export function Lighthouse(props: any) {
   );
 }
 
+// Delegates to the authoritative wave model in Water.tsx so floating
+// objects track the exact visual ocean surface (incl. the -0.4 base level)
 export function getWaterHeight(x: number, z: number, time: number, weather: string) {
-    const dist = Math.sqrt(x*x + z*z);
-    const flowSpeed = weather === 'rainy' ? 3.5 : 2.5;
-    const baseAmp = weather === 'rainy' ? 0.7 : 0.4;
-    const flowTime = time * flowSpeed;
-
-    let islandFade = 1.0;
-    if (dist < 18) {
-         islandFade = Math.max(0, (dist - 12) / 6.0);
-    }
-
-    const wave1 = Math.sin((x + z) * 0.5 + flowTime) * baseAmp * 0.5 * islandFade;
-    const wave2 = Math.cos((x - z) * 0.3 + flowTime * 0.8) * baseAmp * 0.5 * islandFade;
-    
-    let crashWave = 0;
-    if (dist < 30 && dist > 14) {
-        const phase = dist * 0.8 - time * 2.0;
-        crashWave = Math.pow(Math.sin(phase) * 0.5 + 0.5, 3.0) * (baseAmp * 3.0);
-        const fade = Math.min(1.0, (dist - 14) / 4.0) * Math.min(1.0, (30 - dist) / 5.0);
-        crashWave *= fade * islandFade;
-    }
-
-    return wave1 + wave2 + crashWave;
+    return getOceanHeight(x, z, time, weather);
 }
 
 export function useMarinePhysics(ref: React.RefObject<any>, props: any, baseOffset: number = 0) {
   const weather = useGameStore(state => state.weather);
-  
+  const assets = useGameStore(state => state.assets);
+
+  // Grid-adjacent platforms form one raft, coupled like train cars: the bulk
+  // of the motion is shared (sampled at the raft centroid), with a small
+  // per-plank component on top. Objects placed on a platform anchor to that
+  // platform so they move exactly like the plank beneath them.
+  const raft = useMemo(() => {
+     const platforms = useGameStore.getState().assets.filter(a => a.type === 'platform');
+     // Anchor: the platform itself, or the platform this object sits on
+     let ax = props.position.x;
+     let az = props.position.z;
+     if (props.type !== 'platform') {
+        let best = null as PlacedAsset | null;
+        let bestD = 2.2;
+        for (const p of platforms) {
+           const dd = Math.hypot(p.position.x - ax, p.position.z - az);
+           if (dd < bestD) { bestD = dd; best = p; }
+        }
+        if (!best) return null; // not on a platform: full local motion
+        ax = best.position.x;
+        az = best.position.z;
+     }
+     const visited = new Set<string>([`${ax},${az}`]);
+     const queue = [{ x: ax, z: az }];
+     let sx = 0, sz = 0, n = 0;
+     while (queue.length) {
+        const cur = queue.pop()!;
+        sx += cur.x; sz += cur.z; n++;
+        for (const p of platforms) {
+           const k = `${p.position.x},${p.position.z}`;
+           if (visited.has(k)) continue;
+           const dx = p.position.x - cur.x;
+           const dz = p.position.z - cur.z;
+           if (dx * dx + dz * dz <= 10) { // orthogonal neighbors on the 3-unit grid
+              visited.add(k);
+              queue.push({ x: p.position.x, z: p.position.z });
+           }
+        }
+     }
+     return { cx: sx / n, cz: sz / n, count: n, ax, az };
+  }, [assets, props.type, props.position.x, props.position.z]);
+
   const isMarine = useMemo(() => {
      if (props.type === 'platform') return true;
      if (props.type === 'pier') return false; // piers never bob
@@ -1101,8 +1124,49 @@ export function useMarinePhysics(ref: React.RefObject<any>, props: any, baseOffs
 
   useFrame((state) => {
       if (ref.current && isMarine) {
-          const waterZ = getWaterHeight(props.position.x, props.position.z, state.clock.elapsedTime, weather);
-          ref.current.position.y = props.position.y + waterZ + baseOffset;
+          const t = state.clock.elapsedTime;
+          let targetRotX = 0;
+          let targetRotZ = 0;
+
+          if (raft) {
+              // Train-car coupling: shared raft motion (damped, sampled at
+              // the centroid) plus a small per-plank component at the anchor
+              const damp = Math.max(0.3, 1 / Math.sqrt(raft.count));
+              const raftWave = getWaterHeight(raft.cx, raft.cz, t, weather) + 0.4;
+              const localWave = getWaterHeight(raft.ax, raft.az, t, weather) + 0.4;
+              // Loose coupling: planks follow the wave under them more,
+              // with the shared raft motion as a softer base
+              const wave = raftWave * damp * 0.6 + localWave * 0.4;
+              // Hover lift: rafts float above the cloud surface so billows
+              // and shore spray don't wash over the deck
+              const lift = getWaveAmplitude(weather) * 0.35;
+              ref.current.position.y = props.position.y - 0.4 + wave + lift + baseOffset;
+
+              // Shared tilt from the raft-scale slope
+              const d = 2.5;
+              const hX = getWaterHeight(raft.cx + d, raft.cz, t, weather);
+              const hZ = getWaterHeight(raft.cx, raft.cz + d, t, weather);
+              targetRotX = Math.atan2(hZ - raftWave + 0.4, d) * 0.2 * damp;
+              targetRotZ = -Math.atan2(hX - raftWave + 0.4, d) * 0.2 * damp;
+              // Slight individual tilt per plank
+              const dl = 1.2;
+              const lX = getWaterHeight(raft.ax + dl, raft.az, t, weather);
+              const lZ = getWaterHeight(raft.ax, raft.az + dl, t, weather);
+              targetRotX += Math.atan2(lZ - localWave + 0.4, dl) * 0.28;
+              targetRotZ += -Math.atan2(lX - localWave + 0.4, dl) * 0.28;
+          } else {
+              // Free-floating object: rides the wave fully at its own spot
+              const hC = getWaterHeight(props.position.x, props.position.z, t, weather);
+              ref.current.position.y = props.position.y + hC + baseOffset;
+              const d = 1.2;
+              const hX = getWaterHeight(props.position.x + d, props.position.z, t, weather);
+              const hZ = getWaterHeight(props.position.x, props.position.z + d, t, weather);
+              targetRotX = Math.atan2(hZ - hC, d) * 0.6;
+              targetRotZ = -Math.atan2(hX - hC, d) * 0.6;
+          }
+
+          ref.current.rotation.x += (targetRotX - ref.current.rotation.x) * 0.12;
+          ref.current.rotation.z += (targetRotZ - ref.current.rotation.z) * 0.12;
       }
   });
 }
@@ -1110,7 +1174,7 @@ export function useMarinePhysics(ref: React.RefObject<any>, props: any, baseOffs
 // Sea Expansion Board (bobs with water)
 export function Platform(props: any) {
   const ref = usePopIn(props.scale || 1.5);
-  useMarinePhysics(ref, props, -0.2);
+  useMarinePhysics(ref, props, 0.05);
 
   return (
     <group ref={ref} position={[props.position.x, props.position.y, props.position.z]} scale={0}>
@@ -1139,13 +1203,194 @@ export function Platform(props: any) {
   );
 }
 
+// Sky floatable: hot air balloon tethered to the ground by a rope+stake,
+// a rigid ladder, or a swaying plank bridge
+export function Balloon(props: any) {
+  const ref = usePopIn(props.scale || 1);
+  const swayRef = useRef<THREE.Group>(null);
+  const ropeRef = useRef<THREE.Mesh>(null);
+  const plankRefs = useRef<(THREE.Mesh | null)[]>([]);
+  const mode = props.type === 'balloon_ladder' ? 'ladder'
+             : props.type === 'balloon_bridge' ? 'bridge' : 'rope';
+  const H = 11; // float altitude above the anchor point
+  const PLANKS = 14;
+
+  // Player-chosen look, stored on the asset as "color|style".
+  // 'lowpoly': flat-shaded solid icosahedron (matches the game's look);
+  // 'striped': classic two-color gored balloon.
+  const { mainColor, style } = useMemo(() => {
+    const [c, s] = String(props.customState || '').split('|');
+    return { mainColor: c || '#e11d48', style: s === 'striped' ? 'striped' : 'lowpoly' };
+  }, [props.customState]);
+  const duo = [mainColor, '#f8fafc'];
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    const g = swayRef.current;
+    if (!g) return;
+
+    if (mode === 'ladder') {
+      // Held by the ladder: gentle bob, slight lean and slow turn
+      g.position.set(Math.sin(t * 0.5) * 0.15, H + Math.sin(t * 0.7) * 0.3, Math.cos(t * 0.45) * 0.15);
+      g.rotation.z = Math.sin(t * 0.5) * 0.03;
+      g.rotation.y = Math.sin(t * 0.15) * 0.15;
+    } else {
+      const ax = mode === 'bridge' ? 1.2 : 1.8;
+      g.position.set(
+        Math.sin(t * 0.31) * ax,
+        H + Math.sin(t * 0.53) * 0.9,
+        Math.cos(t * 0.27) * ax
+      );
+      g.rotation.y = Math.sin(t * 0.2) * 0.3;
+      g.rotation.z = Math.sin(t * 0.37) * 0.04;
+    }
+
+    if (mode === 'rope' && ropeRef.current) {
+      // Stretch the rope between the stake and the basket
+      const top = g.position.clone().add(new THREE.Vector3(0, -3.2, 0));
+      const bottom = new THREE.Vector3(0, 0.5, 0);
+      const dir = top.sub(bottom);
+      const len = dir.length();
+      ropeRef.current.position.copy(bottom).addScaledVector(dir, 0.5);
+      ropeRef.current.scale.set(1, len, 1);
+      ropeRef.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+    }
+
+    if (mode === 'bridge') {
+      // Hanging plank bridge: planks follow a sagging curve up to the
+      // basket, with a traveling wave so the whole bridge sways
+      const top = g.position.clone().add(new THREE.Vector3(0, -3.4, 0));
+      const bx = 0, by = 0.3, bz = 0;
+      const faceY = Math.atan2(top.x - bx, top.z - bz);
+      for (let i = 0; i < PLANKS; i++) {
+        const m = plankRefs.current[i];
+        if (!m) continue;
+        const k = (i + 0.5) / PLANKS;
+        const env = Math.sin(k * Math.PI); // pinned at both ends
+        m.position.set(
+          bx + (top.x - bx) * k + Math.sin(t * 1.1 + k * 5.0) * 0.3 * env,
+          by + (top.y - by) * k - env * 1.5 + Math.sin(t * 0.9 + k * 4.0) * 0.18 * env,
+          bz + (top.z - bz) * k + Math.cos(t * 0.8 + k * 5.0) * 0.3 * env
+        );
+        m.rotation.set(0, faceY, Math.sin(t * 1.2 + k * 6.0) * 0.12);
+      }
+    }
+  });
+
+  const rungs = Math.max(1, Math.floor((H - 3.1) / 0.6));
+
+  return (
+    <group
+      ref={ref}
+      position={[props.position.x, props.position.y, props.position.z]}
+      scale={0}
+      onPointerDown={(e) => {
+        // Balloons act as sky anchors: bridges/ropes can connect them to
+        // bridge pillars (or other balloons), same flow as clicking a pillar
+        const st = useGameStore.getState();
+        if (st.selectedTool !== 'bridge' && st.selectedTool !== 'rope') return;
+        e.stopPropagation();
+        if (!st.connectingPillarId) {
+          st.setConnectingPillarId(props.id);
+          AudioSystem.playPop();
+        } else if (st.connectingPillarId === props.id) {
+          st.setConnectingPillarId(null);
+        } else {
+          const start = st.assets.find(a => a.id === st.connectingPillarId);
+          if (start) {
+            st.addAsset({
+              type: st.selectedTool as any,
+              position: { x: (start.position.x + props.position.x) / 2, y: 0, z: (start.position.z + props.position.z) / 2 },
+              rotation: { x: 0, y: 0, z: 0 },
+              connections: [st.connectingPillarId, props.id]
+            });
+            AudioSystem.playDig();
+          }
+          st.setConnectingPillarId(null);
+        }
+      }}
+    >
+      {/* Balloon + basket (sways) */}
+      <group ref={swayRef} position={[0, H, 0]}>
+        {/* Striped envelope: 6 sphere wedges alternating two colors */}
+        {[...Array(6)].map((_, i) => (
+          <mesh key={i} castShadow scale={[1, 1.25, 1]}>
+            <sphereGeometry args={[2, 12, 16, (i * Math.PI * 2) / 6, Math.PI * 2 / 6]} />
+            <meshStandardMaterial color={duo[i % 2]} roughness={0.6} />
+          </mesh>
+        ))}
+        {/* Skirt funneling down to the basket */}
+        <mesh castShadow position={[0, -2.45, 0]}>
+          <cylinderGeometry args={[0.95, 0.5, 0.8, 8, 1, true]} />
+          <meshStandardMaterial color={duo[0]} roughness={0.7} side={THREE.DoubleSide} />
+        </mesh>
+        <mesh castShadow position={[0, -3.2, 0]}>
+          <boxGeometry args={[0.9, 0.7, 0.9]} />
+          <meshStandardMaterial color="#92400e" roughness={1} />
+        </mesh>
+        {[[-0.35, -0.35], [0.35, -0.35], [-0.35, 0.35], [0.35, 0.35]].map(([sx, sz], i) => (
+          <mesh key={i} position={[sx, -2.9, sz]}>
+            <cylinderGeometry args={[0.02, 0.02, 0.6]} />
+            <meshStandardMaterial color="#78350f" />
+          </mesh>
+        ))}
+      </group>
+
+      {mode === 'ladder' && (
+        <group>
+          {[-0.3, 0.3].map((sx, i) => (
+            <mesh key={i} position={[sx, (H - 3.1) / 2, 0]} castShadow>
+              <boxGeometry args={[0.07, H - 3.1, 0.07]} />
+              <meshStandardMaterial color="#854d0e" roughness={1} />
+            </mesh>
+          ))}
+          {[...Array(rungs)].map((_, i) => (
+            <mesh key={i} position={[0, 0.4 + i * 0.6, 0]} castShadow>
+              <boxGeometry args={[0.66, 0.06, 0.1]} />
+              <meshStandardMaterial color="#a16207" roughness={1} />
+            </mesh>
+          ))}
+        </group>
+      )}
+
+      {mode === 'rope' && (
+        <group>
+          <mesh position={[0, 0.3, 0]} rotation={[0, 0, 0.12]} castShadow>
+            <cylinderGeometry args={[0.09, 0.12, 0.8]} />
+            <meshStandardMaterial color="#713f12" roughness={1} />
+          </mesh>
+          <mesh ref={ropeRef}>
+            <cylinderGeometry args={[0.025, 0.025, 1]} />
+            <meshStandardMaterial color="#d6c8a8" roughness={1} />
+          </mesh>
+        </group>
+      )}
+
+      {mode === 'bridge' && (
+        <group>
+          <mesh position={[0, 0.3, 0]} castShadow>
+            <cylinderGeometry args={[0.12, 0.16, 0.8]} />
+            <meshStandardMaterial color="#713f12" roughness={1} />
+          </mesh>
+          {[...Array(PLANKS)].map((_, i) => (
+            <mesh key={i} ref={el => { plankRefs.current[i] = el; }} castShadow>
+              <boxGeometry args={[0.95, 0.07, 0.42]} />
+              <meshStandardMaterial color="#a16207" roughness={1} />
+            </mesh>
+          ))}
+        </group>
+      )}
+    </group>
+  );
+}
+
 // Fixed Wooden Pier (static)
 export function Pier(props: any) {
   const ref = usePopIn(props.scale || 1.5);
   // Pier is absolutely static, no useMarinePhysics needed
-  
+  // Deck raised so it sits clearly above the wave crests
   return (
-    <group ref={ref} position={[props.position.x, props.position.y, props.position.z]} scale={0}>
+    <group ref={ref} position={[props.position.x, props.position.y + 0.4, props.position.z]} scale={0}>
       {/* Wooden Deck Base */}
       <mesh position={[0, 0, 0]} castShadow receiveShadow>
         <boxGeometry args={[3, 0.1, 3]} />
@@ -1174,36 +1419,20 @@ export function Boat(props: any) {
   useFrame((state) => {
     if (ref.current) {
         const time = state.clock.elapsedTime;
-        const x = props.position.x;
-        const y = props.position.z; 
-        const dist = Math.sqrt(x*x + y*y);
+        const px = props.position.x;
+        const pz = props.position.z;
 
-        const flowSpeed = weather === 'rainy' ? 3.5 : 2.5;
-        const baseAmp = weather === 'rainy' ? 0.7 : 0.4;
-        const flowTime = time * flowSpeed;
+        const hC = getWaterHeight(px, pz, time, weather);
+        ref.current.position.y = hC + 0.1;
 
-        let islandFade = 1.0;
-        if (dist < 18) {
-             islandFade = Math.max(0, (dist - 12) / 6.0);
-        }
-
-        const wave1 = Math.sin((x + y) * 0.5 + flowTime) * baseAmp * 0.5 * islandFade;
-        const wave2 = Math.cos((x - y) * 0.3 + flowTime * 0.8) * baseAmp * 0.5 * islandFade;
-        
-        let crashWave = 0;
-        if (dist < 30 && dist > 14) {
-            const phase = dist * 0.8 - time * 2.0;
-            crashWave = Math.pow(Math.sin(phase) * 0.5 + 0.5, 3.0) * (baseAmp * 3.0);
-            const fade = Math.min(1.0, (dist - 14) / 4.0) * Math.min(1.0, (30 - dist) / 5.0);
-            crashWave *= fade * islandFade;
-        }
-
-        const waterZ = wave1 + wave2 + crashWave;
-        ref.current.position.y = Math.max(props.position.y, waterZ - 0.4);
-        
-        // Heavy tilt for boat
-        ref.current.rotation.z = Math.sin(time * 3 + x) * 0.15;
-        ref.current.rotation.x = Math.cos(time * 3.2 + y) * 0.1 - 0.1;
+        // Tilt with the actual wave slope, plus a touch of idle rocking
+        const d = 1.5;
+        const hX = getWaterHeight(px + d, pz, time, weather);
+        const hZ = getWaterHeight(px, pz + d, time, weather);
+        const targetRotX = Math.atan2(hZ - hC, d) * 0.7 + Math.cos(time * 1.6 + pz) * 0.03;
+        const targetRotZ = -Math.atan2(hX - hC, d) * 0.7 + Math.sin(time * 1.4 + px) * 0.04;
+        ref.current.rotation.x += (targetRotX - ref.current.rotation.x) * 0.15;
+        ref.current.rotation.z += (targetRotZ - ref.current.rotation.z) * 0.15;
     }
   });
 
@@ -1371,32 +1600,18 @@ function DynamicBridge({ fromAsset, toAsset }: { fromAsset: any, toAsset: any })
         if (asset.type === 'bridge_pillar') {
              return new THREE.Vector3(asset.position.x, asset.position.y + 3, asset.position.z);
         }
+        if (String(asset.type).startsWith('balloon')) {
+             // Anchor at the top of the balloon's basket (~H above ground)
+             return new THREE.Vector3(asset.position.x, asset.position.y + 8.2, asset.position.z);
+        }
         if (asset.type === 'platform') {
-            const x = asset.position.x;
-            const y = asset.position.z; 
-            const dist = Math.sqrt(x*x + y*y);
-            const flowSpeed = weather === 'rainy' ? 3.5 : 2.5;
-            const baseAmp = weather === 'rainy' ? 0.7 : 0.4;
-            const flowTime = time * flowSpeed;
-
-            let islandFade = 1.0;
-            if (dist < 18) {
-                 islandFade = Math.max(0, (dist - 12) / 6.0);
-            }
-
-            const wave1 = Math.sin((x + y) * 0.5 + flowTime) * baseAmp * 0.5 * islandFade;
-            const wave2 = Math.cos((x - y) * 0.3 + flowTime * 0.8) * baseAmp * 0.5 * islandFade;
-            
-            let crashWave = 0;
-            if (dist < 30 && dist > 14) {
-                const phase = dist * 0.8 - time * 2.0;
-                crashWave = Math.pow(Math.sin(phase) * 0.5 + 0.5, 3.0) * (baseAmp * 3.0);
-                const fade = Math.min(1.0, (dist - 14) / 4.0) * Math.min(1.0, (30 - dist) / 5.0);
-                crashWave *= fade * islandFade;
-            }
-            
-            const waterZ = wave1 + wave2 + crashWave;
-            return new THREE.Vector3(x, Math.max(asset.position.y, waterZ - 0.2), y);
+            // Authoritative wave model + the raft hover lift
+            const surf = getOceanHeight(asset.position.x, asset.position.z, time, weather);
+            return new THREE.Vector3(
+                asset.position.x,
+                Math.max(asset.position.y, surf + getWaveAmplitude(weather) * 0.35 + 0.1),
+                asset.position.z
+            );
         }
         return new THREE.Vector3(
           asset.position.x,
@@ -1711,13 +1926,13 @@ export function SubIsland(props: any) {
       return;
     }
 
-    const landPlaceableTools = ['treeA', 'treeB', 'rock', 'deer', 'wolf', 'spring', 'streetlamp', 'house', 'windmill', 'lighthouse'];
+    const landPlaceableTools = ['treeA', 'treeB', 'rock', 'deer', 'wolf', 'spring', 'streetlamp', 'house', 'windmill', 'lighthouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar'];
     if (!isDragEvent && landPlaceableTools.includes(selectedTool)) {
       if (placementY <= -0.5) return;
 
       let rx = 0;
       let rz = 0;
-      const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island'];
+      const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island', 'treeA', 'treeB', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar'];
       if (event && event.face && event.face.normal && !verticalTools.includes(selectedTool)) {
         const normal = event.face.normal.clone();
         const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
@@ -1726,11 +1941,13 @@ export function SubIsland(props: any) {
         rz = euler.z;
       }
 
+      const isPillar = selectedTool === 'bridge_pillar';
       addAsset({
         type: selectedTool as any,
         position: { x: worldPoint.x, y: placementY, z: worldPoint.z },
-        rotation: { x: rx, y: Math.random() * Math.PI * 2, z: rz },
-        scale: 0.8 + Math.random() * 0.4
+        rotation: { x: rx, y: isPillar ? 0 : Math.random() * Math.PI * 2, z: rz },
+        scale: isPillar ? 1.0 : 0.8 + Math.random() * 0.4,
+        customState: String(selectedTool).startsWith('balloon') ? useGameStore.getState().balloonColor : undefined
       });
     }
   };
@@ -1844,8 +2061,9 @@ export function BridgePillar(props: any) {
 
         for (const a of assets) {
             if (a.id === props.assetId || a.id === connectingPillarId) continue;
-            // Ignore small or flat items
-            if (['platform', 'spring', 'pave', 'boat', 'bridge', 'rope'].includes(a.type)) continue;
+            // Ignore small or flat items (balloons float far above bridge
+            // height — only a thin stake sits on the ground)
+            if (['platform', 'spring', 'pave', 'boat', 'bridge', 'rope', 'balloon', 'balloon_ladder', 'balloon_bridge'].includes(a.type)) continue;
             
             // Define obstacle center and radius based on type
             let height = 2;
@@ -2387,6 +2605,9 @@ export function Assets() {
           case 'pier': return <Pier key={asset.id} {...asset} />;
           case 'bridge_pillar': return <BridgePillar key={asset.id} {...asset} assetId={asset.id} />;
           case 'boat': return <Boat key={asset.id} {...asset} />;
+          case 'balloon':
+          case 'balloon_ladder':
+          case 'balloon_bridge': return <Balloon key={asset.id} {...asset} />;
           case 'sub_island': return <SubIsland key={asset.id} {...asset} />;
           case 'birdhouse': return <Birdhouse key={asset.id} {...asset} />;
           case 'hoe': 

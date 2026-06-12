@@ -60,7 +60,8 @@ import {
   Armchair,
   Leaf,
   SunMedium,
-  User
+  User,
+  Cloud
 } from "lucide-react";
 
 import { PlayerPanel } from "./components/PlayerPanel";
@@ -82,6 +83,10 @@ export default function App() {
   const setSeason = useGameStore(state => state.setSeason);
   const biome = useGameStore(state => state.biome);
   const setBiome = useGameStore(state => state.setBiome);
+  const waveIntensity = useGameStore(state => state.waveIntensity);
+  const setWaveIntensity = useGameStore(state => state.setWaveIntensity);
+  const balloonColor = useGameStore(state => state.balloonColor);
+  const setBalloonColor = useGameStore(state => state.setBalloonColor);
   const selectedTool = useGameStore(state => state.selectedTool);
   const setSelectedTool = useGameStore(state => state.setSelectedTool);
   const assets = useGameStore(state => state.assets);
@@ -405,6 +410,15 @@ export default function App() {
       ]
     },
     {
+      name: "天空",
+      icon: Cloud,
+      tools: [
+        { id: "balloon", icon: Cloud, label: "热气球(系绳)", cost: 120 },
+        { id: "balloon_ladder", icon: Cloud, label: "热气球(软梯)", cost: 150 },
+        { id: "balloon_bridge", icon: Cloud, label: "热气球(吊桥)", cost: 200 },
+      ]
+    },
+    {
       name: "系统",
       icon: Settings,
       tools: [
@@ -518,6 +532,21 @@ export default function App() {
       {!isImmersive && (
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-4 pointer-events-none">
           
+          {/* Balloon color picker (shown while a balloon tool is selected) */}
+          {String(selectedTool).startsWith('balloon') && (
+            <div className="hand-drawn-panel px-3 py-2 flex gap-2 items-center pointer-events-auto animate-in slide-in-from-bottom-2 fade-in duration-300">
+              <span className="text-xs text-slate-700 font-bold mr-1">气球颜色</span>
+              {['#e11d48', '#f97316', '#facc15', '#10b981', '#2563eb', '#7c3aed', '#ec4899'].map(c => (
+                <button
+                  key={c}
+                  onClick={() => setBalloonColor(c)}
+                  className={`w-6 h-6 rounded-full border-2 transition-transform ${balloonColor === c ? 'border-slate-800 scale-125' : 'border-white/60'}`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+          )}
+
           {/* Active Category Tools (Floats above the dock) */}
           {activeCategory && activeCatObj && (
             <div className="hand-drawn-panel px-2 py-2 flex gap-2 pointer-events-auto animate-in slide-in-from-bottom-2 fade-in duration-300">
@@ -653,6 +682,19 @@ export default function App() {
                 <button onClick={() => setWeather("rainy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'rainy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>雨天</button>
                 <button onClick={() => setWeather("snowy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'snowy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>雪天</button>
               </div>
+            </div>
+
+            {/* Wave Intensity */}
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-slate-700 font-bold">海浪强度</span>
+                <span className="text-xs text-slate-500">{waveIntensity.toFixed(1)}</span>
+              </div>
+              <input
+                type="range" min="0" max="2" step="0.1"
+                value={waveIntensity} onChange={(e) => setWaveIntensity(parseFloat(e.target.value))}
+                className="w-full h-1 bg-slate-200 rounded-full appearance-none cursor-pointer mt-1"
+              />
             </div>
 
             {/* Season */}

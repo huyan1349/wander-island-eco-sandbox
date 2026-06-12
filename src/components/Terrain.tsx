@@ -628,13 +628,13 @@ export function Terrain() {
     }
 
     // Add object tool (only on single clicks)
-    const placeableTools = ['treeA', 'treeB', 'rock', 'deer', 'wolf', 'seagull', 'spring', 'streetlamp', 'house', 'windmill', 'lighthouse', 'platform', 'pier', 'boat', 'bridge_pillar', 'sub_island', 'birdhouse'];
+    const placeableTools = ['treeA', 'treeB', 'rock', 'deer', 'wolf', 'seagull', 'spring', 'streetlamp', 'house', 'windmill', 'lighthouse', 'platform', 'pier', 'boat', 'bridge_pillar', 'sub_island', 'birdhouse', 'balloon', 'balloon_ladder', 'balloon_bridge'];
     if (!isDragEvent && placeableTools.includes(selectedTool)) {
         
 
 
         let rx = 0, rz = 0;
-        const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island', 'bridge_pillar'];
+        const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island', 'bridge_pillar', 'balloon', 'balloon_ladder', 'balloon_bridge'];
         if (e && e.face && e.face.normal && !verticalTools.includes(selectedTool)) {
             const normal = e.face.normal.clone();
             const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
@@ -666,7 +666,8 @@ export function Terrain() {
             type: assetType as any,
             position: { x: point.x, y: Math.max(point.y, 0), z: point.z },
             rotation: { x: rx, y: targetRotY, z: rz },
-            scale: targetScale
+            scale: targetScale,
+            customState: String(selectedTool).startsWith('balloon') ? useGameStore.getState().balloonColor : undefined
         });
     }
   };

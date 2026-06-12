@@ -4,110 +4,6 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Sky, Stars, Clouds, Cloud } from '@react-three/drei';
 
-function CloudShadows({ baseColor }: { baseColor: string }) {
-    const timeOfDay = useGameStore(state => state.timeOfDay);
-    const weather = useGameStore(state => state.weather);
-    
-    // We use a slow group rotation to simulate wind carrying the clouds across the island
-    const groupRef = useRef<THREE.Group>(null);
-    const clouds = useMemo(() => {
-        const arr = [];
-        const numClouds = 8;
-        for (let i = 0; i < numClouds; i++) {
-            const radius = Math.random() * 25;
-            const angle = Math.random() * Math.PI * 2;
-            arr.push({
-                x: Math.cos(angle) * radius,
-                y: 28 + Math.random() * 4, 
-                z: Math.sin(angle) * radius,
-                scale: 1.2 + Math.random() * 1.5,
-                speed: 0.003 + Math.random() * 0.005,
-                seed: Math.random() * 100 // for bobbing offset
-            });
-        }
-        return arr;
-    }, []);
-
-    // We store refs to individual sphere meshes to animate them breathing
-    const puffRefs = useRef<(THREE.Mesh | null)[]>([]);
-
-    useFrame((state, delta) => {
-        if (!groupRef.current) return;
-        const time = state.clock.elapsedTime;
-        
-        // Move entire clouds
-        groupRef.current.children.forEach((c, i) => {
-            const data = clouds[i];
-            c.position.x += data.speed * delta * 15;
-            
-            // Gentle floating
-            c.position.y = data.y + Math.sin(time * 0.5 + data.seed) * 1.5;
-
-            // Wrap around seamlessly
-            if (c.position.x > 30) {
-                c.position.x = -30;
-                c.position.z = (Math.random() - 0.5) * 40; 
-            }
-        });
-
-        // Make individual puffs breathe and morph so it's not "dead"
-        puffRefs.current.forEach((mesh, idx) => {
-            if (mesh) {
-                const baseScale = mesh.userData.baseScale || 1;
-                // Soft, non-uniform breathing per puff
-                const breathing = Math.sin(time * 1.2 + idx * 0.8) * 0.08;
-                mesh.scale.setScalar(baseScale + breathing);
-            }
-        });
-    });
-
-    const isRainy = weather === 'rainy';
-    const targetColor = new THREE.Color(baseColor);
-
-    // Use Lambert for softer, powdery shading without hard specular highlights
-    const cloudMaterial = new THREE.MeshLambertMaterial({ color: targetColor });
-
-    return (
-        <group ref={groupRef}>
-            {clouds.map((c, i) => (
-                <group key={i} position={[c.x, c.y, c.z]} scale={c.scale}>
-                    {/* Perfectly smooth high-poly spheres for soft, pristine cartoon look */}
-                    <mesh 
-                       ref={el => { puffRefs.current[i*5 + 0] = el; if(el) el.userData.baseScale = 1; }} 
-                       castShadow receiveShadow position={[0, 0, 0]}>
-                        <sphereGeometry args={[1.5, 32, 32]} />
-                        <primitive object={cloudMaterial} attach="material" />
-                    </mesh>
-                    <mesh 
-                       ref={el => { puffRefs.current[i*5 + 1] = el; if(el) el.userData.baseScale = 0.8; }} 
-                       castShadow receiveShadow position={[1.4, -0.2, 0.2]} scale={0.8}>
-                        <sphereGeometry args={[1.5, 32, 32]} />
-                        <primitive object={cloudMaterial} attach="material" />
-                    </mesh>
-                    <mesh 
-                       ref={el => { puffRefs.current[i*5 + 2] = el; if(el) el.userData.baseScale = 0.9; }} 
-                       castShadow receiveShadow position={[-1.4, -0.3, -0.3]} scale={0.9}>
-                        <sphereGeometry args={[1.5, 32, 32]} />
-                        <primitive object={cloudMaterial} attach="material" />
-                    </mesh>
-                    <mesh 
-                       ref={el => { puffRefs.current[i*5 + 3] = el; if(el) el.userData.baseScale = 0.7; }} 
-                       castShadow receiveShadow position={[0.7, 0.9, -0.5]} scale={0.7}>
-                        <sphereGeometry args={[1.5, 32, 32]} />
-                        <primitive object={cloudMaterial} attach="material" />
-                    </mesh>
-                    <mesh 
-                       ref={el => { puffRefs.current[i*5 + 4] = el; if(el) el.userData.baseScale = 0.65; }} 
-                       castShadow receiveShadow position={[-0.8, 0.7, 0.6]} scale={0.65}>
-                        <sphereGeometry args={[1.5, 32, 32]} />
-                        <primitive object={cloudMaterial} attach="material" />
-                    </mesh>
-                </group>
-            ))}
-        </group>
-    );
-}
-
 export function SkySystem() {
     const timeOfDay = useGameStore(state => state.timeOfDay); // 0 to 24
     
@@ -211,7 +107,6 @@ export function SkySystem() {
                   shadow-bias={-0.0005}
                />
            )}
-           <CloudShadows baseColor={finalCloudColor} />
         </>
     );
 }
