@@ -43,7 +43,6 @@ export function WeatherForecast() {
   ];
 
   const handleNext = () => {
-    if (isDragging) return;
     setActiveIndex(prev => (prev + 1) % cards.length);
   };
 
@@ -136,7 +135,13 @@ export function WeatherForecast() {
           return (
             <div 
               key={idx} 
-              onPointerDown={(e) => handlePointerDown(e, isTop)}
+              onPointerDown={(e) => {
+                if (isTop) handlePointerDown(e, isTop);
+                else {
+                  e.stopPropagation();
+                  handleNext();
+                }
+              }}
               onPointerMove={handlePointerMove}
               onPointerUp={(e) => handlePointerUp(e, isTop)}
               className={`absolute inset-0 flex flex-col items-center justify-center p-5 hand-drawn-panel ease-[cubic-bezier(0.34,1.56,0.64,1)]

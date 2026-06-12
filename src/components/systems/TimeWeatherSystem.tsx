@@ -3,27 +3,33 @@ import { useGameStore } from '../../store';
 
 export function TimeWeatherSystem() {
   useEffect(() => {
-    // 1 real minute = 2 game hours
-    // 60 real seconds = 120 game minutes
-    // 0.5 real seconds = 1 game minute
-    const TICK_RATE_MS = 500; // Update every 500ms
+    let frameId: number;
+    let lastTime = performance.now();
 
-    const interval = setInterval(() => {
+    const tick = (currentTime: number) => {
       const state = useGameStore.getState();
-      if (state.screen !== 'PLAYING') return;
+      const deltaTimeMs = currentTime - lastTime;
+      lastTime = currentTime;
 
-      const deltaHours = (1 / 60) * state.timeSpeed; // 1 game minute
-      
-      let newTime = state.timeOfDay + deltaHours;
-      if (newTime >= 24) {
-        newTime -= 24;
-        state.advanceDay();
+      if (state.screen === 'PLAYING') {
+        // 1 real minute = 2 game hours
+        // 1 real millisecond = (2 / 60000) game hours
+        const deltaHours = (deltaTimeMs * 2 / 60000) * state.timeSpeed;
+        
+        let newTime = state.timeOfDay + deltaHours;
+        if (newTime >= 24) {
+          newTime -= 24;
+          state.advanceDay();
+        }
+        
+        state.setTimeOfDay(newTime);
       }
       
-      state.setTimeOfDay(newTime);
-    }, TICK_RATE_MS);
+      frameId = requestAnimationFrame(tick);
+    };
 
-    return () => clearInterval(interval);
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
   }, []);
 
   return null;
