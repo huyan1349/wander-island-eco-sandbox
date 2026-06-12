@@ -69,6 +69,9 @@ import { LoginScreen } from "./components/LoginScreen";
 import { SocialPanel } from "./components/SocialPanel";
 import { Toast } from "./components/Toast";
 import { VisitOverlay } from "./components/VisitOverlay";
+import { TimeWeatherSystem } from "./components/systems/TimeWeatherSystem";
+import { SolarMeridian } from "./components/ui/SolarMeridian";
+import { WeatherForecast } from "./components/ui/WeatherForecast";
 import { api } from "./lib/api";
 import { connectSocket, onUserOnline, onUserOffline, onFriendRequest, onIslandVisitData, onIslandVisitError } from "./lib/socket";
 import { AudioSystem } from "./lib/audio";
@@ -460,6 +463,15 @@ export default function App() {
            <SocialPanel />
         </div>
       )}
+        
+      {/* Global UI Overlays */}
+      {!isImmersive && (
+        <>
+          <TimeWeatherSystem />
+          <SolarMeridian />
+          <WeatherForecast />
+        </>
+      )}
 
       {/* High-End Cinematic Standby / Immersive Mode */}
       {isImmersive && (
@@ -681,9 +693,11 @@ export default function App() {
                 <button onClick={() => setWeather("sunny")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'sunny' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>晴天</button>
                 <button onClick={() => setWeather("rainy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'rainy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>雨天</button>
                 <button onClick={() => setWeather("snowy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'snowy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>雪天</button>
+                <button onClick={() => setWeather("cloudy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'cloudy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>多云</button>
+                <button onClick={() => setWeather("foggy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'foggy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>浓雾</button>
+                <button onClick={() => setWeather("stormy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'stormy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>雷暴</button>
               </div>
             </div>
-
             {/* Wave Intensity */}
             <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center">
