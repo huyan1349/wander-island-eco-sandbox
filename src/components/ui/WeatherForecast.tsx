@@ -31,53 +31,64 @@ export function WeatherForecast() {
     }
   };
 
-  const maxDays = forecast.length; // Should be 3
-  
-  const handlePrev = () => setActiveIndex(i => Math.max(0, i - 1));
-  const handleNext = () => setActiveIndex(i => Math.min(maxDays, i + 1));
+  const cards = [
+    { label: 'TODAY', w: weather },
+    ...forecast.slice(0, 3).map((w, i) => ({ label: `DAY ${i + 1}`, w }))
+  ];
 
-  const isToday = activeIndex === 0;
-  const displayWeather = isToday ? weather : forecast[activeIndex - 1];
-  const displayTitle = isToday ? "TODAY" : `DAY ${activeIndex}`;
+  const handleNext = () => {
+    setActiveIndex(prev => (prev + 1) % cards.length);
+  };
 
   return (
-    <div className="absolute top-56 right-6 z-40 pointer-events-auto flex flex-col items-center">
-      <div className="relative flex flex-col items-center justify-center p-5 hand-drawn-panel w-32 h-40">
-        
-        {/* Navigation Arrows */}
-        {activeIndex > 0 && (
-          <button onClick={handlePrev} className="absolute left-1 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-800 transition-colors">
-            <ChevronLeft size={18} strokeWidth={3} />
-          </button>
-        )}
-        {activeIndex < maxDays && (
-          <button onClick={handleNext} className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-800 transition-colors">
-            <ChevronRight size={18} strokeWidth={3} />
-          </button>
-        )}
+    <div className="absolute top-56 right-10 z-40 pointer-events-auto flex flex-col items-center group">
+      {/* The Stacked Card Deck */}
+      <div 
+        className="relative w-32 h-40 cursor-pointer"
+        onClick={handleNext}
+      >
+        {cards.map((card, idx) => {
+          // Determine relative position
+          let offset = idx - activeIndex;
+          
+          // If the card is "before" the active one, we wrap it around to the bottom of the deck visually,
+          // OR we can just let it fly off. Wrapping around is better so the user can cycle endlessly.
+          if (offset < 0) {
+            offset += cards.length;
+          }
 
-        {/* Content (Using key to force animation on change) */}
-        <div key={activeIndex} className="flex flex-col items-center animate-in slide-in-from-bottom-2 fade-in duration-300">
-          <span className="text-slate-500 text-[10px] font-bold tracking-widest uppercase mb-1">{displayTitle}</span>
+          // offset 0 = top card
+          // offset 1 = second card underneath
+          // offset 2 = third card underneath
+          // offset 3 = fourth card (hidden or at bottom)
+
+          const isTop = offset === 0;
           
-          <div className="p-3 my-2 bg-slate-100 rounded-full border-2 border-slate-800 shadow-[0_4px_0_rgba(30,41,59,1)] transition-transform duration-300 hover:-translate-y-1">
-            {getWeatherIcon(displayWeather, 28)}
-          </div>
-          
-          <span className="text-slate-800 font-bold text-sm tracking-widest mt-1">{getLabel(displayWeather)}</span>
-        </div>
+          return (
+            <div 
+              key={idx} 
+              className={`absolute inset-0 flex flex-col items-center justify-center p-5 hand-drawn-panel transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
+                ${isTop ? 'hover:-translate-y-2 hover:shadow-xl' : ''}
+              `}
+              style={{
+                transform: `translateY(${offset * 12}px) translateX(${offset * 6}px) rotate(${offset * 5}deg) scale(${1 - offset * 0.05})`,
+                zIndex: 40 - offset,
+                opacity: 1 - offset * 0.2,
+              }}
+            >
+              <span className="text-slate-500 text-[10px] font-bold tracking-widest uppercase mb-1">{card.label}</span>
+              
+              <div className="p-3 my-2 bg-slate-100 rounded-full border-2 border-slate-800 shadow-[0_4px_0_rgba(30,41,59,1)]">
+                {getWeatherIcon(card.w, 28)}
+              </div>
+              
+              <span className="text-slate-800 font-bold text-sm tracking-widest mt-1">{getLabel(card.w)}</span>
+            </div>
+          );
+        })}
       </div>
       
-      {/* Pagination dots */}
-      <div className="flex justify-center gap-2 mt-3">
-        {Array.from({ length: maxDays + 1 }).map((_, i) => (
-          <button 
-            key={i} 
-            onClick={() => setActiveIndex(i)}
-            className={`w-2 h-2 rounded-full transition-all ${activeIndex === i ? 'bg-slate-800 scale-125' : 'bg-slate-300 hover:bg-slate-400'}`} 
-          />
-        ))}
-      </div>
+      <span className="text-slate-400 font-bold text-[10px] tracking-widest mt-8 opacity-0 group-hover:opacity-100 transition-opacity">点击切换</span>
     </div>
   );
 }
