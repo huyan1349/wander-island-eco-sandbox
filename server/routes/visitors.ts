@@ -4,56 +4,41 @@ import { authMiddleware, AuthRequest } from '../auth.js';
 
 const router = Router();
 
-// GET /api/visitors/:islandId - Get visitor log
+// GET /api/visitors/:islandId - 获取岛屿访客记录
 router.get('/:islandId', authMiddleware, (req: AuthRequest, res: Response) => {
   const db = getDb();
-
   const visitors = db.prepare(`
     SELECT v.*, u.username as visitor_name, u.avatar as visitor_avatar
     FROM visitor_log v
-    JOIN users u ON u.id = v.visitor_id
+    JOIN users u ON v.visitor_id = u.id
     WHERE v.island_id = ?
     ORDER BY v.created_at DESC
+    LIMIT 50
   `).all(req.params.islandId);
 
-  const totalResult: any = db.prepare(`
-    SELECT COUNT(DISTINCT visitor_id) as count FROM visitor_log WHERE island_id = ?
-  `).get(req.params.islandId);
+  const count = db.prepare('SELECT COUNT(DISTINCT visitor_id) as cnt FROM visitor_log WHERE island_id = ?').get(req.params.islandId) as any;
 
-  res.json({ visitors, totalVisitors: totalResult?.count || 0 });
+  res.json({ visitors, totalVisitors: count?.cnt || 0 });
 });
 
-// POST /api/visitors - Leave visitor log
+// POST /api/visitors - 留下访客记录
 router.post('/', authMiddleware, (req: AuthRequest, res: Response) => {
   const { islandId, message, rating } = req.body;
-
   if (!islandId) {
-    res.status(400).json({ error: '请指定岛屿' });
+    res.status(400).json({ error: '岛屿ID不能为空' });
     return;
   }
 
   const db = getDb();
-
-  const island = db.prepare('SELECT id FROM islands WHERE id = ?').get(islandId);
-  if (!island) {
-    res.status(404).json({ error: '岛屿不存在' });
-    return;
-  }
-
   const id = crypto.randomUUID();
-  const clampedRating = Math.max(0, Math.min(5, parseInt(rating) || 0));
-
   db.prepare('INSERT INTO visitor_log (id, island_id, visitor_id, message, rating) VALUES (?, ?, ?, ?, ?)')
-    .run(id, islandId, req.userId, message || '', clampedRating);
+    .run(id, islandId, req.userId, message || '', rating || 0);
 
-  const log = db.prepare(`
+  const visitor = db.prepare(`
     SELECT v.*, u.username as visitor_name, u.avatar as visitor_avatar
-    FROM visitor_log v
-    JOIN users u ON u.id = v.visitor_id
-    WHERE v.id = ?
+    FROM visitor_log v JOIN users u ON v.visitor_id = u.id WHERE v.id = ?
   `).get(id);
-
-  res.json({ log });
+  res.json({ visitor });
 });
 
 export default router;

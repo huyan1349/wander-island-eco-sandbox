@@ -4,32 +4,34 @@ import { authMiddleware, AuthRequest } from '../auth.js';
 
 const router = Router();
 
-// POST /api/bottles - Throw a bottle
+// POST /api/bottles - 投递漂流瓶
 router.post('/', authMiddleware, (req: AuthRequest, res: Response) => {
   const { content, mood } = req.body;
-
-  if (!content?.trim()) {
+  if (!content) {
     res.status(400).json({ error: '内容不能为空' });
+    return;
+  }
+  if (content.length > 200) {
+    res.status(400).json({ error: '内容不能超过200字' });
     return;
   }
 
   const db = getDb();
   const id = crypto.randomUUID();
-
   db.prepare('INSERT INTO messages_in_bottle (id, sender_id, content, mood) VALUES (?, ?, ?, ?)')
-    .run(id, req.userId, content.trim(), mood || 'happy');
+    .run(id, req.userId, content, mood || 'happy');
 
-  const bottle = db.prepare('SELECT * FROM messages_in_bottle WHERE id = ?').get(id);
-  res.json({ bottle });
+  res.json({ success: true, id });
 });
 
-// GET /api/bottles/fish - Randomly fish a bottle
+// GET /api/bottles/fish - 随机捡一个漂流瓶
 router.get('/fish', authMiddleware, (req: AuthRequest, res: Response) => {
   const db = getDb();
-
-  const bottle: any = db.prepare(`
-    SELECT * FROM messages_in_bottle
-    WHERE sender_id != ? AND found_by IS NULL
+  const bottle = db.prepare(`
+    SELECT b.*, u.username as sender_name, u.avatar as sender_avatar, u.motto as sender_motto
+    FROM messages_in_bottle b
+    JOIN users u ON b.sender_id = u.id
+    WHERE b.found_by IS NULL AND b.sender_id != ?
     ORDER BY RANDOM() LIMIT 1
   `).get(req.userId);
 
@@ -38,60 +40,38 @@ router.get('/fish', authMiddleware, (req: AuthRequest, res: Response) => {
     return;
   }
 
+  // 标记为被捡到
   db.prepare('UPDATE messages_in_bottle SET found_by = ?, found_at = unixepoch() WHERE id = ?')
-    .run(req.userId, bottle.id);
+    .run(req.userId, (bottle as any).id);
 
-  const sender: any = db.prepare('SELECT username, avatar FROM users WHERE id = ?').get(bottle.sender_id);
-
-  res.json({
-    bottle: {
-      ...bottle,
-      found_by: req.userId,
-      found_at: Math.floor(Date.now() / 1000),
-      sender_name: sender?.username,
-      sender_avatar: sender?.avatar
-    }
-  });
+  res.json({ bottle });
 });
 
-// POST /api/bottles/:id/reply - Reply to a bottle
+// POST /api/bottles/:id/reply - 回复漂流瓶
 router.post('/:id/reply', authMiddleware, (req: AuthRequest, res: Response) => {
   const { reply } = req.body;
-
-  if (!reply?.trim()) {
+  if (!reply) {
     res.status(400).json({ error: '回复内容不能为空' });
     return;
   }
 
   const db = getDb();
+  db.prepare('UPDATE messages_in_bottle SET reply = ?, reply_at = unixepoch() WHERE id = ? AND found_by = ?')
+    .run(reply, req.params.id, req.userId);
 
-  const bottle: any = db.prepare('SELECT * FROM messages_in_bottle WHERE id = ? AND found_by = ?').get(req.params.id, req.userId);
-  if (!bottle) {
-    res.status(404).json({ error: '漂流瓶不存在或非你捡到的' });
-    return;
-  }
-
-  db.prepare('UPDATE messages_in_bottle SET reply = ?, reply_at = unixepoch() WHERE id = ?')
-    .run(reply.trim(), req.params.id);
-
-  const updated = db.prepare('SELECT * FROM messages_in_bottle WHERE id = ?').get(req.params.id);
-  res.json({ bottle: updated });
+  res.json({ success: true });
 });
 
-// GET /api/bottles/sent - Get my sent bottles
+// GET /api/bottles/sent - 我发出的瓶子
 router.get('/sent', authMiddleware, (req: AuthRequest, res: Response) => {
   const db = getDb();
-
   const bottles = db.prepare(`
-    SELECT b.*,
-      finder.username as finder_name,
-      finder.avatar as finder_avatar
+    SELECT b.*, u.username as finder_name, u.avatar as finder_avatar
     FROM messages_in_bottle b
-    LEFT JOIN users finder ON finder.id = b.found_by
+    LEFT JOIN users u ON b.found_by = u.id
     WHERE b.sender_id = ?
-    ORDER BY b.created_at DESC
+    ORDER BY b.created_at DESC LIMIT 20
   `).all(req.userId);
-
   res.json({ bottles });
 });
 

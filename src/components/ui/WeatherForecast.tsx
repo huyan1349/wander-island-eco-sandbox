@@ -30,7 +30,7 @@ export function WeatherForecast() {
   };
 
   return (
-    <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 pointer-events-auto">
+    <div className="absolute top-56 right-6 z-40 pointer-events-auto">
       <div className="flex items-center gap-6 px-6 py-3 hand-drawn-panel">
         
         {/* Current Weather */}

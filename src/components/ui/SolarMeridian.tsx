@@ -45,7 +45,7 @@ export function SolarMeridian() {
   const isNight = timeOfDay < 6 || timeOfDay > 18;
 
   return (
-    <div className="absolute top-6 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none z-40">
+    <div className="absolute top-24 right-6 flex flex-col items-end pointer-events-none z-40">
       <div 
         ref={containerRef}
         className="relative w-64 h-16 pointer-events-auto cursor-pointer"
