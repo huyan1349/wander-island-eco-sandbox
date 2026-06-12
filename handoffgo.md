@@ -1,15 +1,21 @@
 # Handoff
 
-## 已完成 (Bug修复批次)
-1. **Vite proxy 缺少 /avatars 路径** — 上传的头像在开发模式下404，已添加代理
-2. **updateProfile Content-Type 不匹配** — 后端用 multer 期望 multipart/form-data，但前端不传文件时发 JSON，已统一改为 FormData
-3. **AI回复只发到当前socket** — 改为 io.to() 确保多标签页都能收到
-4. **bottles API 返回类型不匹配** — 后端返回 `{bottle}`，前端期望 `{success, id}`，已修复
-5. **好友在线状态不更新** — PlayerPanel 和 SocialPanel 缺少 presence:status/user:online/user:offline 监听，已添加
-6. **SocialPanel 不显示辞的AI标签** — 已添加 is_ai/is_online 判断
-7. **embedded 模式缺少 padding** — MailboxModal/VisitorBookModal/SocialPlaza 已修复
-8. **MailboxModal embedded 模式无写信按钮** — header 隐藏后无法写信，已添加内联按钮
+## 已完成 (部署批次)
+1. **生产部署支持** — Express 添加 dist/ 静态文件服务和 SPA fallback
+2. **CORS 更新** — 支持 CLIENT_ORIGIN 环境变量，生产环境允许所有来源
+3. **API_BASE 改为相对路径** — 前端生产环境使用同源请求，不再硬编码 localhost:3001
+4. **代理可选化** — DeepSeek API 代理不再硬编码，服务器无代理时直连
+5. **阿里云 ECS 部署完成** — 服务器 121.41.239.12:80 通过 Nginx 反向代理到 8080 端口
+6. **PM2 进程管理** — wander-island 进程运行在 8080 端口，已保存配置
+7. **Nginx 反向代理** — 80 端口代理到 8080，支持 WebSocket 升级
+8. **代码已推送到 GitHub main 分支**
+
+## 部署信息
+- 访问地址: http://121.41.239.12
+- 后端端口: 8080 (PM2 管理)
+- Nginx: 80 → 8080 反向代理
+- .env.local: DEEPSEEK_API_KEY + CLIENT_ORIGIN + PORT=8080 (无代理，直连DeepSeek)
+- PM2 进程名: wander-island
 
 ## 未完成
-- git push 因网络问题失败，需重试 `git push origin feat/social-enhancement`
-- 合并 PR 到 main
+- 无
