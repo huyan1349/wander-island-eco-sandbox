@@ -167,6 +167,14 @@ class ApiClient {
     });
   }
 
+  // Profile
+  async updateProfile(updates: { username?: string; avatar?: string }) {
+    return this.request<{ user: any }>('/api/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(updates)
+    });
+  }
+
   // Stats
   async getStats() {
     return this.request<{ userCount: number; islandCount: number; onlineCount: number }>('/api/stats');
