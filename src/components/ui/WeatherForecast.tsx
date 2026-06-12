@@ -30,17 +30,17 @@ export function WeatherForecast() {
   };
 
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-auto">
-      <div className="flex items-center gap-6 px-6 py-3 bg-slate-900/40 backdrop-blur-md rounded-full border border-white/10 shadow-2xl">
+    <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-40 pointer-events-auto">
+      <div className="flex items-center gap-6 px-6 py-3 hand-drawn-panel">
         
         {/* Current Weather */}
-        <div className="flex items-center gap-3 pr-6 border-r border-white/10">
-          <div className="p-2 bg-white/10 rounded-full">
+        <div className="flex items-center gap-3 pr-6 border-r border-slate-300">
+          <div className="p-2 bg-slate-100 rounded-full border-2 border-slate-800">
             {getWeatherIcon(weather, 24)}
           </div>
           <div className="flex flex-col">
-            <span className="text-white/50 text-[10px] font-bold tracking-widest uppercase">当前天气</span>
-            <span className="text-white font-medium text-sm tracking-widest">{getLabel(weather)}</span>
+            <span className="text-slate-500 text-[10px] font-bold tracking-widest uppercase">当前天气</span>
+            <span className="text-slate-800 font-bold text-sm tracking-widest">{getLabel(weather)}</span>
           </div>
         </div>
 
@@ -48,7 +48,7 @@ export function WeatherForecast() {
         <div className="flex items-center gap-6">
           {forecast.slice(0, 3).map((w, i) => (
             <div key={i} className="flex flex-col items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity cursor-default">
-              <span className="text-[10px] text-white/40 font-mono tracking-widest">DAY {i+1}</span>
+              <span className="text-[10px] text-slate-500 font-mono font-bold tracking-widest">DAY {i+1}</span>
               {getWeatherIcon(w, 18)}
             </div>
           ))}

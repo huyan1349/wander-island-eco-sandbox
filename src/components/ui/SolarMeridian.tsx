@@ -58,22 +58,22 @@ export function SolarMeridian() {
            <path 
              d={`M 0,40 Q 128,10 256,40`} 
              fill="none" 
-             stroke="rgba(255,255,255,0.2)" 
+             stroke="rgba(30, 41, 59, 0.4)" 
              strokeWidth="2" 
              strokeDasharray="4 4"
            />
         </svg>
 
         {/* Time Markers */}
-        <div className="absolute top-10 left-0 text-[10px] text-white/50 font-mono -translate-x-1/2">00:00</div>
-        <div className="absolute top-5 left-1/4 text-[10px] text-white/50 font-mono -translate-x-1/2">06:00</div>
-        <div className="absolute top-2 left-1/2 text-[10px] text-white/50 font-mono -translate-x-1/2">12:00</div>
-        <div className="absolute top-5 left-3/4 text-[10px] text-white/50 font-mono -translate-x-1/2">18:00</div>
-        <div className="absolute top-10 right-0 text-[10px] text-white/50 font-mono translate-x-1/2">24:00</div>
+        <div className="absolute top-10 left-0 text-[10px] text-slate-500 font-mono -translate-x-1/2">00:00</div>
+        <div className="absolute top-5 left-1/4 text-[10px] text-slate-500 font-mono -translate-x-1/2">06:00</div>
+        <div className="absolute top-2 left-1/2 text-[10px] text-slate-500 font-mono -translate-x-1/2">12:00</div>
+        <div className="absolute top-5 left-3/4 text-[10px] text-slate-500 font-mono -translate-x-1/2">18:00</div>
+        <div className="absolute top-10 right-0 text-[10px] text-slate-500 font-mono translate-x-1/2">24:00</div>
 
         {/* The Celestial Body (Sun/Moon) */}
         <div 
-          className="absolute w-8 h-8 -ml-4 -mt-4 flex items-center justify-center rounded-full bg-slate-900/40 backdrop-blur-md border border-white/20 shadow-lg transition-transform"
+          className="absolute w-8 h-8 -ml-4 -mt-4 flex items-center justify-center rounded-full hand-drawn-panel transition-transform"
           style={{ 
             left: `${x}%`, 
             top: `calc(40px - ${y}px)`,
@@ -81,15 +81,15 @@ export function SolarMeridian() {
           }}
         >
           {isNight ? (
-            <Moon size={16} className="text-blue-300" />
+            <Moon size={16} className="text-slate-800" />
           ) : (
-            <Sun size={16} className="text-amber-400" />
+            <Sun size={16} className="text-slate-800" />
           )}
         </div>
       </div>
       
       {/* Current Time Display */}
-      <div className="mt-2 text-white/90 font-mono text-sm tracking-widest font-bold backdrop-blur-sm bg-black/20 px-3 py-1 rounded-full border border-white/10">
+      <div className="mt-2 text-slate-800 font-mono text-sm tracking-widest font-bold hand-drawn-panel px-4 py-1.5 rounded-xl">
         {Math.floor(timeOfDay).toString().padStart(2, '0')}:
         {Math.floor((timeOfDay % 1) * 60).toString().padStart(2, '0')}
       </div>

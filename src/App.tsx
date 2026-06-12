@@ -461,10 +461,16 @@ export default function App() {
            </button>
            <PlayerPanel />
            <SocialPanel />
-           <TimeWeatherSystem />
-           <SolarMeridian />
-           <WeatherForecast />
         </div>
+      )}
+        
+      {/* Global UI Overlays */}
+      {!isImmersive && (
+        <>
+          <TimeWeatherSystem />
+          <SolarMeridian />
+          <WeatherForecast />
+        </>
       )}
 
       {/* High-End Cinematic Standby / Immersive Mode */}
