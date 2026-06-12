@@ -593,6 +593,22 @@ export default function App() {
       {/* Right Panel - Ecology Menu */}
       {!isImmersive && (
         <div className="absolute right-6 top-6 bottom-6 flex flex-col items-end z-50 pointer-events-none w-80">
+          {/* Online User Indicator */}
+          {authUser && (
+            <div className="pointer-events-auto hand-drawn-panel px-3 py-2 flex items-center gap-2 mb-3 animate-in fade-in duration-500">
+              <img
+                src={authUser.avatar}
+                alt={authUser.username}
+                className="w-7 h-7 rounded-full border-2 border-slate-800 bg-white"
+                onError={(e) => { (e.target as HTMLImageElement).src = ''; (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-slate-800 tracking-wide leading-tight">{authUser.username}</span>
+                <span className="text-[9px] font-bold text-emerald-600 tracking-widest uppercase">在线</span>
+              </div>
+              <div className="w-2 h-2 bg-emerald-500 rounded-full ml-1 animate-pulse" />
+            </div>
+          )}
           <button 
             onClick={() => setEnvMenuOpen(!envMenuOpen)}
             className={`group hand-drawn-btn hand-drawn-ghost px-4 py-2 pointer-events-auto flex items-center gap-2 transition-colors ${envMenuOpen ? 'hand-drawn-ghost-active' : ''}`}
