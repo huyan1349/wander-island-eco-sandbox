@@ -19,8 +19,8 @@ router.post('/', authMiddleware, (req: AuthRequest, res: Response) => {
   db.prepare('INSERT INTO messages_in_bottle (id, sender_id, content, mood) VALUES (?, ?, ?, ?)')
     .run(id, req.userId, content.trim(), mood || 'happy');
 
-  const bottle = db.prepare('SELECT * FROM messages_in_bottle WHERE id = ?').get(id);
-  res.json({ bottle });
+  const bottle: any = db.prepare('SELECT * FROM messages_in_bottle WHERE id = ?').get(id);
+  res.json({ success: true, id: bottle.id, bottle });
 });
 
 // GET /api/bottles/fish - Randomly fish a bottle

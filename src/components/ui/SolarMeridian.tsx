@@ -58,7 +58,7 @@ export function SolarMeridian() {
   const ticks = [0, 4, 8, 12, 16, 20, 24]; 
 
   return (
-    <div className="absolute top-16 right-6 flex flex-col items-center pointer-events-none z-40">
+    <div className="absolute top-8 right-6 flex flex-col items-center pointer-events-none z-40">
       
       {/* Sundial Panel (Transparent) */}
       <div 

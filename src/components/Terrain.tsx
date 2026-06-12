@@ -628,13 +628,11 @@ export function Terrain() {
     }
 
     // Add object tool (only on single clicks)
-    const placeableTools = ['treeA', 'treeB', 'rock', 'deer', 'wolf', 'seagull', 'spring', 'streetlamp', 'house', 'windmill', 'lighthouse', 'platform', 'pier', 'boat', 'bridge_pillar', 'sub_island', 'birdhouse', 'balloon', 'balloon_ladder', 'balloon_bridge'];
+    const placeableTools = ['treeA', 'treeB', 'rock', 'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'streetlamp', 'house', 'windmill', 'lighthouse', 'platform', 'pier', 'boat', 'bridge_pillar', 'sub_island', 'birdhouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot'];
     if (!isDragEvent && placeableTools.includes(selectedTool)) {
         
-
-
         let rx = 0, rz = 0;
-        const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island', 'bridge_pillar', 'balloon', 'balloon_ladder', 'balloon_bridge'];
+        const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island', 'bridge_pillar', 'balloon', 'balloon_ladder', 'balloon_bridge', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot'];
         if (e && e.face && e.face.normal && !verticalTools.includes(selectedTool)) {
             const normal = e.face.normal.clone();
             const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
@@ -646,7 +644,7 @@ export function Terrain() {
         let targetScale = 0.8 + Math.random() * 0.4;
         let targetRotY = Math.random() * Math.PI * 2;
         
-        if (selectedTool === 'bridge_pillar') {
+        if (selectedTool === 'bridge_pillar' || selectedTool === 'tent' || selectedTool === 'campfire' || selectedTool === 'well' || selectedTool === 'bench' || selectedTool === 'hoe' || selectedTool === 'seed_wheat' || selectedTool === 'seed_carrot') {
             targetScale = 1.0;
             targetRotY = 0;
         } else if (selectedTool === 'platform' || selectedTool === 'pier') {

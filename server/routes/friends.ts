@@ -8,8 +8,10 @@ const router = Router();
 router.get('/', authMiddleware, (req: AuthRequest, res: Response) => {
   const db = getDb();
 
+  const CI_USER_ID = '00000000-0000-0000-0000-000000000001';
+
   const friends = db.prepare(`
-    SELECT u.id, u.username, u.avatar, u.last_online, f.status, f.created_at
+    SELECT u.id, u.username, u.avatar, u.motto, u.last_online, f.status, f.created_at
     FROM friends f
     JOIN users u ON (
       CASE WHEN f.user_id = ? THEN u.id = f.friend_id ELSE u.id = f.user_id END
@@ -18,7 +20,15 @@ router.get('/', authMiddleware, (req: AuthRequest, res: Response) => {
     ORDER BY u.last_online DESC
   `).all(req.userId, req.userId, req.userId);
 
-  res.json({ friends });
+  // "辞"始终显示为在线
+  const friendsWithStatus = friends.map((f: any) => {
+    if (f.id === CI_USER_ID) {
+      return { ...f, is_online: true, is_ai: true };
+    }
+    return f;
+  });
+
+  res.json({ friends: friendsWithStatus });
 });
 
 // GET /api/friends/requests - 获取待处理的好友请求

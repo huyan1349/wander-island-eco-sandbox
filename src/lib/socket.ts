@@ -77,6 +77,11 @@ export function onIslandVisitError(callback: (data: any) => void) {
   return () => socket?.off('island:visit_error', callback);
 }
 
+export function onPresenceStatus(callback: (statuses: Record<string, boolean>) => void) {
+  socket?.on('presence:status', callback);
+  return () => socket?.off('presence:status', callback);
+}
+
 export function onUserOnline(callback: (data: any) => void) {
   socket?.on('user:online', callback);
   return () => socket?.off('user:online', callback);

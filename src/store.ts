@@ -69,6 +69,9 @@ interface GameState {
   screen: GameScreen;
   setScreen: (screen: GameScreen) => void;
 
+  isSplashDone: boolean;
+  setIsSplashDone: (val: boolean) => void;
+
   // Auth
   authUser: AuthUser | null;
   setAuthUser: (user: AuthUser | null) => void;
@@ -193,6 +196,9 @@ interface GameState {
 export const useGameStore = create<GameState>((set, get) => ({
   screen: 'TITLE',
   setScreen: (screen) => set({ screen }),
+
+  isSplashDone: false,
+  setIsSplashDone: (val) => set({ isSplashDone: val }),
 
   // Auth
   authUser: null,

@@ -4,7 +4,7 @@ import { api } from '../lib/api';
 import {
   onChatMessage, onFriendRequest, onFriendAccepted,
   onIslandVisitor, emitChatSend, emitFriendRequest, emitFriendAccepted,
-  emitPresenceCheck, emitIslandVisit, disconnectSocket
+  emitPresenceCheck, emitIslandVisit, disconnectSocket, onPresenceStatus, onUserOnline, onUserOffline
 } from '../lib/socket';
 import {
   Users, MessageCircle, Globe, Search, Send, UserPlus, Check, X,
@@ -65,7 +65,10 @@ export const SocialPanel: React.FC = () => {
     const unsubVisitor = onIslandVisitor((data) => {
       console.log(`${data.visitorName} visited your island!`);
     });
-    return () => { unsubMsg(); unsubReq(); unsubAcc(); unsubVisitor(); };
+    const unsubPresence = onPresenceStatus((statuses) => setOnlineUsers(prev => ({ ...prev, ...statuses })));
+    const unsubOnline = onUserOnline((data) => setOnlineUsers(prev => ({ ...prev, [data.userId]: true })));
+    const unsubOffline = onUserOffline((data) => setOnlineUsers(prev => ({ ...prev, [data.userId]: false })));
+    return () => { unsubMsg(); unsubReq(); unsubAcc(); unsubVisitor(); unsubPresence(); unsubOnline(); unsubOffline(); };
   }, []);
 
   useEffect(() => {
@@ -148,10 +151,10 @@ export const SocialPanel: React.FC = () => {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="hand-drawn-btn hand-drawn-ghost w-14 h-14 flex items-center justify-center relative"
+        className="group relative w-12 h-12 flex items-center justify-center hand-drawn-btn shrink-0"
         title="社交"
       >
-        <Users size={24} className="text-white group-hover:text-slate-800 transition-colors" />
+        <Users size={24} className="text-slate-800" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-slate-950">
             {unreadCount > 9 ? '9+' : unreadCount}
@@ -306,12 +309,15 @@ export const SocialPanel: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <img src={friend.avatar} alt="" className="w-9 h-9 rounded-full border border-slate-800" />
-                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${onlineUsers[friend.id] ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${(friend.is_online || friend.is_ai || onlineUsers[friend.id]) ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                       </div>
                       <div>
-                        <span className="font-bold text-slate-800 text-sm">{friend.username}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-800 text-sm">{friend.username}</span>
+                          {friend.is_ai && <span className="text-[9px] text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-full font-bold">AI</span>}
+                        </div>
                         <p className="text-[10px] text-slate-400">
-                          {onlineUsers[friend.id] ? '在线' : '离线'}
+                          {(friend.is_online || friend.is_ai || onlineUsers[friend.id]) ? '在线' : '离线'}
                         </p>
                       </div>
                     </div>

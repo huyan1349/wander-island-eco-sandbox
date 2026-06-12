@@ -66,6 +66,16 @@ router.post('/register', (req: AuthRequest, res: Response) => {
   db.prepare('INSERT INTO users (id, username, password_hash, avatar) VALUES (?, ?, ?, ?)')
     .run(id, username, passwordHash, avatar);
 
+  // 自动添加"辞"为好友
+  const CI_USER_ID = '00000000-0000-0000-0000-000000000001';
+  try {
+    const ciExists = db.prepare('SELECT id FROM users WHERE id = ?').get(CI_USER_ID);
+    if (ciExists) {
+      db.prepare('INSERT INTO friends (user_id, friend_id, status) VALUES (?, ?, ?)')
+        .run(id, CI_USER_ID, 'accepted');
+    }
+  } catch { /* 辞可能还没被seed */ }
+
   const token = generateToken(id);
 
   res.json({
@@ -93,6 +103,22 @@ router.post('/login', (req: AuthRequest, res: Response) => {
 
   db.prepare('UPDATE users SET last_online = unixepoch() WHERE id = ?').run(user.id);
 
+  // 确保和"辞"是好友
+  const CI_USER_ID = '00000000-0000-0000-0000-000000000001';
+  try {
+    const ciExists = db.prepare('SELECT id FROM users WHERE id = ?').get(CI_USER_ID);
+    if (ciExists) {
+      const existingFriend: any = db.prepare(`
+        SELECT * FROM friends
+        WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
+      `).get(user.id, CI_USER_ID, CI_USER_ID, user.id);
+      if (!existingFriend) {
+        db.prepare('INSERT INTO friends (user_id, friend_id, status) VALUES (?, ?, ?)')
+          .run(user.id, CI_USER_ID, 'accepted');
+      }
+    }
+  } catch {}
+
   const token = generateToken(user.id);
 
   res.json({
@@ -111,6 +137,22 @@ router.get('/me', authMiddleware, (req: AuthRequest, res: Response) => {
     return;
   }
 
+  // Ensure friendship with "辞"
+  const CI_USER_ID = '00000000-0000-0000-0000-000000000001';
+  try {
+    const ciExists = db.prepare('SELECT id FROM users WHERE id = ?').get(CI_USER_ID);
+    if (ciExists) {
+      const existingFriend: any = db.prepare(`
+        SELECT * FROM friends
+        WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
+      `).get(req.userId, CI_USER_ID, CI_USER_ID, req.userId);
+      if (!existingFriend) {
+        db.prepare('INSERT INTO friends (user_id, friend_id, status) VALUES (?, ?, ?)')
+          .run(req.userId, CI_USER_ID, 'accepted');
+      }
+    }
+  } catch {}
+
   // Get visitor count for user's islands
   let visitorCount = 0;
   try {
@@ -121,7 +163,6 @@ router.get('/me', authMiddleware, (req: AuthRequest, res: Response) => {
     `).get(req.userId) as any;
     visitorCount = result?.cnt || 0;
   } catch { /* visitor_log table may not exist yet */ }
-
   res.json({ user: { ...user, visitorCount } });
 });
 

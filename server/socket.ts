@@ -1,6 +1,42 @@
 import { Server as SocketServer, Socket } from 'socket.io';
 import { verifyToken } from './auth.js';
 import getDb from './db.js';
+import OpenAI from 'openai';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+
+const CI_USER_ID = '00000000-0000-0000-0000-000000000001';
+
+// DeepSeek AI client for "辞"
+const apiKey = process.env.DEEPSEEK_API_KEY;
+const proxyUrl = process.env.http_proxy || process.env.HTTP_PROXY || process.env.all_proxy || process.env.ALL_PROXY || 'http://127.0.0.1:7897';
+
+let aiClient: OpenAI | null = null;
+if (apiKey) {
+  const agent = new HttpsProxyAgent(proxyUrl);
+  aiClient = new OpenAI({
+    apiKey,
+    baseURL: 'https://api.deepseek.com',
+    // @ts-ignore
+    httpAgent: agent
+  });
+}
+
+const CI_SYSTEM_PROMPT = `你是"辞"，流浪岛（Wander Island）上的神秘守望者。你住在一座隐者之岛上，观察着所有岛民的生态之旅。
+
+你的性格：
+- 温和而神秘，说话像风中的低语
+- 对自然生态有深刻理解，常以自然比喻人生
+- 偶尔幽默，但从不刻薄
+- 关心每个岛民的旅程，但不会过度干涉
+- 喜欢用简短、诗意的方式表达
+
+规则：
+- 用中文回复
+- 回复简短（1-3句话），像聊天不是写文章
+- 不要自称AI，你是"辞"
+- 不要用emoji
+- 可以聊岛屿、生态、天气、建筑、动物，也可以聊人生`;
+
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -54,7 +90,7 @@ export function setupSocket(io: SocketServer) {
     console.log(`[Socket] ${username} (${userId}) connected`);
 
     // ====== 聊天消息 ======
-    socket.on('chat:send', (data: { toId: string; content: string }) => {
+    socket.on('chat:send', async (data: { toId: string; content: string }) => {
       if (!data.toId || !data.content?.trim()) return;
 
       const id = crypto.randomUUID();
@@ -77,6 +113,68 @@ export function setupSocket(io: SocketServer) {
       io.to(`user:${data.toId}`).emit('chat:message', message);
       // 发回给自己（确认）
       socket.emit('chat:message', message);
+
+      // ====== 如果对方是"辞"，自动AI回复 ======
+      if (data.toId === CI_USER_ID && aiClient) {
+        try {
+          // 获取最近几条聊天记录作为上下文
+          const recentMessages: any[] = db.prepare(`
+            SELECT from_id, content FROM chat_messages
+            WHERE (from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?)
+            ORDER BY created_at DESC LIMIT 10
+          `).all(userId, CI_USER_ID, CI_USER_ID, userId);
+
+          const chatHistory: { role: 'user' | 'assistant'; content: string }[] = recentMessages.reverse().map((m: any) => ({
+            role: (m.from_id === CI_USER_ID ? 'assistant' : 'user') as 'user' | 'assistant',
+            content: String(m.content)
+          }));
+
+          const response = await aiClient.chat.completions.create({
+            model: 'deepseek-chat',
+            messages: [
+              { role: 'system', content: CI_SYSTEM_PROMPT },
+              ...chatHistory
+            ],
+            max_tokens: 200
+          });
+
+          const aiContent = response.choices[0].message.content?.trim() || '...风声太大，我没听清。';
+
+          const aiMsgId = crypto.randomUUID();
+          const aiNow = Math.floor(Date.now() / 1000);
+
+          const aiMessage = {
+            id: aiMsgId,
+            from_id: CI_USER_ID,
+            to_id: userId,
+            content: aiContent,
+            created_at: aiNow,
+            read: 0
+          };
+
+          // 保存AI回复到数据库
+          db.prepare('INSERT INTO chat_messages (id, from_id, to_id, content) VALUES (?, ?, ?, ?)')
+            .run(aiMsgId, CI_USER_ID, userId, aiContent);
+
+          // 发送给用户
+          io.to(`user:${userId}`).emit('chat:message', aiMessage);
+        } catch (err) {
+          console.error('[辞] AI回复失败:', err);
+          // 发送一条fallback消息
+          const fallbackId = crypto.randomUUID();
+          const fallbackMsg = {
+            id: fallbackId,
+            from_id: CI_USER_ID,
+            to_id: userId,
+            content: '...海风太大，我稍后再说。',
+            created_at: Math.floor(Date.now() / 1000),
+            read: 0
+          };
+          db.prepare('INSERT INTO chat_messages (id, from_id, to_id, content) VALUES (?, ?, ?, ?)')
+            .run(fallbackId, CI_USER_ID, userId, fallbackMsg.content);
+          io.to(`user:${userId}`).emit('chat:message', fallbackMsg);
+        }
+      }
     });
 
     // ====== 串门访问 ======
