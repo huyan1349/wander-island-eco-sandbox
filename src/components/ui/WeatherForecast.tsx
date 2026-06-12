@@ -118,7 +118,7 @@ export function WeatherForecast() {
   };
 
   return (
-    <div className="absolute top-56 right-10 z-40 pointer-events-auto flex flex-col items-center group">
+    <div className="absolute bottom-16 left-10 z-40 pointer-events-auto flex flex-col items-center group">
       {/* The Stacked Card Deck */}
       <div className="relative w-32 h-40">
         {cards.map((card, idx) => {
