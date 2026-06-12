@@ -1,0 +1,39 @@
+- [x] store.ts 中 GameScreen 类型包含 'LOGIN'
+- [x] store.ts 中 AuthUser 接口定义正确（id, username, avatar）
+- [x] store.ts 中 authUser/setAuthUser/clearAuthUser 状态和 actions 正确
+- [x] LoginScreen 使用 hand-drawn-panel 面板和 hand-drawn-btn 按钮
+- [x] LoginScreen 标题使用 ZCOOL KuaiLe 字体
+- [x] LoginScreen 登录/注册切换功能正常
+- [x] LoginScreen 调用 api.register/api.login 成功后设置 token 和跳转
+- [x] LoginScreen 错误提示使用手绘风格（非原生 alert）
+- [x] SocialPanel 全屏模态布局与 PlayerPanel 一致（侧边栏+内容区）
+- [x] SocialPanel 好友标签页：搜索用户、好友请求、好友列表
+- [x] SocialPanel 聊天标签页：消息列表、实时收发、输入框
+- [x] SocialPanel 岛屿标签页：我的岛屿、公开岛屿、串门访问
+- [x] SocialPanel 所有 UI 元素使用 hand-drawn 风格类
+- [x] SocialPanel Socket.IO 实时事件集成（聊天/好友/在线状态）
+- [x] TitleScreen 添加"联机模式"按钮（Globe 图标）
+- [x] TitleScreen 版本号显示 "v2.0.0 Multiplayer"
+- [ ] store.ts 中 Toast 接口和 toasts/addToast/removeToast 状态正确
+- [ ] store.ts 中 VisitingIsland 接口和 visitingIsland/setVisitingIsland 状态正确
+- [ ] store.ts 中 unreadCount/setUnreadCount 状态正确
+- [ ] Toast 组件使用 hand-drawn-panel 样式，右上角定位
+- [ ] Toast 组件支持入场/退场动画，3秒自动消失
+- [ ] VisitOverlay 全屏覆盖，cinematic-vignette 背景
+- [ ] VisitOverlay 罗盘旋转加载动画
+- [ ] VisitOverlay "正在前往 {岛屿名}..." 文字
+- [ ] VisitOverlay 返回按钮恢复自己岛屿数据
+- [ ] App.tsx 渲染 LOGIN 屏幕和 SocialPanel
+- [ ] App.tsx 自动登录逻辑（localStorage token 验证）
+- [ ] App.tsx Socket.IO 事件监听 → addToast（好友上线/下线/请求）
+- [ ] App.tsx 未读消息轮询和红点显示
+- [ ] App.tsx 保存岛屿时同步到服务器
+- [ ] 游戏内 HUD 社交按钮位于 PlayerPanel 旁边
+- [ ] 社交按钮显示未读消息红点
+- [ ] SaveSelectScreen 联机模式下显示"部署到服务器"按钮
+- [ ] SaveSelectScreen 部署成功后显示"已部署"标记
+- [ ] PlayerPanel System 标签页显示版本号和联机状态
+- [ ] PlayerPanel 已登录时显示"退出登录"按钮
+- [ ] index.css 包含 toast 入场/退场动画和罗盘旋转动画
+- [ ] 退出登录功能正常（清除 token、断开 socket、跳转 LOGIN）
+- [ ] 新代码不破坏现有游戏功能（离线模式、存档、3D 渲染等）

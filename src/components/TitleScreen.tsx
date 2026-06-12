@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../store';
-import { X } from 'lucide-react';
+import { X, Globe } from 'lucide-react';
 import { AudioSystem } from '../lib/audio';
 
 export const TitleScreen: React.FC = () => {
@@ -30,7 +30,7 @@ export const TitleScreen: React.FC = () => {
             {/* Top Right Version / Info */}
             <div className="absolute top-16 right-16 flex flex-col items-end gap-1">
                 <span className={"text-sm font-bold hand-drawn-title " + (titleTheme === 'white' ? "text-slate-700" : "text-slate-700")}>Wander Island</span>
-                <span className={"text-xs font-bold " + (titleTheme === 'white' ? "text-slate-600" : "text-slate-600")}>流浪岛 . 测试版 v1.0</span>
+                <span className={"text-xs font-bold " + (titleTheme === 'white' ? "text-slate-600" : "text-slate-600")}>流浪岛 . 测试版 v2.0.0 Multiplayer</span>
             </div>
 
             {/* Left-Aligned Main Layout */}
@@ -52,7 +52,14 @@ export const TitleScreen: React.FC = () => {
 
                 {/* Cinematic Chinese Menu */}
                 <div className="pointer-events-auto animate-slide-up mb-20 flex flex-col items-start gap-6 pl-4 mt-12">
-                    <button 
+                    <button
+                        onClick={() => setScreen('LOGIN')}
+                        className="hand-drawn-btn flex items-center justify-center gap-3 w-full py-4 text-xl"
+                    >
+                        <Globe size={24} />
+                        联机模式
+                    </button>
+                    <button
                         onClick={() => setScreen('SAVE_SELECT')}
                         className="group w-64 flex justify-center items-center hand-drawn-btn hand-drawn-ghost px-6 py-4 -rotate-2"
                     >

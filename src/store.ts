@@ -32,7 +32,13 @@ export interface VFX {
     position: Vector3Data;
 }
 
-export type GameScreen = 'TITLE' | 'SAVE_SELECT' | 'PLAYING';
+export type GameScreen = 'TITLE' | 'LOGIN' | 'SAVE_SELECT' | 'PLAYING';
+
+export interface AuthUser {
+  id: string;
+  username: string;
+  avatar: string;
+}
 
 export interface SaveSlot {
   id: string;
@@ -45,6 +51,11 @@ export interface SaveSlot {
 interface GameState {
   screen: GameScreen;
   setScreen: (screen: GameScreen) => void;
+
+  // Auth
+  authUser: AuthUser | null;
+  setAuthUser: (user: AuthUser | null) => void;
+  clearAuthUser: () => void;
 
   islandId: string | null;
   islandName: string;
@@ -136,6 +147,11 @@ interface GameState {
 export const useGameStore = create<GameState>((set, get) => ({
   screen: 'TITLE',
   setScreen: (screen) => set({ screen }),
+
+  // Auth
+  authUser: null,
+  setAuthUser: (user) => set({ authUser: user }),
+  clearAuthUser: () => set({ authUser: null, screen: 'LOGIN' as GameScreen }),
 
   islandId: null,
   islandName: 'Wander Island',

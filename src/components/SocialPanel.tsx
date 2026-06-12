@@ -8,7 +8,7 @@ import {
 } from '../lib/socket';
 import {
   Users, MessageCircle, Globe, Search, Send, UserPlus, Check, X,
-  ArrowLeft, Eye, LogOut, Heart, Clock, Wifi, WifiOff
+  ArrowLeft, LogOut, Wifi, WifiOff
 } from 'lucide-react';
 
 type Tab = 'friends' | 'chat' | 'islands';
@@ -54,29 +54,14 @@ export const SocialPanel: React.FC = () => {
         return [...prev, msg];
       });
     });
-
-    const unsubReq = onFriendRequest((data) => {
-      loadFriends();
-    });
-
-    const unsubAcc = onFriendAccepted((data) => {
-      loadFriends();
-    });
-
+    const unsubReq = onFriendRequest(() => loadFriends());
+    const unsubAcc = onFriendAccepted(() => loadFriends());
     const unsubVisitor = onIslandVisitor((data) => {
-      // Could show a toast notification
       console.log(`${data.visitorName} visited your island!`);
     });
-
-    return () => {
-      unsubMsg();
-      unsubReq();
-      unsubAcc();
-      unsubVisitor();
-    };
+    return () => { unsubMsg(); unsubReq(); unsubAcc(); unsubVisitor(); };
   }, []);
 
-  // Auto scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
@@ -86,14 +71,8 @@ export const SocialPanel: React.FC = () => {
       const [fRes, rRes] = await Promise.all([api.getFriends(), api.getFriendRequests()]);
       setFriends(fRes.friends);
       setIncomingRequests(rRes.incoming);
-
-      // Check online status
-      if (fRes.friends.length > 0) {
-        emitPresenceCheck(fRes.friends.map((f: any) => f.id));
-      }
-    } catch (err) {
-      console.error('Failed to load friends:', err);
-    }
+      if (fRes.friends.length > 0) emitPresenceCheck(fRes.friends.map((f: any) => f.id));
+    } catch (err) { console.error('Failed to load friends:', err); }
   };
 
   const loadIslands = async () => {
@@ -101,9 +80,7 @@ export const SocialPanel: React.FC = () => {
       const [allRes, myRes] = await Promise.all([api.getIslands(), api.getMyIslands()]);
       setIslands(allRes.islands);
       setMyIslands(myRes.islands);
-    } catch (err) {
-      console.error('Failed to load islands:', err);
-    }
+    } catch (err) { console.error('Failed to load islands:', err); }
   };
 
   const handleSearch = async () => {
@@ -111,9 +88,7 @@ export const SocialPanel: React.FC = () => {
     try {
       const res = await api.searchUsers(searchQuery.trim());
       setSearchResults(res.users);
-    } catch (err) {
-      console.error('Search failed:', err);
-    }
+    } catch (err) { console.error('Search failed:', err); }
   };
 
   const handleSendFriendRequest = async (userId: string) => {
@@ -121,9 +96,7 @@ export const SocialPanel: React.FC = () => {
       await api.sendFriendRequest(userId);
       emitFriendRequest(userId);
       setSearchResults(prev => prev.filter(u => u.id !== userId));
-    } catch (err: any) {
-      alert(err.message);
-    }
+    } catch (err: any) { alert(err.message); }
   };
 
   const handleAcceptRequest = async (userId: string) => {
@@ -131,18 +104,14 @@ export const SocialPanel: React.FC = () => {
       await api.acceptFriendRequest(userId);
       emitFriendAccepted(userId);
       loadFriends();
-    } catch (err: any) {
-      alert(err.message);
-    }
+    } catch (err: any) { alert(err.message); }
   };
 
   const handleRejectRequest = async (userId: string) => {
     try {
       await api.rejectFriendRequest(userId);
       setIncomingRequests(prev => prev.filter(r => r.id !== userId));
-    } catch (err: any) {
-      alert(err.message);
-    }
+    } catch (err: any) { alert(err.message); }
   };
 
   const handleOpenChat = async (friend: any) => {
@@ -151,9 +120,7 @@ export const SocialPanel: React.FC = () => {
     try {
       const res = await api.getChatMessages(friend.id);
       setChatMessages(res.messages);
-    } catch (err) {
-      console.error('Failed to load chat:', err);
-    }
+    } catch (err) { console.error('Failed to load chat:', err); }
   };
 
   const handleSendMessage = () => {
@@ -166,23 +133,25 @@ export const SocialPanel: React.FC = () => {
     api.setToken(null);
     disconnectSocket();
     clearAuthUser();
+    setIsOpen(false);
     setScreen('LOGIN');
   };
 
+  // Mini widget button (when panel is closed)
   if (!isOpen) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="hand-drawn-btn w-14 h-14 flex items-center justify-center"
+        className="hand-drawn-btn hand-drawn-ghost w-14 h-14 flex items-center justify-center"
         title="社交"
       >
-        <Users size={24} className="text-slate-800" />
+        <Users size={24} className="text-white group-hover:text-slate-800 transition-colors" />
       </button>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-slate-950/40 backdrop-blur-[32px] animate-in fade-in duration-500">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-500">
       <div className="hand-drawn-panel w-[900px] h-[640px] flex overflow-hidden shadow-2xl animate-slide-up">
 
         {/* Sidebar */}
@@ -230,7 +199,7 @@ export const SocialPanel: React.FC = () => {
           {/* Logout */}
           <button
             onClick={handleLogout}
-            className="mt-auto flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest text-red-400 hover:text-red-600 hover:bg-red-50 transition-all"
+            className="mt-auto flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest text-red-400 hover:text-red-600 transition-all"
           >
             <LogOut size={16} /> 退出
           </button>
@@ -241,27 +210,28 @@ export const SocialPanel: React.FC = () => {
           {/* Close */}
           <button
             onClick={() => setIsOpen(false)}
-            className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-800 rounded-full transition-colors z-10"
+            className="absolute top-6 right-6 hand-drawn-btn p-2 rounded-full z-10"
           >
             <X size={20} />
           </button>
 
           {/* Friends Tab */}
           {activeTab === 'friends' && (
-            <div className="flex-1 p-8 overflow-y-auto custom-scrollbar">
-              <h2 className="text-2xl font-light tracking-[0.2em] text-slate-800 mb-6 border-b-2 border-slate-300 pb-4">好友列表</h2>
+            <div className="flex-1 p-8 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-4">
+              <h2 className="text-3xl hand-drawn-title mb-8 border-b-2 border-slate-800 pb-4 -rotate-1">好友列表</h2>
 
               {/* Search */}
               <div className="flex gap-2 mb-6">
                 <div className="relative flex-1">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     placeholder="搜索用户..."
-                    className="w-full pl-10 pr-4 py-2.5 bg-white/60 border-2 border-slate-300 rounded-xl text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 text-sm"
+                    className="w-full pl-9 pr-4 py-2.5 hand-drawn-panel text-slate-800 placeholder:text-slate-400 focus:outline-none text-sm"
+                    style={{ borderWidth: '2px' }}
                   />
                 </div>
                 <button onClick={handleSearch} className="hand-drawn-btn px-4 py-2">
@@ -272,16 +242,16 @@ export const SocialPanel: React.FC = () => {
               {/* Search Results */}
               {searchResults.length > 0 && (
                 <div className="mb-6">
-                  <p className="text-xs font-bold text-slate-500 tracking-widest mb-3">搜索结果</p>
+                  <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-3">搜索结果</p>
                   {searchResults.map(user => (
                     <div key={user.id} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-amber-50 transition-colors">
                       <div className="flex items-center gap-3">
-                        <img src={user.avatar} alt="" className="w-8 h-8 rounded-full" />
-                        <span className="font-bold text-slate-700 text-sm">{user.username}</span>
+                        <img src={user.avatar} alt="" className="w-8 h-8 rounded-full border border-slate-800" />
+                        <span className="font-bold text-slate-800 text-sm">{user.username}</span>
                       </div>
                       <button
                         onClick={() => handleSendFriendRequest(user.id)}
-                        className="flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors"
+                        className="hand-drawn-btn flex items-center gap-1 px-3 py-1 text-xs"
                       >
                         <UserPlus size={12} /> 加好友
                       </button>
@@ -293,18 +263,18 @@ export const SocialPanel: React.FC = () => {
               {/* Pending Requests */}
               {incomingRequests.length > 0 && (
                 <div className="mb-6">
-                  <p className="text-xs font-bold text-slate-500 tracking-widest mb-3">好友请求</p>
+                  <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-3">好友请求</p>
                   {incomingRequests.map(req => (
-                    <div key={req.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-amber-50 mb-2">
+                    <div key={req.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-amber-50 mb-2 border-2 border-amber-200">
                       <div className="flex items-center gap-3">
-                        <img src={req.avatar} alt="" className="w-8 h-8 rounded-full" />
-                        <span className="font-bold text-slate-700 text-sm">{req.username}</span>
+                        <img src={req.avatar} alt="" className="w-8 h-8 rounded-full border border-slate-800" />
+                        <span className="font-bold text-slate-800 text-sm">{req.username}</span>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => handleAcceptRequest(req.id)} className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200">
+                        <button onClick={() => handleAcceptRequest(req.id)} className="hand-drawn-btn p-1.5 text-emerald-600">
                           <Check size={14} />
                         </button>
-                        <button onClick={() => handleRejectRequest(req.id)} className="p-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">
+                        <button onClick={() => handleRejectRequest(req.id)} className="hand-drawn-btn p-1.5 text-red-500">
                           <X size={14} />
                         </button>
                       </div>
@@ -314,7 +284,7 @@ export const SocialPanel: React.FC = () => {
               )}
 
               {/* Friends List */}
-              <p className="text-xs font-bold text-slate-500 tracking-widest mb-3">我的好友 ({friends.length})</p>
+              <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-3">我的好友 ({friends.length})</p>
               {friends.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-8">还没有好友，搜索添加吧！</p>
               ) : (
@@ -324,13 +294,13 @@ export const SocialPanel: React.FC = () => {
                   >
                     <div className="flex items-center gap-3">
                       <div className="relative">
-                        <img src={friend.avatar} alt="" className="w-9 h-9 rounded-full" />
+                        <img src={friend.avatar} alt="" className="w-9 h-9 rounded-full border border-slate-800" />
                         <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${onlineUsers[friend.id] ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                       </div>
                       <div>
-                        <span className="font-bold text-slate-700 text-sm">{friend.username}</span>
+                        <span className="font-bold text-slate-800 text-sm">{friend.username}</span>
                         <p className="text-[10px] text-slate-400">
-                          {onlineUsers[friend.id] ? '在线' : `上次: ${new Date(friend.last_online * 1000).toLocaleDateString()}`}
+                          {onlineUsers[friend.id] ? '在线' : '离线'}
                         </p>
                       </div>
                     </div>
@@ -343,15 +313,15 @@ export const SocialPanel: React.FC = () => {
 
           {/* Chat Tab */}
           {activeTab === 'chat' && (
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-4">
               {chatTarget ? (
                 <>
                   {/* Chat Header */}
-                  <div className="flex items-center gap-3 px-8 py-4 border-b-2 border-slate-300">
-                    <button onClick={() => { setChatTarget(null); setChatMessages([]); }} className="text-slate-400 hover:text-slate-800">
-                      <ArrowLeft size={18} />
+                  <div className="flex items-center gap-3 px-8 py-4 border-b-2 border-slate-800">
+                    <button onClick={() => { setChatTarget(null); setChatMessages([]); }} className="hand-drawn-btn p-1">
+                      <ArrowLeft size={16} />
                     </button>
-                    <img src={chatTarget.avatar} alt="" className="w-8 h-8 rounded-full" />
+                    <img src={chatTarget.avatar} alt="" className="w-8 h-8 rounded-full border border-slate-800" />
                     <span className="font-bold text-slate-800 tracking-wide">{chatTarget.username}</span>
                   </div>
 
@@ -361,9 +331,9 @@ export const SocialPanel: React.FC = () => {
                       const isMine = msg.from_id === authUser?.id;
                       return (
                         <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm ${isMine ? 'bg-emerald-100 text-slate-800 rounded-br-md' : 'bg-white border-2 border-slate-200 text-slate-800 rounded-bl-md'}`}>
-                            <p className="leading-relaxed">{msg.content}</p>
-                            <p className={`text-[10px] mt-1 ${isMine ? 'text-emerald-600/50' : 'text-slate-400'}`}>
+                          <div className={`max-w-[70%] px-4 py-2.5 text-sm ${isMine ? 'hand-drawn-panel bg-emerald-50' : 'hand-drawn-panel'}`} style={{ borderWidth: '2px' }}>
+                            <p className="leading-relaxed text-slate-800">{msg.content}</p>
+                            <p className={`text-[10px] mt-1 ${isMine ? 'text-emerald-500' : 'text-slate-400'}`}>
                               {new Date(msg.created_at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
@@ -374,7 +344,7 @@ export const SocialPanel: React.FC = () => {
                   </div>
 
                   {/* Input */}
-                  <div className="px-8 py-4 border-t-2 border-slate-300">
+                  <div className="px-8 py-4 border-t-2 border-slate-800">
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -382,7 +352,8 @@ export const SocialPanel: React.FC = () => {
                         onChange={(e) => setChatInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                         placeholder="输入消息..."
-                        className="flex-1 px-4 py-2.5 bg-white/60 border-2 border-slate-300 rounded-xl text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 text-sm"
+                        className="flex-1 px-4 py-2.5 hand-drawn-panel text-slate-800 placeholder:text-slate-400 focus:outline-none text-sm"
+                        style={{ borderWidth: '2px' }}
                       />
                       <button onClick={handleSendMessage} className="hand-drawn-btn px-4 py-2">
                         <Send size={16} />
@@ -404,17 +375,17 @@ export const SocialPanel: React.FC = () => {
 
           {/* Islands Tab */}
           {activeTab === 'islands' && (
-            <div className="flex-1 p-8 overflow-y-auto custom-scrollbar">
-              <h2 className="text-2xl font-light tracking-[0.2em] text-slate-800 mb-6 border-b-2 border-slate-300 pb-4">岛屿世界</h2>
+            <div className="flex-1 p-8 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-4">
+              <h2 className="text-3xl hand-drawn-title mb-8 border-b-2 border-slate-800 pb-4 -rotate-1">岛屿世界</h2>
 
               {/* My Islands */}
-              <p className="text-xs font-bold text-slate-500 tracking-widest mb-3">我的岛屿</p>
+              <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-3">我的岛屿</p>
               {myIslands.length === 0 ? (
                 <p className="text-sm text-slate-400 mb-6">暂无岛屿，在游戏中保存即可部署</p>
               ) : (
                 <div className="grid grid-cols-2 gap-3 mb-8">
                   {myIslands.map(island => (
-                    <div key={island.id} className="hand-drawn-panel p-4">
+                    <div key={island.id} className="hand-drawn-panel p-4" style={{ borderWidth: '2px' }}>
                       <div className="flex items-center gap-3 mb-2">
                         <Globe size={16} className="text-emerald-600" />
                         <span className="font-bold text-slate-800 text-sm">{island.name}</span>
@@ -428,19 +399,18 @@ export const SocialPanel: React.FC = () => {
               )}
 
               {/* Public Islands */}
-              <p className="text-xs font-bold text-slate-500 tracking-widest mb-3">探索岛屿</p>
+              <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-3">探索岛屿</p>
               {islands.filter(i => i.owner_id !== authUser?.id).length === 0 ? (
                 <p className="text-sm text-slate-400">暂无其他公开岛屿</p>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
                   {islands.filter(i => i.owner_id !== authUser?.id).map(island => (
-                    <div key={island.id} className="hand-drawn-panel p-4 cursor-pointer hover:bg-amber-50 transition-colors"
-                      onClick={() => {
-                        emitIslandVisit(island.id);
-                      }}
+                    <div key={island.id} className="hand-drawn-panel p-4 cursor-pointer hover:bg-amber-50 transition-all hover:-translate-y-1 hover:scale-[1.02]"
+                      style={{ borderWidth: '2px' }}
+                      onClick={() => emitIslandVisit(island.id)}
                     >
                       <div className="flex items-center gap-3 mb-2">
-                        <img src={island.owner_avatar} alt="" className="w-6 h-6 rounded-full" />
+                        <img src={island.owner_avatar} alt="" className="w-6 h-6 rounded-full border border-slate-800" />
                         <span className="font-bold text-slate-800 text-sm">{island.name}</span>
                       </div>
                       <p className="text-[10px] text-slate-500">
