@@ -63,6 +63,12 @@ import {
 } from "lucide-react";
 
 import { PlayerPanel } from "./components/PlayerPanel";
+import { LoginScreen } from "./components/LoginScreen";
+import { SocialPanel } from "./components/SocialPanel";
+import { Toast } from "./components/Toast";
+import { VisitOverlay } from "./components/VisitOverlay";
+import { api } from "./lib/api";
+import { connectSocket, onUserOnline, onUserOffline, onFriendRequest, onIslandVisitData, onIslandVisitError } from "./lib/socket";
 import { AudioSystem } from "./lib/audio";
 
 export default function App() {
@@ -93,6 +99,16 @@ export default function App() {
   const assetCount = useGameStore(state => state.assets.length);
   const springCount = useGameStore(state => state.assets.filter(a => a.type === 'spring').length);
   const windmillCount = useGameStore(state => state.assets.filter(a => a.type === 'windmill').length);
+
+  const authUser = useGameStore(state => state.authUser);
+  const setAuthUser = useGameStore(state => state.setAuthUser);
+  const addToast = useGameStore(state => state.addToast);
+  const visitingIsland = useGameStore(state => state.visitingIsland);
+  const setVisitingIsland = useGameStore(state => state.setVisitingIsland);
+  const setUnreadCount = useGameStore(state => state.setUnreadCount);
+  const serverIslandMap = useGameStore(state => state.serverIslandMap);
+  const setServerIslandMap = useGameStore(state => state.setServerIslandMap);
+  const islandId = useGameStore(state => state.islandId);
 
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [userInput, setUserInput] = useState("");
@@ -141,6 +157,53 @@ export default function App() {
     }
   }, []);
 
+  // Auto-login from saved token
+  useEffect(() => {
+    const token = api.getToken();
+    if (token && !authUser) {
+      api.getMe().then((res) => {
+        setAuthUser(res.user);
+        connectSocket(token);
+      }).catch(() => {
+        api.setToken(null);
+      });
+    }
+  }, []);
+
+  // Socket event listeners for toasts
+  useEffect(() => {
+    if (!authUser) return;
+
+    const unsubOnline = onUserOnline((data: any) => {
+      addToast(`${data.username} 上线了`, 'online');
+    });
+    const unsubOffline = onUserOffline((data: any) => {
+      addToast(`${data.username} 离开了`, 'offline');
+    });
+    const unsubFriendReq = onFriendRequest((data: any) => {
+      addToast(`${data.fromName} 请求添加你为好友`, 'friend_request');
+    });
+    const unsubVisitData = onIslandVisitData((data: any) => {
+      setVisitingIsland({
+        islandId: data.islandId,
+        islandName: data.islandName,
+        ownerName: data.ownerName,
+        data: data.data
+      });
+    });
+    const unsubVisitError = onIslandVisitError((data: any) => {
+      addToast(data.error || '串门失败', 'info');
+    });
+
+    return () => {
+      unsubOnline();
+      unsubOffline();
+      unsubFriendReq();
+      unsubVisitData();
+      unsubVisitError();
+    };
+  }, [authUser]);
+
   useEffect(() => {
      AudioSystem.updateEcologyState(
          springCount,
@@ -153,9 +216,53 @@ export default function App() {
   useEffect(() => {
       const interval = setInterval(() => {
           saveGame();
-      }, 30000); 
+      }, 30000);
       return () => clearInterval(interval);
   }, []);
+
+  // Unread count polling
+  useEffect(() => {
+    if (!authUser || screen !== 'PLAYING') return;
+
+    const fetchUnread = async () => {
+      try {
+        const res = await api.getUnreadCount();
+        const total = res.unread?.reduce((sum: number, u: any) => sum + (u.count || 0), 0) || 0;
+        setUnreadCount(total);
+      } catch {}
+    };
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 15000);
+    return () => clearInterval(interval);
+  }, [authUser, screen]);
+
+  // Sync island to server on save (when logged in)
+  useEffect(() => {
+    if (!authUser || !islandId) return;
+
+    const syncInterval = setInterval(() => {
+      const state = useGameStore.getState();
+      if (state.authUser && state.islandId) {
+        const serverId = state.serverIslandMap[state.islandId];
+        if (serverId) {
+          const saveData = {
+            timeOfDay: state.timeOfDay,
+            weather: state.weather,
+            assets: state.assets,
+            grassHealth: state.grassHealth,
+            deerCount: state.deerCount,
+            wolfCount: state.wolfCount,
+            ecoPoints: state.ecoPoints,
+            stats: state.stats
+          };
+          api.updateIsland(serverId, { data: saveData }).catch(() => {});
+        }
+      }
+    }, 60000); // Sync every 60 seconds
+
+    return () => clearInterval(syncInterval);
+  }, [authUser, islandId]);
 
   const [isImmersive, setIsImmersive] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -317,6 +424,7 @@ export default function App() {
       </div>
 
       {screen === 'TITLE' && <TitleScreen />}
+      {screen === 'LOGIN' && <LoginScreen />}
       {screen === 'SAVE_SELECT' && <SaveSelectScreen />}
 
       {screen === 'PLAYING' && (
@@ -334,6 +442,7 @@ export default function App() {
               </span>
            </button>
            <PlayerPanel />
+           <SocialPanel />
         </div>
       )}
 
@@ -606,6 +715,8 @@ export default function App() {
       )}
       </>
       )}
+      {screen === 'PLAYING' && <Toast />}
+      {visitingIsland && <VisitOverlay />}
     </div>
   );
 }
