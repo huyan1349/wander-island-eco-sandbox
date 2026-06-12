@@ -55,6 +55,57 @@ function WASDControls({ controlsRef }: { controlsRef: React.RefObject<any> }) {
   return null;
 }
 
+function CinematicEntry({ controlsRef }: { controlsRef: React.RefObject<any> }) {
+  const screen = useGameStore(state => state.screen);
+  const { camera } = useThree();
+  const [animating, setAnimating] = useState(false);
+  const tRef = useRef(0);
+  
+  // Starting high in the sky looking down
+  const startPos = new THREE.Vector3(20, 100, 20);
+  const endPos = new THREE.Vector3(50, 4, 50);
+  
+  const startTarget = new THREE.Vector3(15, -20, 15);
+  const endTarget = new THREE.Vector3(0, 0, 0);
+
+  useEffect(() => {
+    if (screen === 'PLAYING') {
+      setAnimating(true);
+      tRef.current = 0;
+      camera.position.copy(startPos);
+      if (controlsRef.current) {
+        controlsRef.current.target.copy(startTarget);
+        controlsRef.current.enabled = false;
+        controlsRef.current.update();
+      }
+    }
+  }, [screen, camera]);
+
+  useFrame((state, delta) => {
+    if (animating) {
+      tRef.current += delta * 0.25; // 4 seconds animation
+      if (tRef.current >= 1) {
+        setAnimating(false);
+        if (controlsRef.current) {
+          controlsRef.current.enabled = true;
+        }
+      } else {
+        const t = tRef.current;
+        // EaseOutExpo for a very dramatic swoop that slows down beautifully
+        const ease = t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+        
+        camera.position.lerpVectors(startPos, endPos, ease);
+        if (controlsRef.current) {
+           controlsRef.current.target.lerpVectors(startTarget, endTarget, ease);
+           controlsRef.current.update();
+        }
+      }
+    }
+  });
+
+  return null;
+}
+
 export function GameCanvas() {
   const isDrawing = useGameStore(state => state.isDrawing);
   const selectedTool = useGameStore(state => state.selectedTool);
@@ -108,6 +159,7 @@ export function GameCanvas() {
              <Vignette eskil={false} offset={0.15} darkness={0.8} />
           </EffectComposer>
         </Suspense>
+        <CinematicEntry controlsRef={orbitRef} />
         <WASDControls controlsRef={orbitRef} />
         <OrbitControls
           ref={orbitRef}
