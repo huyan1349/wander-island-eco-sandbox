@@ -163,7 +163,6 @@ router.get('/me', authMiddleware, (req: AuthRequest, res: Response) => {
     `).get(req.userId) as any;
     visitorCount = result?.cnt || 0;
   } catch { /* visitor_log table may not exist yet */ }
-
   res.json({ user: { ...user, visitorCount } });
 });
 

@@ -93,8 +93,7 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
         </div>
       </div>
       )}
-
-      <div className={embedded ? "flex-1 overflow-y-auto custom-scrollbar" : "flex-1 overflow-y-auto p-8 custom-scrollbar"}>
+<div className={embedded ? "flex-1 overflow-y-auto custom-scrollbar" : "flex-1 overflow-y-auto p-8 custom-scrollbar"}>
         {/* Compose Mode */}
         {isWriting ? (
           <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4">

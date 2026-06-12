@@ -27,6 +27,7 @@ export const SocialPlaza: React.FC<{ onClose: () => void; embedded?: boolean }> 
       </div>
       )}
 
+
       {/* Section Tabs */}
       <div className="flex gap-2 px-8 py-3 border-b border-slate-200">
         <button
