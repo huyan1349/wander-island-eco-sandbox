@@ -60,10 +60,10 @@ export function SolarMeridian() {
   return (
     <div className="absolute top-16 right-6 flex flex-col items-center pointer-events-none z-40">
       
-      {/* Sundial Panel */}
+      {/* Sundial Panel (Transparent) */}
       <div 
         ref={containerRef}
-        className="relative w-[260px] h-[150px] pointer-events-auto cursor-pointer touch-none hand-drawn-panel mb-2"
+        className="relative w-[260px] h-[150px] pointer-events-auto cursor-pointer touch-none"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
