@@ -454,9 +454,9 @@ export default function App() {
            <div className="flex flex-col gap-4">
              <button 
                 onClick={() => setIsImmersive(!isImmersive)}
-                className="group relative w-12 h-12 flex items-center justify-center shrink-0 text-white hover:scale-110 hover:-rotate-6 transition-all drop-shadow-md"
+                className="group relative w-12 h-12 flex items-center justify-center hand-drawn-btn shrink-0"
              >
-                {isImmersive ? <EyeOff size={28} strokeWidth={2.5} /> : <Eye size={28} strokeWidth={2.5} />}
+                {isImmersive ? <EyeOff size={24} className="text-slate-800" /> : <Eye size={24} className="text-slate-800" />}
                 <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                     {isImmersive ? "退出沉浸模式" : "沉浸模式"}
                 </span>
@@ -464,9 +464,9 @@ export default function App() {
              
              <button 
                 onClick={() => setEnvMenuOpen(!envMenuOpen)}
-                className={`group relative w-12 h-12 flex items-center justify-center shrink-0 transition-all drop-shadow-md hover:scale-110 hover:rotate-6 ${envMenuOpen ? 'text-amber-300 scale-110' : 'text-white'}`}
+                className={`group relative w-12 h-12 flex items-center justify-center hand-drawn-btn shrink-0 ${envMenuOpen ? 'hand-drawn-btn-active' : ''}`}
              >
-                <Globe size={28} strokeWidth={2.5} />
+                <Globe size={24} className={envMenuOpen ? 'text-amber-700' : 'text-slate-800'} />
                 <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                     生态面板
                 </span>
