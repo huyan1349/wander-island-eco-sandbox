@@ -118,7 +118,7 @@ function initTables() {
   `);
 
   try {
-    db.exec('ALTER TABLE users ADD COLUMN motto TEXT DEFAULT NULL');
+    db.exec('ALTER TABLE users ADD COLUMN motto TEXT DEFAULT \'\'');
   } catch {
     // motto column already exists
   }
