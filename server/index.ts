@@ -68,14 +68,13 @@ app.use('/api/bottles', bottlesRouter);
 
 // AI Narration endpoint (preserved from original server.js)
 const apiKey = process.env.DEEPSEEK_API_KEY;
-const proxyUrl = process.env.http_proxy || process.env.HTTP_PROXY || process.env.all_proxy || process.env.ALL_PROXY || 'http://127.0.0.1:7897';
-const agent = new HttpsProxyAgent(proxyUrl);
+const proxyUrl = process.env.http_proxy || process.env.HTTP_PROXY || process.env.all_proxy || process.env.ALL_PROXY;
+const agent = proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined;
 
 const ai = new OpenAI({
   apiKey: apiKey || 'dummy-key',
   baseURL: 'https://api.deepseek.com',
-  // @ts-ignore - httpAgent works at runtime but types are mismatched
-  httpAgent: agent
+  ...(agent ? { httpAgent: agent } : {})
 });
 
 app.post('/api/generate-event', async (req, res) => {
