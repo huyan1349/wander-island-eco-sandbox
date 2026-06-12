@@ -44,28 +44,33 @@ export const PlayerPanel: React.FC = () => {
   return (
     <>
       {/* Mini Widget */}
-      <div 
+      <div
         onClick={() => setIsOpen(true)}
         className="group flex items-center gap-4 hand-drawn-btn hand-drawn-ghost p-3 pr-6"
       >
         <div className="relative group">
           <div className="w-12 h-12 bg-gradient-to-tr from-emerald-500 to-cyan-500 rounded-full flex items-center justify-center border-2 border-slate-800 shadow-inner overflow-hidden">
-            {playerAvatar ? (
-              <img src={playerAvatar} alt="Avatar" className="w-full h-full object-cover" />
+            {(authUser ? authUser.avatar : playerAvatar) ? (
+              <img src={authUser ? authUser.avatar : playerAvatar} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
               <User className="text-slate-700" size={24} />
             )}
           </div>
-          <div className="absolute -bottom-1 -right-1 bg-slate-900 border  text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded-md min-w-[20px] text-center shadow-lg">
+          <div className="absolute -bottom-1 -right-1 bg-slate-900 border text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded-md min-w-[20px] text-center shadow-lg">
             {playerLevel}
           </div>
+          {authUser && (
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-800 animate-pulse" title="在线" />
+          )}
         </div>
 
         <div className="flex flex-col gap-1 min-w-[120px]">
-          <span className="text-sm font-bold text-white group-hover:text-slate-900 transition-colors tracking-wide">{playerName}</span>
+          <span className="text-sm font-bold text-white group-hover:text-slate-900 transition-colors tracking-wide">
+            {authUser ? authUser.username : playerName}
+          </span>
           <div className="flex items-center gap-2">
             <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden">
-              <div 
+              <div
                 className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full"
                 style={{ width: `${xpPercentage}%` }}
               />
@@ -83,11 +88,16 @@ export const PlayerPanel: React.FC = () => {
             <div className="w-64  border-r border-slate-800 p-8 flex flex-col gap-2">
               <div className="flex items-center gap-4 mb-12">
                 <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-slate-800 ring-4 ring-slate-800 cursor-pointer shadow-inner" onClick={handleCycleAvatar}>
-                  <img src={playerAvatar} alt="Avatar" className="w-full h-full object-cover bg-gradient-to-br from-emerald-500/20 to-cyan-500/20" />
+                  <img src={authUser ? authUser.avatar : playerAvatar} alt="Avatar" className="w-full h-full object-cover bg-gradient-to-br from-emerald-500/20 to-cyan-500/20" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-light tracking-widest text-slate-800">{playerName}</h3>
-                  <p className="text-[10px] font-bold font-mono text-emerald-400 bg-emerald-500/10 ring-1 ring-emerald-500/20 px-2 py-0.5 rounded-full inline-block mt-1">LV. {playerLevel}</p>
+                  <h3 className="text-xl font-light tracking-widest text-slate-800">{authUser ? authUser.username : playerName}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-[10px] font-bold font-mono text-emerald-400 bg-emerald-500/10 ring-1 ring-emerald-500/20 px-2 py-0.5 rounded-full inline-block">LV. {playerLevel}</p>
+                    {authUser && (
+                      <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full ring-1 ring-emerald-500/20">在线</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
