@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useGameStore, WeatherType } from '../../store';
-import { Sun, CloudRain, Snowflake, Cloud, CloudFog, CloudLightning } from 'lucide-react';
+import { Sun, CloudRain, Snowflake, Cloud, CloudFog, CloudLightning, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export function WeatherForecast() {
   const weather = useGameStore(state => state.weather);
   const forecast = useGameStore(state => state.forecast);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const getWeatherIcon = (w: WeatherType, size = 20) => {
     switch (w) {
@@ -29,33 +31,52 @@ export function WeatherForecast() {
     }
   };
 
+  const maxDays = forecast.length; // Should be 3
+  
+  const handlePrev = () => setActiveIndex(i => Math.max(0, i - 1));
+  const handleNext = () => setActiveIndex(i => Math.min(maxDays, i + 1));
+
+  const isToday = activeIndex === 0;
+  const displayWeather = isToday ? weather : forecast[activeIndex - 1];
+  const displayTitle = isToday ? "TODAY" : `DAY ${activeIndex}`;
+
   return (
-    <div className="absolute top-56 right-6 z-40 pointer-events-auto">
-      <div className="flex flex-col items-center gap-4 p-4 hand-drawn-panel min-w-[120px]">
+    <div className="absolute top-56 right-6 z-40 pointer-events-auto flex flex-col items-center">
+      <div className="relative flex flex-col items-center justify-center p-5 hand-drawn-panel w-32 h-40">
         
-        {/* Current Weather */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="p-3 bg-slate-100 rounded-full border-2 border-slate-800 shadow-sm">
-            {getWeatherIcon(weather, 28)}
+        {/* Navigation Arrows */}
+        {activeIndex > 0 && (
+          <button onClick={handlePrev} className="absolute left-1 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-800 transition-colors">
+            <ChevronLeft size={18} strokeWidth={3} />
+          </button>
+        )}
+        {activeIndex < maxDays && (
+          <button onClick={handleNext} className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-800 transition-colors">
+            <ChevronRight size={18} strokeWidth={3} />
+          </button>
+        )}
+
+        {/* Content (Using key to force animation on change) */}
+        <div key={activeIndex} className="flex flex-col items-center animate-in slide-in-from-bottom-2 fade-in duration-300">
+          <span className="text-slate-500 text-[10px] font-bold tracking-widest uppercase mb-1">{displayTitle}</span>
+          
+          <div className="p-3 my-2 bg-slate-100 rounded-full border-2 border-slate-800 shadow-[0_4px_0_rgba(30,41,59,1)] transition-transform duration-300 hover:-translate-y-1">
+            {getWeatherIcon(displayWeather, 28)}
           </div>
-          <div className="flex flex-col items-center">
-            <span className="text-slate-800 font-bold text-sm tracking-widest">{getLabel(weather)}</span>
-            <span className="text-slate-500 text-[10px] font-bold tracking-widest uppercase mt-0.5">当前天气</span>
-          </div>
+          
+          <span className="text-slate-800 font-bold text-sm tracking-widest mt-1">{getLabel(displayWeather)}</span>
         </div>
-
-        <div className="w-full h-px bg-slate-300" />
-
-        {/* Forecast */}
-        <div className="flex justify-between items-center w-full px-1">
-          {forecast.slice(0, 3).map((w, i) => (
-            <div key={i} className="flex flex-col items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity cursor-default">
-              <span className="text-[10px] text-slate-500 font-mono font-bold tracking-widest">D{i+1}</span>
-              {getWeatherIcon(w, 16)}
-            </div>
-          ))}
-        </div>
-
+      </div>
+      
+      {/* Pagination dots */}
+      <div className="flex justify-center gap-2 mt-3">
+        {Array.from({ length: maxDays + 1 }).map((_, i) => (
+          <button 
+            key={i} 
+            onClick={() => setActiveIndex(i)}
+            className={`w-2 h-2 rounded-full transition-all ${activeIndex === i ? 'bg-slate-800 scale-125' : 'bg-slate-300 hover:bg-slate-400'}`} 
+          />
+        ))}
       </div>
     </div>
   );
