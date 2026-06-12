@@ -3,6 +3,8 @@ import { createServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import OpenAI from 'openai';
 
@@ -11,6 +13,9 @@ import authRoutes from './routes/auth.js';
 import islandRoutes from './routes/islands.js';
 import friendRoutes from './routes/friends.js';
 import chatRoutes from './routes/chat.js';
+import mailboxRouter from './routes/mailbox.js';
+import visitorsRouter from './routes/visitors.js';
+import bottlesRouter from './routes/bottles.js';
 import { setupSocket } from './socket.js';
 
 dotenv.config({ path: '.env.local' });
@@ -19,6 +24,7 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 3001;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Socket.IO setup
 const io = new SocketServer(httpServer, {
@@ -35,6 +41,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
+app.use('/avatars', express.static(path.join(__dirname, '..', 'data', 'avatars')));
 
 // Initialize database
 getDb();
@@ -44,6 +51,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/islands', islandRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/mailbox', mailboxRouter);
+app.use('/api/visitors', visitorsRouter);
+app.use('/api/bottles', bottlesRouter);
 
 // AI Narration endpoint (preserved from original server.js)
 const apiKey = process.env.DEEPSEEK_API_KEY;

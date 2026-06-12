@@ -1,13 +1,59 @@
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text } from '@react-three/drei';
-import { Suspense } from 'react';
+import { Suspense, useRef, useEffect } from 'react';
 import { Terrain } from './Terrain';
 import { Water } from './Water';
 import { SkySystem, WeatherSystem, FirefliesSystem } from './SkySystem';
 import { Assets } from './Assets';
 import * as THREE from 'three';
-import { EffectComposer, Bloom, Vignette, HueSaturation } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Vignette, HueSaturation, DepthOfField } from '@react-three/postprocessing';
 import { useGameStore } from '../store';
+
+// WASD pans the camera (and orbit target) along the camera's horizontal axes
+function WASDControls({ controlsRef }: { controlsRef: React.RefObject<any> }) {
+  const keys = useRef<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      keys.current[e.key.toLowerCase()] = true;
+    };
+    const up = (e: KeyboardEvent) => { keys.current[e.key.toLowerCase()] = false; };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+    };
+  }, []);
+
+  useFrame((state, delta) => {
+    const c = controlsRef.current;
+    if (!c) return;
+    const k = keys.current;
+    let mx = 0, mz = 0;
+    if (k['w']) mz += 1;
+    if (k['s']) mz -= 1;
+    if (k['a']) mx -= 1;
+    if (k['d']) mx += 1;
+    if (!mx && !mz) return;
+
+    const speed = 25 * delta;
+    const fwd = new THREE.Vector3();
+    state.camera.getWorldDirection(fwd);
+    fwd.y = 0;
+    fwd.normalize();
+    const right = new THREE.Vector3().crossVectors(fwd, state.camera.up).normalize();
+    const move = new THREE.Vector3()
+      .addScaledVector(fwd, mz * speed)
+      .addScaledVector(right, mx * speed);
+    state.camera.position.add(move);
+    c.target.add(move);
+  });
+
+  return null;
+}
 
 export function GameCanvas() {
   const isDrawing = useGameStore(state => state.isDrawing);
@@ -17,6 +63,7 @@ export function GameCanvas() {
   // Disable orbit controls if we are using brush, or if we have a tool selected maybe?
   // Let's only disable it while actively drawing, so user can still rotate if they drag outside terrain.
   const enableOrbitControls = !isDrawing;
+  const orbitRef = useRef<any>(null);
 
   return (
     <div className="w-full h-full bg-slate-950">
@@ -61,7 +108,9 @@ export function GameCanvas() {
              <Vignette eskil={false} offset={0.15} darkness={0.8} />
           </EffectComposer>
         </Suspense>
-        <OrbitControls 
+        <WASDControls controlsRef={orbitRef} />
+        <OrbitControls
+          ref={orbitRef}
           enabled={enableOrbitControls}
           autoRotate={screen !== 'PLAYING'}
           autoRotateSpeed={0.8}

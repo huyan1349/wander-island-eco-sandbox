@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { AudioSystem } from './lib/audio';
 
-export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench';
+export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge';
 
 export interface Vector3Data {
   x: number;
@@ -11,7 +11,7 @@ export interface Vector3Data {
 
 export interface PlacedAsset {
   id: string;
-  type: 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'streetlamp' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'sub_island' | 'birdhouse' | 'hoe' | 'farmland' | 'crop_wheat' | 'crop_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench';
+  type: 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'streetlamp' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'sub_island' | 'birdhouse' | 'hoe' | 'farmland' | 'crop_wheat' | 'crop_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge';
   position: Vector3Data;
   rotation: Vector3Data;
   scale?: number;
@@ -38,6 +38,8 @@ export interface AuthUser {
   id: string;
   username: string;
   avatar: string;
+  motto: string;
+  visitorCount?: number;
 }
 
 export interface ToastItem {
@@ -101,6 +103,14 @@ interface GameState {
   
   weather: 'sunny' | 'rainy' | 'snowy';
   setWeather: (weather: 'sunny' | 'rainy' | 'snowy') => void;
+
+  waveIntensity: number;
+  setWaveIntensity: (v: number) => void;
+
+  balloonColor: string;
+  setBalloonColor: (c: string) => void;
+  balloonStyle: 'lowpoly' | 'striped';
+  setBalloonStyle: (s: 'lowpoly' | 'striped') => void;
   
   season: 'spring' | 'summer' | 'autumn' | 'winter';
   setSeason: (season: 'spring' | 'summer' | 'autumn' | 'winter') => void;
@@ -222,6 +232,14 @@ export const useGameStore = create<GameState>((set, get) => ({
   
   weather: 'sunny',
   setWeather: (weather) => set({ weather: weather }),
+
+  waveIntensity: 1.0,
+  setWaveIntensity: (v) => set({ waveIntensity: v }),
+
+  balloonColor: '#e11d48',
+  setBalloonColor: (c) => set({ balloonColor: c }),
+  balloonStyle: 'lowpoly',
+  setBalloonStyle: (s) => set({ balloonStyle: s }),
   
   season: 'summer',
   setSeason: (season) => set({ season: season }),
@@ -263,7 +281,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     'treeA', 'treeB', 'rock', 'terrainUp', 'terrainDown', 'eraser',
     'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'streetlamp', 'house', 'windmill', 
     'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
-    'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench'
+    'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge'
   ],
   unlockAsset: (assetId, cost) => {
       const state = get();

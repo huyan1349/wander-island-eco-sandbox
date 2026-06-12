@@ -72,7 +72,56 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_friends_friend ON friends(friend_id);
     CREATE INDEX IF NOT EXISTS idx_chat_from ON chat_messages(from_id);
     CREATE INDEX IF NOT EXISTS idx_chat_to ON chat_messages(to_id);
+
+    CREATE TABLE IF NOT EXISTS mailbox (
+      id TEXT PRIMARY KEY,
+      from_id TEXT NOT NULL,
+      to_id TEXT NOT NULL,
+      subject TEXT DEFAULT '',
+      content TEXT NOT NULL,
+      gift_type TEXT DEFAULT NULL,
+      read INTEGER DEFAULT 0,
+      created_at INTEGER DEFAULT (unixepoch()),
+      FOREIGN KEY (from_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (to_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS visitor_log (
+      id TEXT PRIMARY KEY,
+      island_id TEXT NOT NULL,
+      visitor_id TEXT NOT NULL,
+      message TEXT DEFAULT '',
+      rating INTEGER DEFAULT 0,
+      created_at INTEGER DEFAULT (unixepoch()),
+      FOREIGN KEY (island_id) REFERENCES islands(id) ON DELETE CASCADE,
+      FOREIGN KEY (visitor_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS messages_in_bottle (
+      id TEXT PRIMARY KEY,
+      sender_id TEXT NOT NULL,
+      content TEXT NOT NULL,
+      mood TEXT DEFAULT 'happy',
+      found_by TEXT DEFAULT NULL,
+      found_at INTEGER DEFAULT NULL,
+      reply TEXT DEFAULT NULL,
+      reply_at INTEGER DEFAULT NULL,
+      created_at INTEGER DEFAULT (unixepoch()),
+      FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (found_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_mailbox_to ON mailbox(to_id, read);
+    CREATE INDEX IF NOT EXISTS idx_mailbox_from ON mailbox(from_id);
+    CREATE INDEX IF NOT EXISTS idx_visitor_island ON visitor_log(island_id);
+    CREATE INDEX IF NOT EXISTS idx_bottle_found ON messages_in_bottle(found_by);
   `);
+
+  try {
+    db.exec('ALTER TABLE users ADD COLUMN motto TEXT DEFAULT \'\'');
+  } catch {
+    // motto column already exists
+  }
 }
 
 export default getDb;

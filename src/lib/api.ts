@@ -168,11 +168,92 @@ class ApiClient {
   }
 
   // Profile
-  async updateProfile(updates: { username?: string; avatar?: string }) {
+  async updateProfile(updates: { username?: string; motto?: string; avatarFile?: File }) {
+    if (updates.avatarFile) {
+      const formData = new FormData();
+      if (updates.username) formData.append('username', updates.username);
+      if (updates.motto !== undefined) formData.append('motto', updates.motto);
+      formData.append('avatar', updates.avatarFile);
+
+      const headers: Record<string, string> = {};
+      if (this.getToken()) {
+        headers['Authorization'] = `Bearer ${this.getToken()}`;
+      }
+
+      const res = await fetch(`${API_BASE}/api/auth/profile`, {
+        method: 'PUT',
+        headers,
+        body: formData
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Update failed');
+      return data as { user: any };
+    }
+
     return this.request<{ user: any }>('/api/auth/profile', {
       method: 'PUT',
-      body: JSON.stringify(updates)
+      body: JSON.stringify({ username: updates.username, motto: updates.motto })
     });
+  }
+
+  // Mailbox
+  async getMailbox() {
+    return this.request<{ mails: any[] }>('/api/mailbox');
+  }
+
+  async sendMail(toId: string, subject: string, content: string, giftType?: string) {
+    return this.request<{ mail: any }>('/api/mailbox', {
+      method: 'POST',
+      body: JSON.stringify({ toId, subject, content, giftType })
+    });
+  }
+
+  async markMailRead(id: string) {
+    return this.request<{ success: boolean }>(`/api/mailbox/${id}/read`, { method: 'PUT' });
+  }
+
+  async getUnreadMailCount() {
+    return this.request<{ count: number }>('/api/mailbox/unread');
+  }
+
+  async deleteMail(id: string) {
+    return this.request<{ success: boolean }>(`/api/mailbox/${id}`, { method: 'DELETE' });
+  }
+
+  // Visitors
+  async getVisitors(islandId: string) {
+    return this.request<{ visitors: any[]; totalVisitors: number }>(`/api/visitors/${islandId}`);
+  }
+
+  async leaveVisitorLog(islandId: string, message: string, rating: number) {
+    return this.request<{ visitor: any }>('/api/visitors', {
+      method: 'POST',
+      body: JSON.stringify({ islandId, message, rating })
+    });
+  }
+
+  // Bottles
+  async throwBottle(content: string, mood: string) {
+    return this.request<{ success: boolean; id: string }>('/api/bottles', {
+      method: 'POST',
+      body: JSON.stringify({ content, mood })
+    });
+  }
+
+  async fishBottle() {
+    return this.request<{ bottle: any | null }>('/api/bottles/fish');
+  }
+
+  async replyBottle(id: string, reply: string) {
+    return this.request<{ success: boolean }>(`/api/bottles/${id}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({ reply })
+    });
+  }
+
+  async getSentBottles() {
+    return this.request<{ bottles: any[] }>('/api/bottles/sent');
   }
 
   // Stats
