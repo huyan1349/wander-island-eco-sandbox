@@ -20,7 +20,7 @@ router.post('/', authMiddleware, (req: AuthRequest, res: Response) => {
     .run(id, req.userId, content.trim(), mood || 'happy');
 
   const bottle = db.prepare('SELECT * FROM messages_in_bottle WHERE id = ?').get(id);
-  res.json({ bottle });
+  res.json({ success: true, id: bottle.id, bottle });
 });
 
 // GET /api/bottles/fish - Randomly fish a bottle

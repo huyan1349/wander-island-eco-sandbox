@@ -3,7 +3,7 @@ import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { X, BookOpen, User, Star } from 'lucide-react';
 
-export const VisitorBookModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const VisitorBookModal: React.FC<{ onClose: () => void; embedded?: boolean }> = ({ onClose, embedded }) => {
   const [visitors, setVisitors] = useState<any[]>([]);
   const [totalVisitors, setTotalVisitors] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -55,8 +55,9 @@ export const VisitorBookModal: React.FC<{ onClose: () => void }> = ({ onClose })
   };
 
   return (
-    <div className="hand-drawn-panel w-[700px] max-h-[85vh] p-0 flex flex-col animate-slide-up ring-1 overflow-hidden">
+    <div className={embedded ? "flex flex-col h-full" : "hand-drawn-panel w-[700px] max-h-[85vh] p-0 flex flex-col animate-slide-up ring-1 overflow-hidden"}>
       {/* Header */}
+      {!embedded && (
       <div className="flex justify-between items-center border-b-2 border-slate-800 p-8 pb-6">
         <div className="flex items-center gap-3">
           <BookOpen size={24} className="text-violet-600" />
@@ -66,8 +67,9 @@ export const VisitorBookModal: React.FC<{ onClose: () => void }> = ({ onClose })
           <X size={24} strokeWidth={3} className="text-slate-800" />
         </button>
       </div>
+      )}
 
-      <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+      <div className={embedded ? "flex-1 overflow-y-auto custom-scrollbar" : "flex-1 overflow-y-auto p-8 custom-scrollbar"}>
         {/* Visitor Counter */}
         <div className="hand-drawn-panel p-6 mb-6 bg-gradient-to-r from-violet-50 to-amber-50" style={{ borderWidth: '2px' }}>
           <div className="flex items-center justify-between">

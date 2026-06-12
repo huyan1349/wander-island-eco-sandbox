@@ -3,7 +3,7 @@ import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { X, Mail, Send, Trash2, ArrowLeft, Pen, User } from 'lucide-react';
 
-export const MailboxModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }> = ({ onClose, embedded }) => {
   const authUser = useGameStore(state => state.authUser);
   const [mails, setMails] = useState<any[]>([]);
   const [selectedMail, setSelectedMail] = useState<any>(null);
@@ -72,8 +72,9 @@ export const MailboxModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   };
 
   return (
-    <div className="hand-drawn-panel w-[700px] max-h-[85vh] p-0 flex flex-col animate-slide-up ring-1 overflow-hidden">
+    <div className={embedded ? "flex flex-col h-full" : "hand-drawn-panel w-[700px] max-h-[85vh] p-0 flex flex-col animate-slide-up ring-1 overflow-hidden"}>
       {/* Header */}
+      {!embedded && (
       <div className="flex justify-between items-center border-b-2 border-slate-800 p-8 pb-6">
         <div className="flex items-center gap-3">
           <Mail size={24} className="text-amber-600" />
@@ -91,8 +92,9 @@ export const MailboxModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           </button>
         </div>
       </div>
+      )}
 
-      <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+      <div className={embedded ? "flex-1 overflow-y-auto custom-scrollbar" : "flex-1 overflow-y-auto p-8 custom-scrollbar"}>
         {/* Compose Mode */}
         {isWriting ? (
           <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4">

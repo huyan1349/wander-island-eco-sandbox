@@ -9,12 +9,13 @@ import {
 
 type Section = 'board' | 'bottle' | 'showcase';
 
-export const SocialPlaza: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const SocialPlaza: React.FC<{ onClose: () => void; embedded?: boolean }> = ({ onClose, embedded }) => {
   const [activeSection, setActiveSection] = useState<Section>('board');
 
   return (
-    <div className="hand-drawn-panel w-[900px] max-h-[85vh] p-0 flex flex-col animate-slide-up ring-1 overflow-hidden">
+    <div className={embedded ? "flex flex-col h-full" : "hand-drawn-panel w-[900px] max-h-[85vh] p-0 flex flex-col animate-slide-up ring-1 overflow-hidden"}>
       {/* Header */}
+      {!embedded && (
       <div className="flex justify-between items-center border-b-2 border-slate-800 p-8 pb-4">
         <div className="flex items-center gap-3">
           <Compass size={24} className="text-cyan-600" />
@@ -24,6 +25,7 @@ export const SocialPlaza: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <X size={24} strokeWidth={3} className="text-slate-800" />
         </button>
       </div>
+      )}
 
       {/* Section Tabs */}
       <div className="flex gap-2 px-8 py-3 border-b border-slate-200">
