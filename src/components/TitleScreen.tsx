@@ -33,7 +33,7 @@ export const TitleScreen: React.FC = () => {
                 <span className={"text-sm font-bold hand-drawn-title " + (titleTheme === 'white' ? "text-slate-700" : "text-slate-700")}>Wander Island</span>
                 <span className={"text-xs font-bold " + (titleTheme === 'white' ? "text-slate-600" : "text-slate-600")}>流浪岛 . 测试版 v2.0.0 Multiplayer</span>
                 {authUser && (
-                  <div className="flex items-center gap-3 mt-3 hand-drawn-panel px-4 py-2">
+                  <div className="flex items-center gap-3 mt-3">
                     <div className="relative">
                       <div className="w-10 h-10 bg-gradient-to-tr from-emerald-500 to-cyan-500 rounded-full flex items-center justify-center border-2 border-slate-800 shadow-inner overflow-hidden">
                         {authUser.avatar ? (
@@ -44,7 +44,7 @@ export const TitleScreen: React.FC = () => {
                       </div>
                       <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-800 animate-pulse" />
                     </div>
-                    <span className="text-xs font-bold text-slate-800 tracking-wide">{authUser.username}</span>
+                    <span className="text-xs font-bold text-slate-700 tracking-wide">{authUser.username}</span>
                   </div>
                 )}
             </div>
