@@ -394,6 +394,7 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
   const targetPos = useRef(new THREE.Vector3(position.x, position.y, position.z));
   const currentPos = useRef(new THREE.Vector3(position.x, position.y, position.z));
   const currentScale = useRef(0);
+  const aiTickRef = useRef(0);
   
   const hunger = useRef(Math.random() * 50);
   const stateRef = useRef<any>('wander');
@@ -412,111 +413,108 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
     let speed = 0.3;
 
     hunger.current += delta;
+    aiTickRef.current += delta;
 
-    // AI Logic
-    let nearestWolf = null;
-    let nearestWolfDx = 0;
-    let nearestWolfDz = 0;
-    let nearestTree = null;
-    let nearestFood = null;
-    let wolfDistSq = Infinity;
-    for (const asset of allAssets) {
-        if (asset.type === 'wolf') {
-            const dx = currentPos.current.x - asset.position.x;
-            const dz = currentPos.current.z - asset.position.z;
-            const distSq = dx * dx + dz * dz;
-            if (distSq < wolfDistSq) {
-                wolfDistSq = distSq;
-                nearestWolf = asset;
-                nearestWolfDx = dx;
-                nearestWolfDz = dz;
+    if (aiTickRef.current >= 0.18) {
+        aiTickRef.current = 0;
+
+        // AI Logic
+        let nearestWolf = null;
+        let nearestWolfDx = 0;
+        let nearestWolfDz = 0;
+        let nearestTree = null;
+        let nearestFood = null;
+        let wolfDistSq = Infinity;
+        for (const asset of allAssets) {
+            if (asset.type === 'wolf') {
+                const dx = currentPos.current.x - asset.position.x;
+                const dz = currentPos.current.z - asset.position.z;
+                const distSq = dx * dx + dz * dz;
+                if (distSq < wolfDistSq) {
+                    wolfDistSq = distSq;
+                    nearestWolf = asset;
+                    nearestWolfDx = dx;
+                    nearestWolfDz = dz;
+                }
+            } else if (!nearestTree && (asset.type === 'treeA' || asset.type === 'treeB')) {
+                nearestTree = asset;
+            } else if (!nearestFood && (asset.type === 'crop_wheat' || asset.type === 'crop_carrot') && asset.growthProgress === 1) {
+                nearestFood = asset;
             }
-        } else if (!nearestTree && (asset.type === 'treeA' || asset.type === 'treeB')) {
-            nearestTree = asset;
-        } else if (!nearestFood && (asset.type === 'crop_wheat' || asset.type === 'crop_carrot') && asset.growthProgress === 1) {
-            nearestFood = asset;
         }
-    }
 
-    // Flee if wolf is within 15 units
-    if (wolfDistSq < 15 * 15) {
-        stateRef.current = 'flee';
-    } else if (hunger.current > 30) {
-        stateRef.current = 'eat';
-    } else {
-        stateRef.current = 'wander';
-    }
-
-    // Starvation Check
-    const grassHealth = useGameStore.getState().grassHealth;
-    if (grassHealth <= 0 && Math.random() < 0.001 && !nearestFood) {
-        useGameStore.getState().removeAsset(id);
-        return;
-    }
-
-    if (stateRef.current === 'flee' && nearestWolf) {
-        speed = 4.0; // Fast fleeing
-        const wolfLen = Math.hypot(nearestWolfDx, nearestWolfDz) || 1;
-        const dirX = nearestWolfDx / wolfLen;
-        const dirZ = nearestWolfDz / wolfLen;
-        let newTargetX = currentPos.current.x + dirX * 4;
-        let newTargetZ = currentPos.current.z + dirZ * 4;
-        if (isWalkable(newTargetX, newTargetZ, allAssets)) {
-            targetPos.current.set(newTargetX, 0, newTargetZ);
+        if (wolfDistSq < 15 * 15) {
+            stateRef.current = 'flee';
+        } else if (hunger.current > 30) {
+            stateRef.current = 'eat';
         } else {
-            // Deflect
-            const cos45 = Math.SQRT1_2;
-            const sin45 = Math.SQRT1_2;
-            const rightDirX = dirX * cos45 + dirZ * sin45;
-            const rightDirZ = -dirX * sin45 + dirZ * cos45;
-            newTargetX = currentPos.current.x + rightDirX * 4;
-            newTargetZ = currentPos.current.z + rightDirZ * 4;
+            stateRef.current = 'wander';
+        }
+
+        const grassHealth = useGameStore.getState().grassHealth;
+        if (grassHealth <= 0 && Math.random() < 0.001 && !nearestFood) {
+            useGameStore.getState().removeAsset(id);
+            return;
+        }
+
+        if (stateRef.current === 'flee' && nearestWolf) {
+            const wolfLen = Math.hypot(nearestWolfDx, nearestWolfDz) || 1;
+            const dirX = nearestWolfDx / wolfLen;
+            const dirZ = nearestWolfDz / wolfLen;
+            let newTargetX = currentPos.current.x + dirX * 4;
+            let newTargetZ = currentPos.current.z + dirZ * 4;
             if (isWalkable(newTargetX, newTargetZ, allAssets)) {
                 targetPos.current.set(newTargetX, 0, newTargetZ);
             } else {
-                targetPos.current.copy(currentPos.current); // stop
+                const cos45 = Math.SQRT1_2;
+                const sin45 = Math.SQRT1_2;
+                const rightDirX = dirX * cos45 + dirZ * sin45;
+                const rightDirZ = -dirX * sin45 + dirZ * cos45;
+                newTargetX = currentPos.current.x + rightDirX * 4;
+                newTargetZ = currentPos.current.z + rightDirZ * 4;
+                if (isWalkable(newTargetX, newTargetZ, allAssets)) {
+                    targetPos.current.set(newTargetX, 0, newTargetZ);
+                } else {
+                    targetPos.current.copy(currentPos.current);
+                }
             }
-        }
-    } else if (stateRef.current === 'eat') {
-        speed = 0.5;
-        if (nearestFood) {
-            targetPos.current.set(nearestFood.position.x, 0, nearestFood.position.z);
-            const foodDx = nearestFood.position.x - currentPos.current.x;
-            const foodDz = nearestFood.position.z - currentPos.current.z;
-            if (foodDx * foodDx + foodDz * foodDz < 1.0) {
-                // Eat the crop
-                useGameStore.getState().removeAsset(nearestFood.id);
-                hunger.current = 0;
+        } else if (stateRef.current === 'eat') {
+            if (nearestFood) {
+                targetPos.current.set(nearestFood.position.x, 0, nearestFood.position.z);
+                const foodDx = nearestFood.position.x - currentPos.current.x;
+                const foodDz = nearestFood.position.z - currentPos.current.z;
+                if (foodDx * foodDx + foodDz * foodDz < 1.0) {
+                    useGameStore.getState().removeAsset(nearestFood.id);
+                    hunger.current = 0;
+                }
+            } else if (nearestTree) {
+                targetPos.current.set(nearestTree.position.x, 0, nearestTree.position.z);
+                const treeDx = nearestTree.position.x - currentPos.current.x;
+                const treeDz = nearestTree.position.z - currentPos.current.z;
+                if (treeDx * treeDx + treeDz * treeDz < 9) {
+                    hunger.current = 0;
+                }
+            } else {
+                const randX = currentPos.current.x + (Math.random() - 0.5) * 4;
+                const randZ = currentPos.current.z + (Math.random() - 0.5) * 4;
+                if (isWalkable(randX, randZ, allAssets)) {
+                    targetPos.current.set(randX, 0, randZ);
+                }
+                if (Math.random() < 0.01) hunger.current = 0;
             }
-        } else if (nearestTree) {
-            // Find grass by finding trees (forest area)
-            targetPos.current.set(nearestTree.position.x, 0, nearestTree.position.z);
-            const treeDx = nearestTree.position.x - currentPos.current.x;
-            const treeDz = nearestTree.position.z - currentPos.current.z;
-            if (treeDx * treeDx + treeDz * treeDz < 9) {
-                hunger.current = 0; // Found grass near tree
-            }
-        } else {
-            // No trees, just wander
-            const randX = currentPos.current.x + (Math.random() - 0.5) * 4;
-            const randZ = currentPos.current.z + (Math.random() - 0.5) * 4;
+            stateRef.current = 'wander';
+        } else if (Math.random() < 0.01) {
+            const randX = currentPos.current.x + (Math.random() - 0.5) * 8;
+            const randZ = currentPos.current.z + (Math.random() - 0.5) * 8;
             if (isWalkable(randX, randZ, allAssets)) {
                 targetPos.current.set(randX, 0, randZ);
             }
-            if (Math.random() < 0.01) hunger.current = 0; // randomly find grass
-        }
-        stateRef.current = 'wander';
-    } else {
-        // Wander
-        speed = 0.3;
-        if (Math.random() < 0.01) {
-           const randX = currentPos.current.x + (Math.random() - 0.5) * 8;
-           const randZ = currentPos.current.z + (Math.random() - 0.5) * 8;
-           if (isWalkable(randX, randZ, allAssets)) {
-               targetPos.current.set(randX, 0, randZ);
-           }
         }
     }
+
+    if (stateRef.current === 'flee') speed = 4.0;
+    else if (stateRef.current === 'eat') speed = 0.5;
+    else speed = 0.3;
     
     // Move towards target
     const nextX = THREE.MathUtils.lerp(currentPos.current.x, targetPos.current.x, delta * speed);
@@ -630,6 +628,7 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
   const targetPos = useRef(new THREE.Vector3(position.x, position.y, position.z));
   const currentPos = useRef(new THREE.Vector3(position.x, position.y, position.z));
   const currentScale = useRef(0);
+  const aiTickRef = useRef(0);
   
   const stateRef = useRef<any>('wander');
   
@@ -645,42 +644,44 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
     const t = state.clock.getElapsedTime();
     const allAssets = useGameStore.getState().assets;
     let speed = 0.8;
+    aiTickRef.current += delta;
 
-    // AI Logic
-    let nearestDeer = null;
-    let deerDistSq = Infinity;
-    for (const asset of allAssets) {
-        if (asset.type !== 'deer') continue;
-        const dx = currentPos.current.x - asset.position.x;
-        const dz = currentPos.current.z - asset.position.z;
-        const distSq = dx * dx + dz * dz;
-        if (distSq < deerDistSq) {
-            deerDistSq = distSq;
-            nearestDeer = asset;
+    if (aiTickRef.current >= 0.18) {
+        aiTickRef.current = 0;
+
+        let nearestDeer = null;
+        let deerDistSq = Infinity;
+        for (const asset of allAssets) {
+            if (asset.type !== 'deer') continue;
+            const dx = currentPos.current.x - asset.position.x;
+            const dz = currentPos.current.z - asset.position.z;
+            const distSq = dx * dx + dz * dz;
+            if (distSq < deerDistSq) {
+                deerDistSq = distSq;
+                nearestDeer = asset;
+            }
+        }
+
+        if (nearestDeer && deerDistSq < 25 * 25) {
+            stateRef.current = 'chase';
+            targetPos.current.set(nearestDeer.position.x, 0, nearestDeer.position.z);
+            if (deerDistSq < 4) {
+                useGameStore.getState().spawnVFX('blood', nearestDeer.position);
+                useGameStore.getState().removeAsset(nearestDeer.id);
+            }
+        } else {
+            stateRef.current = 'wander';
+            if (Math.random() < 0.01) {
+               const randX = currentPos.current.x + (Math.random() - 0.5) * 15;
+               const randZ = currentPos.current.z + (Math.random() - 0.5) * 15;
+               if (isWalkable(randX, randZ, allAssets)) {
+                   targetPos.current.set(randX, 0, randZ);
+               }
+            }
         }
     }
 
-    if (nearestDeer && deerDistSq < 25 * 25) {
-        stateRef.current = 'chase';
-        targetPos.current.set(nearestDeer.position.x, 0, nearestDeer.position.z);
-        speed = 4.5; // Fast hunting speed!
-        
-        // Physical collision check: eat the deer!
-        if (deerDistSq < 4) {
-            useGameStore.getState().spawnVFX('blood', nearestDeer.position);
-            useGameStore.getState().removeAsset(nearestDeer.id);
-        }
-    } else {
-        stateRef.current = 'wander';
-        speed = 0.8;
-        if (Math.random() < 0.01) {
-           const randX = currentPos.current.x + (Math.random() - 0.5) * 15;
-           const randZ = currentPos.current.z + (Math.random() - 0.5) * 15;
-           if (isWalkable(randX, randZ, allAssets)) {
-               targetPos.current.set(randX, 0, randZ);
-           }
-        }
-    }
+    speed = stateRef.current === 'chase' ? 4.5 : 0.8;
 
     const nextX = THREE.MathUtils.lerp(currentPos.current.x, targetPos.current.x, delta * speed);
     const nextZ = THREE.MathUtils.lerp(currentPos.current.z, targetPos.current.z, delta * speed);
@@ -3151,28 +3152,44 @@ export function CherryTree(props: any) {
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
     if (leavesRef.current) {
-      leavesRef.current.rotation.y = Math.sin(clock.elapsedTime * 0.8) * 0.05;
-      leavesRef.current.position.y = 1.5 + Math.sin(clock.elapsedTime * 2) * 0.02;
+      // Gentle, complex sway
+      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 0.5) * 0.04;
+      leavesRef.current.rotation.x = Math.cos(clock.elapsedTime * 0.6) * 0.04;
     }
   });
   return (
     <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
-      <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.12, 0.18, 1, 5]} />
-        <meshStandardMaterial color="#451a03" flatShading />
+      {/* Crooked, organic trunk */}
+      <mesh position={[0, 0.4, 0]} rotation={[0, 0, 0.1]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.15, 0.2, 0.8, 6]} />
+        <meshStandardMaterial color="#3f2e20" roughness={0.9} flatShading />
       </mesh>
-      <group ref={leavesRef} position={[0, 1.5, 0]}>
-        <mesh castShadow receiveShadow>
-          <dodecahedronGeometry args={[1.0, 0]} />
-          <meshStandardMaterial color="#fbcfe8" flatShading />
+      <mesh position={[0.08, 1.0, 0]} rotation={[0, 0, 0.2]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.1, 0.15, 0.8, 6]} />
+        <meshStandardMaterial color="#3f2e20" roughness={0.9} flatShading />
+      </mesh>
+      
+      {/* Voluminous, layered canopy */}
+      <group ref={leavesRef} position={[0.15, 1.6, 0]}>
+        <mesh position={[0, 0, 0]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[1.2, 1]} />
+          <meshStandardMaterial color="#fbcfe8" roughness={0.8} flatShading />
         </mesh>
-        <mesh position={[0.5, 0.2, 0.5]} castShadow receiveShadow>
-          <dodecahedronGeometry args={[0.6, 0]} />
-          <meshStandardMaterial color="#f9a8d4" flatShading />
+        <mesh position={[0.6, -0.2, 0.4]} rotation={[0.2, 0.5, 0]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[0.9, 1]} />
+          <meshStandardMaterial color="#f9a8d4" roughness={0.8} flatShading />
         </mesh>
-        <mesh position={[-0.4, 0.3, -0.4]} castShadow receiveShadow>
-          <dodecahedronGeometry args={[0.7, 0]} />
-          <meshStandardMaterial color="#f472b6" flatShading />
+        <mesh position={[-0.5, 0.3, 0.5]} rotation={[0.5, 0.2, 0]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[0.8, 1]} />
+          <meshStandardMaterial color="#fdf2f8" roughness={0.8} flatShading />
+        </mesh>
+        <mesh position={[-0.4, -0.1, -0.6]} rotation={[-0.2, 0.1, 0]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[1.0, 1]} />
+          <meshStandardMaterial color="#f472b6" roughness={0.8} flatShading />
+        </mesh>
+        <mesh position={[0.4, 0.4, -0.4]} rotation={[0.1, -0.2, 0]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[0.7, 1]} />
+          <meshStandardMaterial color="#f9a8d4" roughness={0.8} flatShading />
         </mesh>
       </group>
     </group>
@@ -3180,63 +3197,85 @@ export function CherryTree(props: any) {
 }
 
 export function Bamboo(props: any) {
-  const ref = usePopIn(props.scale || 1);
+  const ref = usePopIn(props.scale || 1.2);
   const groupRef = useRef<any>(null);
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
     if (groupRef.current) {
-      // Bamboo sways more noticeably
-      groupRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.5 + props.position.x) * 0.1;
-      groupRef.current.rotation.x = Math.sin(clock.elapsedTime * 1.2 + props.position.z) * 0.05;
+      // Elegant, sweeping bamboo sway
+      groupRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.2 + props.position.x) * 0.12;
+      groupRef.current.rotation.x = Math.sin(clock.elapsedTime * 0.8 + props.position.z) * 0.08;
     }
   });
+
+  const BambooStalk = ({ x, z, h, rotZ }: any) => (
+    <group position={[x, 0, z]} rotation={[0, 0, rotZ]}>
+      {[...Array(5)].map((_, i) => (
+        <group key={i} position={[0, i * (h / 5) + (h / 10), 0]}>
+          <mesh castShadow receiveShadow>
+            <cylinderGeometry args={[0.04, 0.04, (h / 5) - 0.02, 5]} />
+            <meshStandardMaterial color="#22c55e" roughness={0.7} flatShading />
+          </mesh>
+          <mesh position={[0, (h / 10) - 0.01, 0]}>
+            <cylinderGeometry args={[0.045, 0.045, 0.02, 5]} />
+            <meshStandardMaterial color="#166534" roughness={0.9} flatShading />
+          </mesh>
+          {/* Leaves at joints */}
+          {i > 2 && (
+            <mesh position={[0.08, 0, 0]} rotation={[0, 0, -1]}>
+              <planeGeometry args={[0.2, 0.06]} />
+              <meshStandardMaterial color="#15803d" side={THREE.DoubleSide} flatShading />
+            </mesh>
+          )}
+        </group>
+      ))}
+    </group>
+  );
+
   return (
     <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
       <group ref={groupRef}>
-        <mesh position={[-0.2, 1.5, 0]} rotation={[0, 0, -0.05]} castShadow receiveShadow>
-          <cylinderGeometry args={[0.04, 0.04, 3, 5]} />
-          <meshStandardMaterial color="#22c55e" flatShading />
-        </mesh>
-        <mesh position={[0.2, 1.2, 0.1]} rotation={[0, 0, 0.05]} castShadow receiveShadow>
-          <cylinderGeometry args={[0.03, 0.03, 2.4, 5]} />
-          <meshStandardMaterial color="#16a34a" flatShading />
-        </mesh>
-        <mesh position={[0, 1.8, -0.2]} castShadow receiveShadow>
-          <cylinderGeometry args={[0.05, 0.05, 3.6, 5]} />
-          <meshStandardMaterial color="#15803d" flatShading />
-        </mesh>
+        <BambooStalk x={-0.15} z={0.1} h={2.8} rotZ={-0.08} />
+        <BambooStalk x={0.2} z={-0.1} h={3.2} rotZ={0.05} />
+        <BambooStalk x={-0.05} z={-0.2} h={2.4} rotZ={0.02} />
+        <BambooStalk x={0.15} z={0.2} h={2.6} rotZ={-0.03} />
       </group>
     </group>
   );
 }
 
 export function PineTree(props: any) {
-  const ref = usePopIn(props.scale || 1.2);
+  const ref = usePopIn(props.scale || 1.3);
   const leavesRef = useRef<any>(null);
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
     if (leavesRef.current) {
-      leavesRef.current.rotation.y = Math.sin(clock.elapsedTime) * 0.02;
+      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 0.7) * 0.03;
     }
   });
   return (
     <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
       <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.15, 0.2, 1, 5]} />
-        <meshStandardMaterial color="#451a03" flatShading />
+        <cylinderGeometry args={[0.15, 0.25, 1, 6]} />
+        <meshStandardMaterial color="#292524" roughness={1} flatShading />
       </mesh>
       <group ref={leavesRef}>
-        <mesh position={[0, 1.2, 0]} castShadow receiveShadow>
-          <coneGeometry args={[1.0, 1.5, 5]} />
-          <meshStandardMaterial color="#064e3b" flatShading />
+        {/* Asymmetrical, whimsical layered cones */}
+        <mesh position={[0, 1.2, 0]} rotation={[0.05, 0, -0.02]} castShadow receiveShadow>
+          <coneGeometry args={[1.1, 1.6, 7]} />
+          <meshStandardMaterial color="#064e3b" roughness={0.9} flatShading />
         </mesh>
-        <mesh position={[0, 2.0, 0]} castShadow receiveShadow>
-          <coneGeometry args={[0.8, 1.2, 5]} />
-          <meshStandardMaterial color="#065f46" flatShading />
+        <mesh position={[-0.05, 2.1, 0.05]} rotation={[-0.05, 0.5, 0.05]} castShadow receiveShadow>
+          <coneGeometry args={[0.9, 1.4, 7]} />
+          <meshStandardMaterial color="#065f46" roughness={0.9} flatShading />
         </mesh>
-        <mesh position={[0, 2.7, 0]} castShadow receiveShadow>
-          <coneGeometry args={[0.6, 1.0, 5]} />
-          <meshStandardMaterial color="#047857" flatShading />
+        <mesh position={[0.05, 2.9, -0.05]} rotation={[0.02, 1.0, -0.05]} castShadow receiveShadow>
+          <coneGeometry args={[0.7, 1.2, 7]} />
+          <meshStandardMaterial color="#047857" roughness={0.9} flatShading />
+        </mesh>
+        <mesh position={[0, 3.6, 0]} rotation={[0, 1.5, 0]} castShadow receiveShadow>
+          <coneGeometry args={[0.4, 0.8, 7]} />
+          <meshStandardMaterial color="#059669" roughness={0.9} flatShading />
         </mesh>
       </group>
     </group>
@@ -3249,63 +3288,94 @@ export function WillowTree(props: any) {
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
     if (leavesRef.current) {
-      // Swishing willow branches
-      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.5) * 0.08;
-      leavesRef.current.rotation.x = Math.sin(clock.elapsedTime * 1.1) * 0.08;
+      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 0.8) * 0.05;
+      // Also sway the hanging vines individually
+      leavesRef.current.children.forEach((child: any, i: number) => {
+        if (i > 0) { // skip the core mesh
+           child.rotation.x = Math.sin(clock.elapsedTime * 1.5 + i) * 0.1;
+           child.rotation.z = Math.cos(clock.elapsedTime * 1.2 + i) * 0.1;
+        }
+      });
     }
   });
   return (
     <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
-      <mesh position={[0, 1.0, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.15, 0.25, 2, 5]} />
-        <meshStandardMaterial color="#3f2e20" flatShading />
+      {/* Thick, gnarled leaning trunk */}
+      <mesh position={[0, 0.8, 0]} rotation={[0, 0, 0.15]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.2, 0.35, 1.8, 6]} />
+        <meshStandardMaterial color="#3f2e20" roughness={1} flatShading />
       </mesh>
-      <group ref={leavesRef} position={[0, 2.0, 0]}>
-        <mesh position={[0, 0.2, 0]} castShadow receiveShadow>
-          <dodecahedronGeometry args={[0.8, 0]} />
-          <meshStandardMaterial color="#84cc16" flatShading />
+      <mesh position={[0.2, 1.8, 0]} rotation={[0, 0, 0.3]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.15, 0.2, 1.2, 6]} />
+        <meshStandardMaterial color="#3f2e20" roughness={1} flatShading />
+      </mesh>
+      
+      <group ref={leavesRef} position={[0.4, 2.3, 0]}>
+        {/* Core canopy */}
+        <mesh castShadow receiveShadow>
+          <dodecahedronGeometry args={[0.8, 1]} />
+          <meshStandardMaterial color="#65a30d" roughness={0.8} flatShading />
         </mesh>
-        {/* Hanging vines */}
-        <mesh position={[-0.6, -0.5, 0]} castShadow receiveShadow>
-          <boxGeometry args={[0.1, 1.5, 0.1]} />
-          <meshStandardMaterial color="#65a30d" flatShading />
-        </mesh>
-        <mesh position={[0.6, -0.6, 0.2]} castShadow receiveShadow>
-          <boxGeometry args={[0.1, 1.8, 0.1]} />
-          <meshStandardMaterial color="#65a30d" flatShading />
-        </mesh>
-        <mesh position={[0, -0.7, -0.6]} castShadow receiveShadow>
-          <boxGeometry args={[0.1, 2.0, 0.1]} />
-          <meshStandardMaterial color="#4d7c0f" flatShading />
-        </mesh>
+        
+        {/* Drooping vine clusters */}
+        {[...Array(8)].map((_, i) => {
+          const angle = (i / 8) * Math.PI * 2;
+          const r = 0.6;
+          const x = Math.cos(angle) * r;
+          const z = Math.sin(angle) * r;
+          const length = 1.2 + (i % 3) * 0.5;
+          return (
+            <group key={i} position={[x, 0, z]}>
+              <mesh position={[0, -length/2, 0]} castShadow receiveShadow>
+                <cylinderGeometry args={[0.04, 0.01, length, 4]} />
+                <meshStandardMaterial color="#84cc16" roughness={0.8} flatShading />
+              </mesh>
+              <mesh position={[0, -length + 0.2, 0]} castShadow receiveShadow>
+                <dodecahedronGeometry args={[0.15, 0]} />
+                <meshStandardMaterial color="#4d7c0f" roughness={0.8} flatShading />
+              </mesh>
+            </group>
+          );
+        })}
       </group>
     </group>
   );
 }
 
 export function Bush(props: any) {
-  const ref = usePopIn(props.scale || 1);
+  const ref = usePopIn(props.scale || 1.2);
   const leavesRef = useRef<any>(null);
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
     if (leavesRef.current) {
-      leavesRef.current.scale.y = 1 + Math.sin(clock.elapsedTime * 3 + props.position.x) * 0.05;
+      // Subtle breathing/rustling effect
+      leavesRef.current.scale.y = 1 + Math.sin(clock.elapsedTime * 2 + props.position.x) * 0.03;
+      leavesRef.current.scale.x = 1 + Math.cos(clock.elapsedTime * 2.5 + props.position.z) * 0.02;
     }
   });
   return (
     <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
-      <group ref={leavesRef} position={[0, 0.4, 0]}>
-        <mesh position={[0, 0, 0]} castShadow receiveShadow>
-          <dodecahedronGeometry args={[0.5, 0]} />
-          <meshStandardMaterial color="#22c55e" flatShading />
+      <group ref={leavesRef} position={[0, 0, 0]}>
+        {/* Soft, plump intersecting spheres mimicking dense leaves */}
+        <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
+          <icosahedronGeometry args={[0.5, 1]} />
+          <meshStandardMaterial color="#22c55e" roughness={0.9} flatShading />
         </mesh>
-        <mesh position={[0.3, -0.1, 0.2]} castShadow receiveShadow>
-          <dodecahedronGeometry args={[0.4, 0]} />
-          <meshStandardMaterial color="#16a34a" flatShading />
+        <mesh position={[0.3, 0.3, 0.3]} castShadow receiveShadow>
+          <icosahedronGeometry args={[0.4, 1]} />
+          <meshStandardMaterial color="#16a34a" roughness={0.9} flatShading />
         </mesh>
-        <mesh position={[-0.3, -0.15, -0.2]} castShadow receiveShadow>
-          <dodecahedronGeometry args={[0.35, 0]} />
-          <meshStandardMaterial color="#15803d" flatShading />
+        <mesh position={[-0.3, 0.25, 0.2]} castShadow receiveShadow>
+          <icosahedronGeometry args={[0.35, 1]} />
+          <meshStandardMaterial color="#15803d" roughness={0.9} flatShading />
+        </mesh>
+        <mesh position={[0.1, 0.3, -0.3]} castShadow receiveShadow>
+          <icosahedronGeometry args={[0.45, 1]} />
+          <meshStandardMaterial color="#4ade80" roughness={0.9} flatShading />
+        </mesh>
+        <mesh position={[-0.2, 0.2, -0.2]} castShadow receiveShadow>
+          <icosahedronGeometry args={[0.3, 1]} />
+          <meshStandardMaterial color="#166534" roughness={0.9} flatShading />
         </mesh>
       </group>
     </group>
