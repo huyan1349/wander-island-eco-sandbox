@@ -85,75 +85,55 @@ function WASDControls({ controlsRef }: { controlsRef: React.RefObject<any> }) {
   return null;
 }
 
-function SmoothZoomControls({
-  controlsRef,
-  enabled,
-  minDistance,
-  maxDistance
-}: {
+function SmoothZoom({ controlsRef, minDistance, maxDistance }: {
   controlsRef: React.RefObject<any>;
-  enabled: boolean;
   minDistance: number;
   maxDistance: number;
 }) {
-  const targetDistance = useRef<number | null>(null);
+  const targetRef = useRef<number | null>(null);
+  const mountedRef = useRef(false);
 
-  useEffect(() => {
-    targetDistance.current = null;
-    if (!enabled) return;
-
+  useFrame(() => {
     const controls = controlsRef.current;
-    const dom = controls?.domElement as HTMLElement | undefined;
-    if (!controls || !dom) return;
+    if (!controls || mountedRef.current) return;
+
+    const dom = controls.domElement as HTMLElement | undefined;
+    if (!dom) return;
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const camera = controls.object as THREE.Camera;
-      const currentDistance = camera.position.distanceTo(controls.target);
-      const baseDistance = targetDistance.current ?? currentDistance;
-      const zoomFactor = Math.exp(e.deltaY * 0.001);
-      targetDistance.current = THREE.MathUtils.clamp(
-        baseDistance * zoomFactor,
+      const current = camera.position.distanceTo(controls.target);
+      targetRef.current = THREE.MathUtils.clamp(
+        current * Math.exp(e.deltaY * 0.024),
         minDistance,
         maxDistance
       );
     };
 
     dom.addEventListener('wheel', onWheel, { passive: false });
-    return () => dom.removeEventListener('wheel', onWheel);
-  }, [controlsRef, enabled, minDistance, maxDistance]);
+    mountedRef.current = true;
+  });
 
   useFrame((_, delta) => {
-    if (!enabled) return;
+    if (targetRef.current === null) return;
     const controls = controlsRef.current;
     if (!controls) return;
 
     const camera = controls.object as THREE.PerspectiveCamera;
-    const currentDistance = camera.position.distanceTo(controls.target);
-
-    if (targetDistance.current === null) {
-      targetDistance.current = currentDistance;
-      return;
-    }
-
-    const nextDistance = THREE.MathUtils.damp(
-      currentDistance,
-      targetDistance.current,
-      14,
-      delta
-    );
+    const current = camera.position.distanceTo(controls.target);
+    const next = THREE.MathUtils.damp(current, targetRef.current, 8, delta);
 
     const offset = camera.position.clone().sub(controls.target);
     if (offset.lengthSq() === 0) return;
-
-    offset.setLength(nextDistance);
+    offset.setLength(next);
     camera.position.copy(controls.target).add(offset);
   });
 
   return null;
 }
 
-export function GameCanvas() {
+export function GameCanvas({ immersive = false }: { immersive?: boolean }) {
   const isDrawing = useGameStore(state => state.isDrawing);
   const screen = useGameStore(state => state.screen);
   const assetCount = useGameStore(state => state.assets.length);
@@ -210,16 +190,11 @@ export function GameCanvas() {
           </EffectComposer>
         </Suspense>
         {!isTouch && <WASDControls controlsRef={orbitRef} />}
-        <SmoothZoomControls
-          controlsRef={orbitRef}
-          enabled={!isTouch && enableOrbitControls}
-          minDistance={5}
-          maxDistance={120}
-        />
+        {!isTouch && <SmoothZoom controlsRef={orbitRef} minDistance={5} maxDistance={120} />}
         <OrbitControls
           ref={orbitRef}
           enabled={enableOrbitControls}
-          autoRotate={screen !== 'PLAYING'}
+          autoRotate={screen !== 'PLAYING' || immersive}
           autoRotateSpeed={0.8}
           maxPolarAngle={Math.PI / 2 - 0.05}
           minDistance={5}
@@ -233,7 +208,7 @@ export function GameCanvas() {
           dampingFactor={0.12}
           rotateSpeed={isTouch ? 0.45 : 0.85}
           enableZoom={isTouch}
-          zoomSpeed={isTouch ? 0.55 : 0.75}
+          zoomSpeed={0.8}
           enablePan={true}
           panSpeed={isTouch ? 0.55 : 0.85}
         />

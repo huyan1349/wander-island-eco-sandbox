@@ -521,7 +521,7 @@ export default function App() {
     >
       {/* Center Canvas */}
       <div className={`absolute inset-0 z-0 transition-all duration-1000 ${screen !== 'PLAYING' ? 'blur-none brightness-100' : 'blur-none brightness-100'}`}>
-        <GameCanvas />
+        <GameCanvas immersive={isImmersive} />
       </div>
 
       {screen === 'TITLE' && <TitleScreen />}
