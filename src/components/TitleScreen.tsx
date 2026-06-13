@@ -138,6 +138,19 @@ export const TitleScreen: React.FC = () => {
                             </>
                         )}
                     </div>
+                    {/* Splash Overlay Logo */}
+                    <div 
+                        className="absolute bottom-12 left-0 w-full flex flex-col items-center justify-center gap-4 transition-opacity duration-1000"
+                        style={{ opacity: splashVisible && splashPhase !== 'AUTHOR' ? 0.8 : 0 }}
+                    >
+                        <svg width="40" height="40" viewBox="0 0 100 100" fill="none" stroke="white" strokeWidth="5" strokeLinejoin="round" className="drop-shadow-lg">
+                            <path d="M15 90 L45 80 L45 10 L15 20 Z" />
+                            <path d="M45 10 L85 20 L85 90 L70 86.25 L70 36.25 L55 32.5 L55 82.5 L45 80 Z" />
+                        </svg>
+                        <span className="text-white/80 text-xs font-bold tracking-[0.3em] drop-shadow-md">
+                            启元开物
+                        </span>
+                    </div>
                 </div>
             )}
 
@@ -226,6 +239,22 @@ export const TitleScreen: React.FC = () => {
                         </span>
                     </button>
                 </div>
+            </div>
+
+            {/* Copyright, Logo & Watermark - Bottom Right */}
+            <div className={`absolute bottom-6 right-8 flex items-end gap-4 pointer-events-auto transition-opacity duration-1000 delay-[1500ms] ${splashPhase === 'DONE' ? 'opacity-80' : 'opacity-0'}`}>
+                <div className="flex flex-col items-end gap-1.5">
+                    <span className={`text-sm font-bold tracking-[0.2em] hand-drawn-title ${titleTheme === 'white' ? "text-white/60" : "text-slate-400/80"}`}>
+                        By HUYAN
+                    </span>
+                    <span className={`text-[10px] font-bold tracking-[0.25em] ${titleTheme === 'white' ? "text-white/60" : "text-slate-500"}`}>
+                        © {new Date().getFullYear()} 启元开物
+                    </span>
+                </div>
+                <svg width="36" height="36" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="5" strokeLinejoin="round" className={titleTheme === 'white' ? "text-white" : "text-slate-800"}>
+                    <path d="M15 90 L45 80 L45 10 L15 20 Z" />
+                    <path d="M45 10 L85 20 L85 90 L70 86.25 L70 36.25 L55 32.5 L55 82.5 L45 80 Z" />
+                </svg>
             </div>
 
             {/* Modals Overlay */}
