@@ -158,7 +158,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Load and play BGM immediately
+    // Load and play title BGM immediately
     const initAudio = async () => {
       AudioSystem.init();
       await AudioSystem.loadBGM('/Tides_of_Mahogany.mp3');
@@ -285,6 +285,15 @@ export default function App() {
   const [envMenuOpen, setEnvMenuOpen] = useState(false);
   const lastToolRef = useRef<ToolType>('none');
   const lastCategoryRef = useRef<string | null>(null);
+
+  // Switch BGM based on screen
+  useEffect(() => {
+    if (screen === 'PLAYING') {
+      AudioSystem.switchBGM('/Glockenspiel_Sunprint.mp3');
+    } else if (screen === 'TITLE' || screen === 'LOGIN' || screen === 'SAVE_SELECT') {
+      AudioSystem.switchBGM('/Tides_of_Mahogany.mp3');
+    }
+  }, [screen]);
 
   // 触屏检测 + tooltip 状态
   const [isTouch, setIsTouch] = useState(false);

@@ -85,6 +85,35 @@ export class AudioSystem {
         this.bgmGain.gain.linearRampToValueAtTime(0.5, t + 4.0);
     }
 
+    static stopBGM() {
+        if (!this.ctx || !this.bgmGain || !this.isBgmPlaying) return;
+        
+        const t = this.ctx.currentTime;
+        // Fade out
+        this.bgmGain.gain.cancelScheduledValues(t);
+        this.bgmGain.gain.linearRampToValueAtTime(0, t + 2.0);
+        
+        // Stop after fade out
+        setTimeout(() => {
+            if (this.bgmSource) {
+                try { this.bgmSource.stop(); } catch {}
+                this.bgmSource = null;
+            }
+            this.isBgmPlaying = false;
+        }, 2200);
+    }
+
+    static async switchBGM(url: string) {
+        // Fade out current BGM, load new one, fade in
+        this.stopBGM();
+        
+        // Wait for fade out
+        await new Promise(resolve => setTimeout(resolve, 2300));
+        
+        await this.loadBGM(url);
+        this.playBGM();
+    }
+
     private static setupEffectsChain() {
         if (!this.ctx) return;
         
