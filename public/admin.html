@@ -5,126 +5,149 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wander Island · 守望台</title>
 <style>
+@font-face{font-family:'Nunito';src:url('/fonts/nunito-latin-300-normal.woff2') format('woff2');font-weight:300;font-display:swap}
 @font-face{font-family:'Nunito';src:url('/fonts/nunito-latin-400-normal.woff2') format('woff2');font-weight:400;font-display:swap}
 @font-face{font-family:'Nunito';src:url('/fonts/nunito-latin-600-normal.woff2') format('woff2');font-weight:600;font-display:swap}
 @font-face{font-family:'Nunito';src:url('/fonts/nunito-latin-700-normal.woff2') format('woff2');font-weight:700;font-display:swap}
 @font-face{font-family:'Nunito';src:url('/fonts/nunito-latin-800-normal.woff2') format('woff2');font-weight:800;font-display:swap}
-@font-face{font-family:'ZCOOL KuaiLe';src:url('/fonts/zcool-kuaile-chinese-simplified-400-normal.woff2') format('woff2');font-weight:400;font-display:swap}
 
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --paper:#fcf8ec;--paper2:#f5edd6;--ink:#2d3436;--ink2:#636e72;
-  --accent:#e17055;--accent2:#d63031;--green:#00b894;--blue:#0984e3;
-  --purple:#6c5ce7;--yellow:#fdcb6e;--border:#2d3436;
-  --sketch:255px 15px 225px 15px/15px 225px 15px 255px;
-  --sketch2:15px 225px 15px 255px/255px 15px 225px 15px;
+  --bg:#0f1117;--bg2:#161822;--bg3:#1c1f2e;--bg4:#252838;
+  --surface:#1a1d2e;--surface2:#212436;
+  --border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.1);
+  --text:#e8e6e3;--text2:#8b8d97;--text3:#5a5c66;
+  --coral:#e17055;--coral2:#ff7675;--coral-bg:rgba(225,112,85,.1);
+  --sage:#00b894;--sage-bg:rgba(0,184,148,.1);
+  --sky:#74b9ff;--sky-bg:rgba(116,185,255,.1);
+  --lavender:#a29bfe;--lavender-bg:rgba(162,155,254,.1);
+  --amber:#fdcb6e;--amber-bg:rgba(253,203,110,.1);
+  --rose:#fd79a8;--rose-bg:rgba(253,121,168,.1);
+  --radius:12px;--radius-sm:8px;--radius-lg:16px;
+  --shadow:0 1px 3px rgba(0,0,0,.3),0 4px 12px rgba(0,0,0,.2);
+  --transition:all .2s cubic-bezier(.4,0,.2,1);
 }
-html{font-size:14px}
-body{font-family:'Nunito',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;
-  background-image:
-    linear-gradient(rgba(0,0,0,.03) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(0,0,0,.03) 1px,transparent 1px);
-  background-size:24px 24px;
-}
+html{font-size:14px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow:hidden}
+
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.15)}
 
 /* ── Login ── */
-.login{display:flex;align-items:center;justify-content:center;min-height:100vh;position:relative}
-.login::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(225,112,85,.08),transparent 60%),radial-gradient(ellipse at 70% 80%,rgba(108,92,231,.06),transparent 60%)}
-.login-card{position:relative;background:var(--paper);border:3px solid var(--ink);border-radius:var(--sketch);box-shadow:6px 6px 0 var(--ink);padding:48px 40px;width:380px}
-.login-card h1{font-family:'ZCOOL KuaiLe',sans-serif;font-size:24px;color:var(--accent);margin-bottom:4px}
-.login-card .sub{font-size:12px;color:var(--ink2);margin-bottom:28px;letter-spacing:.5px}
-.login-card label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink2);margin-bottom:6px}
-.login-card input{width:100%;padding:10px 14px;border:2px solid var(--ink);border-radius:8px;background:var(--paper2);color:var(--ink);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s}
-.login-card input:focus{border-color:var(--accent)}
-.login-card .field{margin-bottom:16px}
-.login-card button{width:100%;padding:12px;border:3px solid var(--ink);border-radius:var(--sketch2);background:var(--accent);color:#fff;font-family:'ZCOOL KuaiLe',sans-serif;font-size:16px;cursor:pointer;transition:all .2s;letter-spacing:2px}
-.login-card button:hover{transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--ink);background:var(--accent2)}
-.login-card button:active{transform:translate(2px,2px);box-shadow:none}
-.login-err{color:var(--accent2);font-size:12px;margin-top:10px;text-align:center;display:none}
-.stamp{position:absolute;top:-8px;right:-8px;border:3px dashed var(--accent2);color:var(--accent2);transform:rotate(12deg);padding:2px 10px;font-family:'Courier New',monospace;font-weight:700;font-size:10px;text-transform:uppercase;opacity:.7}
+.login{display:flex;align-items:center;justify-content:center;min-height:100vh;position:relative;
+  background:radial-gradient(ellipse at 20% 50%,rgba(225,112,85,.06),transparent 50%),
+             radial-gradient(ellipse at 80% 50%,rgba(162,155,254,.04),transparent 50%),var(--bg)}
+.login-card{position:relative;width:380px;padding:48px 40px;background:var(--surface);
+  border:1px solid var(--border2);border-radius:var(--radius-lg);box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.login-card::before{content:'';position:absolute;top:0;left:24px;right:24px;height:2px;
+  background:linear-gradient(90deg,transparent,var(--coral),transparent);border-radius:2px}
+.login-card h1{font-size:22px;font-weight:800;letter-spacing:-.5px;
+  background:linear-gradient(135deg,var(--coral),var(--coral2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.login-card .sub{font-size:12px;color:var(--text2);margin-bottom:32px;letter-spacing:2px;text-transform:uppercase}
+.login-card label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);margin-bottom:6px}
+.login-card input{width:100%;padding:10px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);
+  background:var(--bg2);color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:var(--transition)}
+.login-card input:focus{border-color:var(--coral);box-shadow:0 0 0 3px var(--coral-bg)}
+.login-card .field{margin-bottom:18px}
+.login-card button{width:100%;padding:12px;border:none;border-radius:var(--radius-sm);
+  background:linear-gradient(135deg,var(--coral),#d35400);color:#fff;
+  font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:var(--transition);letter-spacing:1px}
+.login-card button:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(225,112,85,.3)}
+.login-card button:active{transform:translateY(0)}
+.login-err{color:var(--coral2);font-size:12px;margin-top:12px;text-align:center;display:none}
 
 /* ── App Shell ── */
-.app{display:none;min-height:100vh}
-.app.active{display:grid;grid-template-columns:200px 1fr}
+.app{display:none;height:100vh}
+.app.active{display:grid;grid-template-columns:220px 1fr}
 
 /* ── Sidebar ── */
-.side{background:var(--paper2);border-right:3px solid var(--ink);padding:24px 0;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
-.side-brand{padding:0 20px 20px;border-bottom:2px dashed var(--ink2);margin-bottom:8px}
-.side-brand h2{font-family:'ZCOOL KuaiLe',sans-serif;font-size:18px;color:var(--accent)}
-.side-brand span{font-size:10px;color:var(--ink2);letter-spacing:1px;text-transform:uppercase}
-.side nav{flex:1;padding:8px 0}
-.side nav a{display:flex;align-items:center;gap:10px;padding:9px 20px;font-size:13px;color:var(--ink2);text-decoration:none;transition:all .15s;border-left:3px solid transparent}
-.side nav a:hover{color:var(--ink);background:rgba(0,0,0,.04)}
-.side nav a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(225,112,85,.06);font-weight:700}
-.side nav a .ico{width:18px;text-align:center;font-size:14px}
-.side-footer{padding:12px 20px;border-top:2px dashed var(--ink2)}
-.side-footer a{font-size:11px;color:var(--ink2);text-decoration:none;transition:color .15s}
-.side-footer a:hover{color:var(--accent2)}
+.side{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.side-brand{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
+.side-brand h2{font-size:16px;font-weight:800;letter-spacing:-.3px;
+  background:linear-gradient(135deg,var(--coral),var(--coral2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.side-brand .status{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:var(--text2)}
+.side-brand .dot{width:6px;height:6px;border-radius:50%;background:var(--sage);box-shadow:0 0 8px var(--sage);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.side nav{flex:1;padding:12px 0}
+.side nav a{display:flex;align-items:center;gap:10px;padding:9px 20px;font-size:13px;color:var(--text2);text-decoration:none;transition:var(--transition);position:relative;font-weight:600}
+.side nav a:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.side nav a.active{color:var(--coral)}
+.side nav a.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;background:var(--coral);border-radius:0 3px 3px 0}
+.side nav a .ico{width:20px;text-align:center;font-size:15px;opacity:.7}
+.side nav a.active .ico{opacity:1}
+.side-footer{padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:12px}
+.side-footer a{font-size:11px;color:var(--text3);text-decoration:none;transition:var(--transition);font-weight:600}
+.side-footer a:hover{color:var(--coral)}
 
 /* ── Main ── */
 .main{padding:28px 36px;overflow-y:auto;max-height:100vh}
-.main h1{font-family:'ZCOOL KuaiLe',sans-serif;font-size:26px;margin-bottom:24px;display:flex;align-items:center;gap:10px}
-.main h1 .deco{width:32px;height:3px;background:var(--accent);border-radius:2px}
+.main h1{font-size:22px;font-weight:800;letter-spacing:-.3px;margin-bottom:24px;display:flex;align-items:center;gap:12px}
+.main h1 .deco{width:28px;height:3px;background:var(--coral);border-radius:2px}
 
 /* ── Stats ── */
-.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:28px}
-.stat{background:var(--paper);border:2px solid var(--ink);border-radius:var(--sketch);padding:16px;position:relative;transition:all .2s}
-.stat:hover{transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--ink)}
-.stat .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink2)}
-.stat .v{font-size:32px;font-weight:800;margin-top:2px;line-height:1}
-.stat .v.c1{color:var(--accent)}.stat .v.c2{color:var(--green)}.stat .v.c3{color:var(--blue)}.stat .v.c4{color:var(--purple)}
-.stat .s{font-size:10px;color:var(--ink2);margin-top:4px}
-.stat::after{content:'';position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;opacity:.3}
-.stat:nth-child(1)::after,.stat:nth-child(5)::after{background:var(--accent)}
-.stat:nth-child(2)::after,.stat:nth-child(6)::after{background:var(--green)}
-.stat:nth-child(3)::after,.stat:nth-child(7)::after{background:var(--blue)}
-.stat:nth-child(4)::after,.stat:nth-child(8)::after{background:var(--purple)}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:28px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden;transition:var(--transition)}
+.stat:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:var(--shadow)}
+.stat .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3)}
+.stat .v{font-size:26px;font-weight:800;margin-top:4px;line-height:1}
+.stat .s{font-size:10px;color:var(--text3);margin-top:4px}
+.stat .glow{position:absolute;top:-20px;right:-20px;width:60px;height:60px;border-radius:50%;opacity:.15;filter:blur(20px)}
+.stat.c1 .v{color:var(--coral)}.stat.c1 .glow{background:var(--coral)}
+.stat.c2 .v{color:var(--sage)}.stat.c2 .glow{background:var(--sage)}
+.stat.c3 .v{color:var(--sky)}.stat.c3 .glow{background:var(--sky)}
+.stat.c4 .v{color:var(--lavender)}.stat.c4 .glow{background:var(--lavender)}
+.stat.c5 .v{color:var(--amber)}.stat.c5 .glow{background:var(--amber)}
+.stat.c6 .v{color:var(--rose)}.stat.c6 .glow{background:var(--rose)}
 
 /* ── Panel ── */
-.panel{background:var(--paper);border:2px solid var(--ink);border-radius:var(--sketch);overflow:hidden;margin-bottom:20px}
-.panel-head{padding:12px 18px;border-bottom:2px dashed var(--ink2);display:flex;align-items:center;justify-content:space-between}
-.panel-head h3{font-family:'ZCOOL KuaiLe',sans-serif;font-size:15px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px}
+.panel-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.panel-head h3{font-size:13px;font-weight:700;letter-spacing:-.2px}
 .panel-body{padding:0}
 
 /* ── Table ── */
 .tbl{width:100%;border-collapse:collapse}
-.tbl th{text-align:left;padding:8px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink2);background:var(--paper2);border-bottom:2px solid var(--ink)}
-.tbl td{padding:8px 14px;font-size:12px;border-bottom:1px dashed rgba(0,0,0,.1)}
+.tbl th{text-align:left;padding:10px 16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)}
+.tbl td{padding:10px 16px;font-size:12px;border-bottom:1px solid var(--border);color:var(--text2)}
 .tbl tr:last-child td{border-bottom:none}
-.tbl tr:hover td{background:rgba(225,112,85,.03)}
+.tbl tr:hover td{background:rgba(255,255,255,.02);color:var(--text)}
+.tbl td strong{color:var(--text);font-weight:700}
 
 /* ── Badges ── */
-.badge{display:inline-block;padding:1px 7px;border-radius:99px;font-size:9px;font-weight:800;letter-spacing:.5px}
-.b-green{background:rgba(0,184,148,.12);color:var(--green)}.b-amber{background:rgba(253,203,110,.2);color:#d68910}
-.b-red{background:rgba(214,48,49,.1);color:var(--accent2)}.b-blue{background:rgba(9,132,227,.1);color:var(--blue)}
-.b-purple{background:rgba(108,92,231,.1);color:var(--purple)}.b-ink{background:rgba(45,52,54,.08);color:var(--ink)}
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:9px;font-weight:800;letter-spacing:.5px}
+.b-green{background:var(--sage-bg);color:var(--sage)}.b-amber{background:var(--amber-bg);color:var(--amber)}
+.b-red{background:var(--coral-bg);color:var(--coral2)}.b-blue{background:var(--sky-bg);color:var(--sky)}
+.b-purple{background:var(--lavender-bg);color:var(--lavender)}.b-ink{background:rgba(255,255,255,.06);color:var(--text2)}
 
 /* ── Buttons ── */
-.btn{padding:5px 12px;border:2px solid var(--ink);border-radius:var(--sketch2);background:var(--paper);color:var(--ink);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
-.btn:hover{background:var(--yellow);transform:translate(-1px,-1px);box-shadow:2px 2px 0 var(--ink)}
-.btn:active{transform:translate(1px,1px);box-shadow:none}
-.btn-danger{border-color:var(--accent2);color:var(--accent2)}
-.btn-danger:hover{background:rgba(214,48,49,.1);border-color:var(--accent2);color:var(--accent2)}
+.btn{padding:5px 12px;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text2);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:var(--transition)}
+.btn:hover{background:rgba(255,255,255,.05);color:var(--text);border-color:var(--text3)}
+.btn-danger{border-color:rgba(225,112,85,.3);color:var(--coral)}
+.btn-danger:hover{background:var(--coral-bg);border-color:var(--coral);color:var(--coral2)}
+.btn-primary{border:none;background:var(--coral);color:#fff}
+.btn-primary:hover{background:var(--coral2);transform:translateY(-1px)}
 
 /* ── Search ── */
 .search{display:flex;gap:8px;margin-bottom:16px}
-.search input{padding:8px 14px;border:2px solid var(--ink);border-radius:8px;background:var(--paper);color:var(--ink);font-size:13px;font-family:inherit;width:220px;outline:none}
-.search input:focus{border-color:var(--accent)}
-.search button{padding:8px 16px;border:2px solid var(--ink);border-radius:var(--sketch2);background:var(--accent);color:#fff;font-weight:700;font-size:13px;cursor:pointer;transition:all .15s}
-.search button:hover{transform:translate(-1px,-1px);box-shadow:2px 2px 0 var(--ink)}
+.search input{padding:8px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg3);color:var(--text);font-size:13px;font-family:inherit;width:240px;outline:none;transition:var(--transition)}
+.search input:focus{border-color:var(--coral);box-shadow:0 0 0 3px var(--coral-bg)}
+.search input::placeholder{color:var(--text3)}
+.search button{padding:8px 18px;border:none;border-radius:var(--radius-sm);background:var(--coral);color:#fff;font-weight:700;font-size:13px;cursor:pointer;transition:var(--transition)}
+.search button:hover{background:var(--coral2);transform:translateY(-1px)}
 
 /* ── Pagination ── */
-.pager{display:flex;gap:6px;align-items:center;padding:12px 14px;justify-content:flex-end}
-.pager button{padding:4px 10px;border:2px solid var(--ink);border-radius:6px;background:transparent;color:var(--ink2);font-size:11px;cursor:pointer;font-family:inherit}
-.pager button:hover:not(:disabled){background:var(--paper2);color:var(--ink)}
+.pager{display:flex;gap:6px;align-items:center;padding:12px 16px;justify-content:flex-end}
+.pager button{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:inherit;transition:var(--transition)}
+.pager button:hover:not(:disabled){background:rgba(255,255,255,.05);color:var(--text);border-color:var(--border2)}
 .pager button:disabled{opacity:.3;cursor:default}
-.pager span{font-size:11px;color:var(--ink2)}
+.pager span{font-size:11px;color:var(--text3)}
 
 /* ── Avatar ── */
-.av{width:26px;height:26px;border-radius:50%;border:2px solid var(--ink);object-fit:cover;vertical-align:middle}
+.av{width:28px;height:28px;border-radius:50%;border:2px solid var(--border2);object-fit:cover;vertical-align:middle}
 
 /* ── Mono ── */
-.mono{font-family:'Courier New',monospace;font-size:11px;color:var(--ink2)}
+.mono{font-family:'SF Mono','Fira Code',monospace;font-size:11px;color:var(--text3)}
 
 /* ── Section ── */
 .sec{display:none;animation:fadeUp .3s ease}
@@ -133,47 +156,75 @@ body{font-family:'Nunito',sans-serif;background:var(--paper);color:var(--ink);mi
 
 /* ── Server Grid ── */
 .srv-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.srv-card{background:var(--paper);border:2px solid var(--ink);border-radius:var(--sketch);padding:20px}
-.srv-card h3{font-family:'ZCOOL KuaiLe',sans-serif;font-size:14px;color:var(--accent);margin-bottom:14px;padding-bottom:8px;border-bottom:2px dashed var(--ink2)}
-.srv-row{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px dashed rgba(0,0,0,.06)}
+.srv-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.srv-card h3{font-size:13px;font-weight:700;color:var(--coral);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.srv-row{display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px solid var(--border)}
 .srv-row:last-child{border-bottom:none}
-.srv-row span:last-child{font-weight:700;color:var(--ink)}
+.srv-row span:first-child{color:var(--text2)}
+.srv-row span:last-child{font-weight:700;color:var(--text)}
 
 /* ── User Detail Modal ── */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(45,52,54,.4);z-index:100;align-items:center;justify-content:center;animation:fadeIn .2s}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:100;align-items:center;justify-content:center;animation:fadeIn .2s}
 .modal-overlay.active{display:flex}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-.modal{background:var(--paper);border:3px solid var(--ink);border-radius:var(--sketch);box-shadow:8px 8px 0 var(--ink);width:480px;max-height:80vh;overflow-y:auto;position:relative;animation:popIn .25s ease}
-@keyframes popIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
-.modal-head{padding:16px 20px;border-bottom:2px dashed var(--ink2);display:flex;justify-content:space-between;align-items:center}
-.modal-head h3{font-family:'ZCOOL KuaiLe',sans-serif;font-size:16px}
-.modal-close{width:28px;height:28px;border:2px solid var(--ink);border-radius:50%;background:transparent;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink)}
-.modal-close:hover{background:var(--accent2);color:#fff;border-color:var(--accent2)}
-.modal-body{padding:20px}
-.modal-body .field{margin-bottom:12px}
-.modal-body .field .fl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ink2);margin-bottom:2px}
-.modal-body .field .fv{font-size:13px}
-.modal-body .section-title{font-family:'ZCOOL KuaiLe',sans-serif;font-size:13px;color:var(--accent);margin:16px 0 8px;padding-top:12px;border-top:2px dashed var(--ink2)}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);width:560px;max-height:80vh;overflow-y:auto;position:relative;animation:popIn .25s ease;box-shadow:0 16px 48px rgba(0,0,0,.5)}
+@keyframes popIn{from{opacity:0;transform:scale(.95) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-head h3{font-size:15px;font-weight:800}
+.modal-close{width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:transparent;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text3);transition:var(--transition)}
+.modal-close:hover{background:var(--coral-bg);color:var(--coral2);border-color:var(--coral)}
+.modal-body{padding:22px}
+.modal-body .field{margin-bottom:14px}
+.modal-body .field .fl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:2px}
+.modal-body .field .fv{font-size:13px;color:var(--text)}
+.modal-body .section-title{font-size:12px;font-weight:700;color:var(--coral);margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--border);letter-spacing:.5px}
 
 /* ── Refresh ── */
-.refresh{padding:6px 14px;border:2px solid var(--ink);border-radius:var(--sketch2);background:var(--paper);color:var(--ink);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
-.refresh:hover{background:var(--green);color:#fff;border-color:var(--green);transform:translate(-1px,-1px)}
+.refresh{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:var(--transition)}
+.refresh:hover{background:var(--sage-bg);color:var(--sage);border-color:rgba(0,184,148,.3)}
 
 /* ── Empty ── */
-.empty{text-align:center;padding:40px;color:var(--ink2);font-size:13px}
+.empty{text-align:center;padding:40px;color:var(--text3);font-size:13px}
 
 /* ── Toast ── */
-.toast{position:fixed;top:20px;right:20px;background:var(--paper);border:2px solid var(--ink);border-radius:var(--sketch);box-shadow:4px 4px 0 var(--ink);padding:12px 20px;font-size:13px;font-weight:700;z-index:200;animation:slideIn .3s ease;transition:opacity .3s}
-.toast.success{border-color:var(--green);color:var(--green)}
-.toast.error{border-color:var(--accent2);color:var(--accent2)}
+.toast{position:fixed;top:20px;right:20px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 20px;font-size:13px;font-weight:700;z-index:200;animation:slideIn .3s ease;transition:opacity .3s;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.toast.success{border-color:rgba(0,184,148,.3);color:var(--sage)}
+.toast.error{border-color:rgba(225,112,85,.3);color:var(--coral2)}
 @keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 
-/* ── Live dot ── */
-.live{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+/* ── Activity Chart ── */
+.chart{display:flex;align-items:flex-end;gap:6px;height:80px;padding:8px 0}
+.chart .bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.chart .bar .fill{width:100%;border-radius:3px 3px 0 0;transition:height .5s cubic-bezier(.4,0,.2,1);min-height:2px}
+.chart .bar .lbl{font-size:9px;color:var(--text3);font-weight:600}
 
-/* ── Scrollbar ── */
-::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:10px}
+/* ── Activity Feed ── */
+.feed{list-style:none}
+.feed li{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px}
+.feed li:last-child{border-bottom:none}
+.feed .dot{width:6px;height:6px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.feed .dot.register{background:var(--sage)}.feed .dot.message{background:var(--sky)}.feed .dot.bottle{background:var(--lavender)}.feed .dot.mail{background:var(--amber)}
+.feed .info{flex:1}.feed .info .name{color:var(--text);font-weight:700}.feed .info .detail{color:var(--text2);margin-top:1px}
+.feed .time{color:var(--text3);font-size:10px;white-space:nowrap;margin-top:1px}
+
+/* ── Online indicator ── */
+.online-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:9px;font-weight:800;background:var(--sage-bg);color:var(--sage)}
+.online-badge .dot{width:5px;height:5px;border-radius:50%;background:var(--sage);animation:pulse 2s infinite}
+
+/* ── Announce form ── */
+.announce-form{display:flex;gap:8px;margin-top:8px}
+.announce-form textarea{flex:1;padding:8px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg3);color:var(--text);font-family:inherit;font-size:13px;resize:none;outline:none;transition:var(--transition);min-height:60px}
+.announce-form textarea:focus{border-color:var(--coral);box-shadow:0 0 0 3px var(--coral-bg)}
+.announce-form textarea::placeholder{color:var(--text3)}
+
+/* ── Grid 2-col ── */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .app.active{grid-template-columns:1fr}.side{display:none}
+  .stats{grid-template-columns:repeat(2,1fr)}.srv-grid,.grid2{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -181,9 +232,8 @@ body{font-family:'Nunito',sans-serif;background:var(--paper);color:var(--ink);mi
 <!-- Login -->
 <div id="loginPage" class="login">
   <div class="login-card">
-    <div class="stamp">ADMIN</div>
     <h1>守望台</h1>
-    <p class="sub">Wander Island 管理后台</p>
+    <p class="sub">Wander Island Admin</p>
     <div class="field">
       <label>账号</label>
       <input type="text" id="loginUser" value="wander_admin" autocomplete="username">
@@ -192,7 +242,7 @@ body{font-family:'Nunito',sans-serif;background:var(--paper);color:var(--ink);mi
       <label>密码</label>
       <input type="password" id="loginPass" autocomplete="current-password">
     </div>
-    <button onclick="doLogin()">进入守望台</button>
+    <button onclick="doLogin()">登 录</button>
     <div id="loginErr" class="login-err"></div>
   </div>
 </div>
@@ -201,20 +251,20 @@ body{font-family:'Nunito',sans-serif;background:var(--paper);color:var(--ink);mi
 <div id="appPage" class="app">
   <div class="side">
     <div class="side-brand">
-      <h2>守望台</h2>
-      <span><span class="live"></span> &nbsp;系统运行中</span>
+      <h2>Wander Island</h2>
+      <div class="status"><span class="dot"></span> <span id="sideOnline">0</span> 人在线</div>
     </div>
     <nav>
-      <a href="#" class="active" data-p="overview"><span class="ico">📊</span>总览</a>
-      <a href="#" data-p="users"><span class="ico">👥</span>岛民</a>
-      <a href="#" data-p="islands"><span class="ico">🏝️</span>岛屿</a>
-      <a href="#" data-p="messages"><span class="ico">💬</span>对话</a>
-      <a href="#" data-p="mailbox"><span class="ico">📮</span>信箱</a>
-      <a href="#" data-p="bottles"><span class="ico">🧴</span>漂流瓶</a>
-      <a href="#" data-p="server"><span class="ico">⚙️</span>系统</a>
+      <a href="#" class="active" data-p="overview"><span class="ico">◉</span>总览</a>
+      <a href="#" data-p="users"><span class="ico">◎</span>岛民</a>
+      <a href="#" data-p="islands"><span class="ico">◇</span>岛屿</a>
+      <a href="#" data-p="messages"><span class="ico">◈</span>对话</a>
+      <a href="#" data-p="mailbox"><span class="ico">✉</span>信箱</a>
+      <a href="#" data-p="bottles"><span class="ico">✧</span>漂流瓶</a>
+      <a href="#" data-p="server"><span class="ico">⚙</span>系统</a>
     </nav>
     <div class="side-footer">
-      <a href="/" target="_blank">← 返回游戏</a> &nbsp;·&nbsp;
+      <a href="/" target="_blank">← 游戏</a>
       <a href="#" onclick="doLogout()">退出</a>
     </div>
   </div>
@@ -224,9 +274,40 @@ body{font-family:'Nunito',sans-serif;background:var(--paper);color:var(--ink);mi
     <div id="sec-overview" class="sec active">
       <h1><span class="deco"></span>总览</h1>
       <div class="stats" id="ovStats"></div>
-      <div class="panel">
-        <div class="panel-head"><h3>最近注册的岛民</h3></div>
-        <div class="panel-body"><table class="tbl"><thead><tr><th>头像</th><th>用户名</th><th>座右铭</th><th>注册时间</th></tr></thead><tbody id="ovRecent"></tbody></table></div>
+      <div class="grid2">
+        <div>
+          <div class="panel">
+            <div class="panel-head"><h3>7日活跃趋势</h3><span class="mono" id="ovTime"></span></div>
+            <div class="panel-body" style="padding:16px 18px">
+              <div class="chart" id="ovChart"></div>
+              <div style="display:flex;gap:16px;margin-top:8px">
+                <span style="font-size:10px;color:var(--text3)"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--coral);vertical-align:middle;margin-right:4px"></span>新用户</span>
+                <span style="font-size:10px;color:var(--text3)"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--sky);vertical-align:middle;margin-right:4px"></span>消息数</span>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>最近动态</h3></div>
+            <div class="panel-body" style="padding:8px 18px">
+              <ul class="feed" id="ovFeed"></ul>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="panel">
+            <div class="panel-head"><h3>在线岛民</h3><span class="online-badge"><span class="dot"></span><span id="ovOnlineCount">0</span></span></div>
+            <div class="panel-body"><table class="tbl"><thead><tr><th></th><th>用户名</th><th>最后活跃</th></tr></thead><tbody id="ovOnline"></tbody></table></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>发送公告</h3></div>
+            <div class="panel-body" style="padding:14px 18px">
+              <div class="announce-form" style="flex-direction:column">
+                <textarea id="announceContent" placeholder="输入公告内容，将发送到所有岛民的信箱..."></textarea>
+                <button class="btn btn-primary" style="align-self:flex-end" onclick="sendAnnounce()">发送公告</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -234,7 +315,7 @@ body{font-family:'Nunito',sans-serif;background:var(--paper);color:var(--ink);mi
     <div id="sec-users" class="sec">
       <h1><span class="deco"></span>岛民管理</h1>
       <div class="search">
-        <input type="text" id="uSearch" placeholder="搜索岛民...">
+        <input type="text" id="uSearch" placeholder="搜索岛民..." onkeydown="if(event.key==='Enter')loadUsers()">
         <button onclick="loadUsers()">搜索</button>
       </div>
       <div class="panel">
@@ -316,15 +397,18 @@ body{font-family:'Nunito',sans-serif;background:var(--paper);color:var(--ink);mi
 <script>
 let T=localStorage.getItem('admin_token')||'';
 let pg={users:1,islands:1};
+let refreshTimer=null;
 const H=()=>({'Authorization':`Bearer ${T}`,'Content-Type':'application/json'});
 
 const fmt=ts=>{if(!ts)return'—';return new Date(ts*1000).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})};
 const fmtFull=ts=>{if(!ts)return'—';return new Date(ts*1000).toLocaleString('zh-CN')};
-const fmtDur=s=>{const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);return d>0?`${d}天${h}时${m}分`:h>0?`${h}时${m}分`:`${m}分`};
+const fmtDur=s=>{const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);return d>0?`${d}天 ${h}时 ${m}分`:h>0?`${h}时 ${m}分`:`${m}分`};
+const now=()=>new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+const ago=ts=>{if(!ts)return'';const s=Math.floor(Date.now()/1000)-ts;if(s<60)return'刚刚';if(s<3600)return Math.floor(s/60)+'分钟前';if(s<86400)return Math.floor(s/3600)+'小时前';return Math.floor(s/86400)+'天前'};
 
 function toast(msg,type='success'){const el=document.getElementById('toast');el.textContent=msg;el.className='toast '+type;el.style.display='block';setTimeout(()=>el.style.display='none',2500)}
 
-function avatarUrl(u){return u.avatar||`data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect fill="%23f5edd6" width="40" height="40" rx="20"/><text x="20" y="26" text-anchor="middle" fill="%232d3436" font-size="16" font-family="sans-serif">${(u.username||'?')[0]}</text></svg>`}
+function avatarUrl(u){return u.avatar||`data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect fill="%23212436" width="40" height="40" rx="20"/><text x="20" y="26" text-anchor="middle" fill="%23e17055" font-size="16" font-family="sans-serif">${(u.username||'?')[0]}</text></svg>`}
 
 // Login
 async function doLogin(){
@@ -337,8 +421,10 @@ async function doLogin(){
     T=d.token;localStorage.setItem('admin_token',T);showApp();
   }catch(err){e.textContent=err.message;e.style.display='block'}
 }
-function doLogout(){T='';localStorage.removeItem('admin_token');document.getElementById('loginPage').style.display='flex';document.getElementById('appPage').classList.remove('active')}
-function showApp(){document.getElementById('loginPage').style.display='none';document.getElementById('appPage').classList.add('active');loadOverview()}
+function doLogout(){T='';localStorage.removeItem('admin_token');clearInterval(refreshTimer);
+  document.getElementById('loginPage').style.display='flex';document.getElementById('appPage').classList.remove('active')}
+function showApp(){document.getElementById('loginPage').style.display='none';document.getElementById('appPage').classList.add('active');loadOverview();
+  refreshTimer=setInterval(()=>{const p=document.querySelector('.side nav a.active')?.dataset.p;if(p)({overview:loadOverview,users:loadUsers,islands:loadIslands,messages:loadMsgs,mailbox:loadMail,bottles:loadBottles,server:loadServer})[p]?.()},30000)}
 
 // Nav
 document.querySelectorAll('.side nav a').forEach(a=>{
@@ -355,19 +441,69 @@ document.querySelectorAll('.side nav a').forEach(a=>{
 async function loadOverview(){
   try{
     const r=await fetch('/api/admin/overview',{headers:H()});const d=await r.json();if(!r.ok)throw new Error(d.error);
+
+    // Stats
     document.getElementById('ovStats').innerHTML=`
-      <div class="stat"><div class="l">岛民</div><div class="v c1">${d.userCount}</div><div class="s">今日 +${d.newUsersToday}</div></div>
-      <div class="stat"><div class="l">岛屿</div><div class="v c2">${d.islandCount}</div></div>
-      <div class="stat"><div class="l">对话</div><div class="v c3">${d.messageCount}</div><div class="s">今日 +${d.newMessagesToday}</div></div>
-      <div class="stat"><div class="l">信件</div><div class="v c4">${d.mailboxCount}</div></div>
-      <div class="stat"><div class="l">漂流瓶</div><div class="v c1">${d.bottleCount}</div></div>
-      <div class="stat"><div class="l">访客</div><div class="v c2">${d.visitorCount}</div></div>
-      <div class="stat"><div class="l">好友关系</div><div class="v c3">${d.friendCount}</div></div>
-      <div class="stat"><div class="l">7日活跃</div><div class="v c4">${d.activeWeek}</div></div>`;
-    // Recent users
-    const ru=await fetch('/api/admin/users?page=1&limit=5',{headers:H()});const rd=await ru.json();
-    document.getElementById('ovRecent').innerHTML=rd.users.map(u=>`<tr><td><img class="av" src="${avatarUrl(u)}" onerror="this.style.display='none'"></td><td><strong>${u.username}</strong>${u.username==='辞'?' <span class="badge b-purple">AI</span>':u.username==='wander_admin'?' <span class="badge b-amber">管理</span>':''}</td><td style="color:var(--ink2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.motto||'—'}</td><td class="mono">${fmt(u.created_at)}</td></tr>`).join('')||'<tr><td colspan="4" class="empty">暂无岛民</td></tr>';
+      <div class="stat c1"><div class="glow"></div><div class="l">岛民</div><div class="v">${d.userCount}</div><div class="s">今日 +${d.newUsersToday}</div></div>
+      <div class="stat c6"><div class="glow"></div><div class="l">在线</div><div class="v">${d.onlineCount||0}</div><div class="s">5分钟内</div></div>
+      <div class="stat c2"><div class="glow"></div><div class="l">岛屿</div><div class="v">${d.islandCount}</div></div>
+      <div class="stat c3"><div class="glow"></div><div class="l">对话</div><div class="v">${d.messageCount}</div><div class="s">今日 +${d.newMessagesToday}</div></div>
+      <div class="stat c4"><div class="glow"></div><div class="l">信件</div><div class="v">${d.mailboxCount}</div></div>
+      <div class="stat c5"><div class="glow"></div><div class="l">漂流瓶</div><div class="v">${d.bottleCount}</div></div>
+      <div class="stat c2"><div class="glow"></div><div class="l">好友</div><div class="v">${d.friendCount}</div></div>
+      <div class="stat c3"><div class="glow"></div><div class="l">7日活跃</div><div class="v">${d.activeWeek}</div></div>`;
+
+    // Sidebar online
+    document.getElementById('sideOnline').textContent=d.onlineCount||0;
+
+    // Chart
+    if(d.activity&&d.activity.length){
+      const maxU=Math.max(...d.activity.map(a=>a.users),1);
+      const maxM=Math.max(...d.activity.map(a=>a.messages),1);
+      document.getElementById('ovChart').innerHTML=d.activity.map(a=>`
+        <div class="bar">
+          <div style="display:flex;gap:2px;align-items:flex-end;width:100%;height:70px">
+            <div class="fill" style="height:${Math.max(a.users/maxU*100,3)}%;background:var(--coral);flex:1"></div>
+            <div class="fill" style="height:${Math.max(a.messages/maxM*100,3)}%;background:var(--sky);flex:1"></div>
+          </div>
+          <div class="lbl">${a.date}</div>
+        </div>`).join('');
+    }
+
+    document.getElementById('ovTime').textContent=now();
+
+    // Activity feed
+    if(d.recentActivity&&d.recentActivity.length){
+      const typeMap={register:{dot:'register',label:'注册'},message:{dot:'message',label:'发消息'},bottle:{dot:'bottle',label:'投瓶'}};
+      document.getElementById('ovFeed').innerHTML=d.recentActivity.map(a=>{
+        const t=typeMap[a.type]||{dot:'message',label:a.type};
+        return`<li><span class="dot ${t.dot}"></span><div class="info"><span class="name">${a.username}</span> ${t.label}${a.detail?' — '+a.detail:''}</div><span class="time">${ago(a.time)}</span></li>`}).join('');
+    }else{
+      document.getElementById('ovFeed').innerHTML='<li style="color:var(--text3);padding:16px 0">暂无动态</li>';
+    }
+
+    // Online users
+    try{
+      const or=await fetch('/api/admin/online',{headers:H()});const od=await or.json();
+      document.getElementById('ovOnlineCount').textContent=od.count;
+      document.getElementById('ovOnline').innerHTML=od.users.length?od.users.map(u=>`<tr>
+        <td><img class="av" src="${avatarUrl(u)}" onerror="this.style.display='none'"></td>
+        <td><strong>${u.username}</strong></td><td class="mono">${ago(u.last_online)}</td>
+      </tr>`).join(''):'<tr><td colspan="3" class="empty">暂无在线岛民</td></tr>';
+    }catch(e){}
+
   }catch(e){if(e.message==='Invalid token')doLogout()}
+}
+
+// Send announcement
+async function sendAnnounce(){
+  const content=document.getElementById('announceContent').value.trim();
+  if(!content){toast('请输入公告内容','error');return}
+  try{
+    const r=await fetch('/api/admin/announce',{method:'POST',headers:H(),body:JSON.stringify({content})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error);
+    toast(`公告已发送给 ${d.sent} 位岛民`);document.getElementById('announceContent').value='';
+  }catch(e){toast(e.message,'error')}
 }
 
 // Users
@@ -378,7 +514,7 @@ async function loadUsers(){
     document.getElementById('uBody').innerHTML=d.users.map(u=>`<tr>
       <td><img class="av" src="${avatarUrl(u)}" onerror="this.style.display='none'"></td>
       <td><strong>${u.username}</strong>${u.username==='辞'?' <span class="badge b-purple">AI</span>':u.username==='wander_admin'?' <span class="badge b-amber">管理</span>':''}</td>
-      <td style="color:var(--ink2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.motto||'—'}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.motto||'—'}</td>
       <td>${u.island_count}</td><td>${u.friend_count}</td>
       <td class="mono">${fmt(u.created_at)}</td><td class="mono">${fmt(u.last_online)}</td>
       <td><button class="btn" onclick="showUser('${u.id}')">详情</button>${u.username!=='wander_admin'&&u.username!=='辞'?` <button class="btn btn-danger" onclick="delUser('${u.id}','${u.username}')">删除</button>`:''}</td>
@@ -391,20 +527,20 @@ async function showUser(id){
   try{
     const r=await fetch(`/api/admin/users/${id}`,{headers:H()});const d=await r.json();if(!r.ok)throw new Error(d.error);
     const u=d.user;
-    document.getElementById('modalTitle').textContent=u.username+' 的详情';
+    document.getElementById('modalTitle').textContent=u.username;
     document.getElementById('modalBody').innerHTML=`
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
         <img class="av" style="width:48px;height:48px" src="${avatarUrl(u)}" onerror="this.style.display='none'">
-        <div><strong style="font-size:16px">${u.username}</strong>${u.username==='辞'?' <span class="badge b-purple">AI</span>':u.username==='wander_admin'?' <span class="badge b-amber">管理</span>':''}<br><span style="font-size:12px;color:var(--ink2)">${u.motto||'无座右铭'}</span></div>
+        <div><strong style="font-size:16px">${u.username}</strong>${u.username==='辞'?' <span class="badge b-purple">AI</span>':u.username==='wander_admin'?' <span class="badge b-amber">管理</span>':''}<br><span style="font-size:12px;color:var(--text2)">${u.motto||'无座右铭'}</span></div>
       </div>
       <div class="field"><div class="fl">ID</div><div class="fv mono">${u.id}</div></div>
       <div class="field"><div class="fl">注册时间</div><div class="fv">${fmtFull(u.created_at)}</div></div>
       <div class="field"><div class="fl">最后在线</div><div class="fv">${fmtFull(u.last_online)}</div></div>
       <div class="field"><div class="fl">消息数</div><div class="fv">${d.messageCount}</div></div>
-      <div class="section-title">🏝️ 岛屿 (${d.islands.length})</div>
-      ${d.islands.length?d.islands.map(i=>`<div class="field"><div class="fv">${i.name} ${i.is_public?'<span class="badge b-green">公开</span>':'<span class="badge b-amber">私有</span>'}</div></div>`).join(''):'<div style="color:var(--ink2);font-size:12px">暂无岛屿</div>'}
-      <div class="section-title">👥 好友 (${d.friends.length})</div>
-      ${d.friends.length?d.friends.map(f=>`<div class="field"><div class="fv">${f.username} <span class="badge ${f.status==='accepted'?'b-green':'b-amber'}">${f.status==='accepted'?'已接受':'待确认'}</span></div></div>`).join(''):'<div style="color:var(--ink2);font-size:12px">暂无好友</div>'}
+      <div class="section-title">◇ 岛屿 (${d.islands.length})</div>
+      ${d.islands.length?d.islands.map(i=>`<div class="field"><div class="fv">${i.name} ${i.is_public?'<span class="badge b-green">公开</span>':'<span class="badge b-amber">私有</span>'}</div></div>`).join(''):'<div style="color:var(--text3);font-size:12px">暂无岛屿</div>'}
+      <div class="section-title">◎ 好友 (${d.friends.length})</div>
+      ${d.friends.length?d.friends.map(f=>`<div class="field"><div class="fv">${f.username} <span class="badge ${f.status==='accepted'?'b-green':'b-amber'}">${f.status==='accepted'?'已接受':'待确认'}</span></div></div>`).join(''):'<div style="color:var(--text3);font-size:12px">暂无好友</div>'}
     `;
     document.getElementById('userModal').classList.add('active');
   }catch(e){toast(e.message,'error')}
@@ -435,7 +571,7 @@ async function loadMsgs(){
     const r=await fetch('/api/admin/messages?limit=100',{headers:H()});const d=await r.json();if(!r.ok)throw new Error(d.error);
     document.getElementById('mBody').innerHTML=d.messages.map(m=>`<tr>
       <td>${m.from_name}</td><td>${m.to_name}</td>
-      <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.content}</td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.content}</td>
       <td class="mono">${fmt(m.created_at)}</td>
       <td>${m.read?'<span class="badge b-green">已读</span>':'<span class="badge b-amber">未读</span>'}</td>
     </tr>`).join('')||'<tr><td colspan="5" class="empty">暂无对话</td></tr>';
@@ -448,7 +584,7 @@ async function loadMail(){
     const r=await fetch('/api/admin/mailbox?limit=100',{headers:H()});const d=await r.json();if(!r.ok)throw new Error(d.error);
     document.getElementById('mbBody').innerHTML=d.mails.map(m=>`<tr>
       <td>${m.from_name}</td><td>${m.to_name}</td>
-      <td>${m.subject||'<span style="color:var(--ink2)">无主题</span>'}</td>
+      <td>${m.subject||'<span style="color:var(--text3)">无主题</span>'}</td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.content}</td>
       <td>${m.gift_type?`<span class="badge b-purple">${m.gift_type}</span>`:'—'}</td>
       <td class="mono">${fmt(m.created_at)}</td>
@@ -464,7 +600,7 @@ async function loadBottles(){
       <td>${b.sender_name}</td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.content}</td>
       <td><span class="badge b-blue">${b.mood}</span></td>
-      <td>${b.finder_name||'<span style="color:var(--ink2)">未发现</span>'}</td>
+      <td>${b.finder_name||'<span style="color:var(--text3)">未发现</span>'}</td>
       <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.reply||'—'}</td>
       <td class="mono">${fmt(b.created_at)}</td>
     </tr>`).join('')||'<tr><td colspan="6" class="empty">暂无漂流瓶</td></tr>';

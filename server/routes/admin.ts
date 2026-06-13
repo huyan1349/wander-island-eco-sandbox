@@ -24,10 +24,10 @@ function adminAuth(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-// Dashboard overview
+// Dashboard overview - enhanced with activity data
 router.get('/overview', adminAuth, (_req: Request, res: Response) => {
   const db = getDb();
-  
+
   const userCount = (db.prepare('SELECT COUNT(*) as c FROM users').get() as any).c;
   const islandCount = (db.prepare('SELECT COUNT(*) as c FROM islands').get() as any).c;
   const messageCount = (db.prepare('SELECT COUNT(*) as c FROM chat_messages').get() as any).c;
@@ -35,19 +35,69 @@ router.get('/overview', adminAuth, (_req: Request, res: Response) => {
   const bottleCount = (db.prepare('SELECT COUNT(*) as c FROM messages_in_bottle').get() as any).c;
   const visitorCount = (db.prepare('SELECT COUNT(*) as c FROM visitor_log').get() as any).c;
   const friendCount = (db.prepare("SELECT COUNT(*) as c FROM friends WHERE status = 'accepted'").get() as any).c;
-  
-  const today = Math.floor(Date.now() / 1000) - 86400;
+
+  const now = Math.floor(Date.now() / 1000);
+  const today = now - 86400;
   const newUsersToday = (db.prepare('SELECT COUNT(*) as c FROM users WHERE created_at > ?').get(today) as any).c;
   const newMessagesToday = (db.prepare('SELECT COUNT(*) as c FROM chat_messages WHERE created_at > ?').get(today) as any).c;
-  
+
   // Active users in last 7 days
-  const weekAgo = Math.floor(Date.now() / 1000) - 7 * 86400;
+  const weekAgo = now - 7 * 86400;
   const activeWeek = (db.prepare('SELECT COUNT(*) as c FROM users WHERE last_online > ?').get(weekAgo) as any).c;
-  
+
+  // Online users (last 5 min)
+  const fiveMinAgo = now - 300;
+  const onlineCount = (db.prepare('SELECT COUNT(*) as c FROM users WHERE last_online > ?').get(fiveMinAgo) as any).c;
+
+  // Activity timeline - last 7 days daily counts
+  const activity: { date: string; users: number; messages: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const dayStart = now - (i + 1) * 86400;
+    const dayEnd = now - i * 86400;
+    const d = new Date(dayStart * 1000);
+    const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+    const dayUsers = (db.prepare('SELECT COUNT(*) as c FROM users WHERE created_at > ? AND created_at <= ?').get(dayStart, dayEnd) as any).c;
+    const dayMessages = (db.prepare('SELECT COUNT(*) as c FROM chat_messages WHERE created_at > ? AND created_at <= ?').get(dayStart, dayEnd) as any).c;
+    activity.push({ date: dateStr, users: dayUsers, messages: dayMessages });
+  }
+
+  // Recent activity log
+  const recentActivity: { type: string; username: string; detail: string; time: number }[] = [];
+
+  // Recent registrations
+  const recentUsers = db.prepare('SELECT username, created_at FROM users ORDER BY created_at DESC LIMIT 3').all() as any[];
+  for (const u of recentUsers) {
+    recentActivity.push({ type: 'register', username: u.username, detail: '注册了账号', time: u.created_at });
+  }
+
+  // Recent messages
+  const recentMsgs = db.prepare(`
+    SELECT u.username, m.content, m.created_at
+    FROM chat_messages m JOIN users u ON m.from_id = u.id
+    ORDER BY m.created_at DESC LIMIT 3
+  `).all() as any[];
+  for (const m of recentMsgs) {
+    recentActivity.push({ type: 'message', username: m.username, detail: m.content?.slice(0, 30) || '', time: m.created_at });
+  }
+
+  // Recent bottles
+  const recentBottles = db.prepare(`
+    SELECT u.username, b.content, b.created_at
+    FROM messages_in_bottle b JOIN users u ON b.sender_id = u.id
+    ORDER BY b.created_at DESC LIMIT 2
+  `).all() as any[];
+  for (const b of recentBottles) {
+    recentActivity.push({ type: 'bottle', username: b.username, detail: b.content?.slice(0, 30) || '', time: b.created_at });
+  }
+
+  // Sort by time
+  recentActivity.sort((a, b) => b.time - a.time);
+
   res.json({
     userCount, islandCount, messageCount, mailboxCount,
     bottleCount, visitorCount, friendCount,
-    newUsersToday, newMessagesToday, activeWeek
+    newUsersToday, newMessagesToday, activeWeek,
+    onlineCount, activity, recentActivity: recentActivity.slice(0, 10)
   });
 });
 
@@ -224,6 +274,63 @@ router.get('/server', adminAuth, (_req: Request, res: Response) => {
     dbSize: Math.round((dbStats?.size || 0) / 1024),
     tableCounts
   });
+});
+
+// Online users (last 5 min)
+router.get('/online', adminAuth, (_req: Request, res: Response) => {
+  const db = getDb();
+  const fiveMinAgo = Math.floor(Date.now() / 1000) - 300;
+  const users = db.prepare(`
+    SELECT id, username, avatar, motto, last_online
+    FROM users WHERE last_online > ?
+    ORDER BY last_online DESC
+  `).all(fiveMinAgo);
+  res.json({ users, count: users.length });
+});
+
+// User messages
+router.get('/users/:id/messages', adminAuth, (req: Request, res: Response) => {
+  const db = getDb();
+  const { id } = req.params;
+  const limit = parseInt(req.query.limit as string) || 50;
+
+  const messages = db.prepare(`
+    SELECT m.id, m.content, m.created_at, m.read,
+      u1.username as from_name, u2.username as to_name
+    FROM chat_messages m
+    JOIN users u1 ON m.from_id = u1.id
+    JOIN users u2 ON m.to_id = u2.id
+    WHERE m.from_id = ? OR m.to_id = ?
+    ORDER BY m.created_at DESC
+    LIMIT ?
+  `).all(id, id, limit);
+
+  res.json({ messages });
+});
+
+// Broadcast announcement
+router.post('/announce', adminAuth, (req: Request, res: Response) => {
+  const { content } = req.body;
+  if (!content || typeof content !== 'string') {
+    return res.status(400).json({ error: 'Content required' });
+  }
+
+  const db = getDb();
+  // Get all users except admin
+  const users = db.prepare("SELECT id FROM users WHERE username != 'wander_admin'").all() as any[];
+  const admin = db.prepare("SELECT id FROM users WHERE username = 'wander_admin'").get() as any;
+  if (!admin) return res.status(500).json({ error: 'Admin user not found' });
+
+  const insert = db.prepare('INSERT INTO mailbox (from_id, to_id, subject, content, created_at) VALUES (?, ?, ?, ?, ?)');
+  const now = Math.floor(Date.now() / 1000);
+  const insertMany = db.transaction(() => {
+    for (const u of users) {
+      insert.run(admin.id, u.id, '系统公告', content, now);
+    }
+  });
+  insertMany();
+
+  res.json({ success: true, sent: users.length });
 });
 
 export default router;
