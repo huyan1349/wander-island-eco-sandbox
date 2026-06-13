@@ -13,9 +13,11 @@
 
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#0f1117;--bg2:#161822;--bg3:#1c1f2e;--bg4:#252838;
-  --surface:#1a1d2e;--surface2:#212436;
-  --border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.1);
+  --bg:radial-gradient(circle at 50% 0%, #1a1d2e 0%, #0f1117 100%);
+  --bg2:rgba(22,24,34,0.4);--bg3:rgba(28,31,46,0.6);--bg4:rgba(37,40,56,0.8);
+  --surface:rgba(26,29,46,0.55);--surface2:rgba(33,36,54,0.65);
+  --blur:blur(24px);
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
   --text:#e8e6e3;--text2:#8b8d97;--text3:#5a5c66;
   --coral:#e17055;--coral2:#ff7675;--coral-bg:rgba(225,112,85,.1);
   --sage:#00b894;--sage-bg:rgba(0,184,148,.1);
@@ -36,10 +38,10 @@ body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,sans-serif;background
 
 /* ── Login ── */
 .login{display:flex;align-items:center;justify-content:center;min-height:100vh;position:relative;
-  background:radial-gradient(ellipse at 20% 50%,rgba(225,112,85,.06),transparent 50%),
-             radial-gradient(ellipse at 80% 50%,rgba(162,155,254,.04),transparent 50%),var(--bg)}
-.login-card{position:relative;width:380px;padding:48px 40px;background:var(--surface);
-  border:1px solid var(--border2);border-radius:var(--radius-lg);box-shadow:0 8px 32px rgba(0,0,0,.4)}
+  background:radial-gradient(ellipse at 20% 50%,rgba(225,112,85,.15),transparent 50%),
+             radial-gradient(ellipse at 80% 50%,rgba(162,155,254,.1),transparent 50%),var(--bg)}
+.login-card{position:relative;width:380px;padding:48px 40px;background:var(--surface);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--border2);border-radius:var(--radius-lg);box-shadow:0 16px 40px rgba(0,0,0,.6)}
 .login-card::before{content:'';position:absolute;top:0;left:24px;right:24px;height:2px;
   background:linear-gradient(90deg,transparent,var(--coral),transparent);border-radius:2px}
 .login-card h1{font-size:22px;font-weight:800;letter-spacing:-.5px;
@@ -62,7 +64,7 @@ body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,sans-serif;background
 .app.active{display:grid;grid-template-columns:220px 1fr}
 
 /* ── Sidebar ── */
-.side{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.side{background:var(--bg2);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
 .side-brand{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
 .side-brand h2{font-size:16px;font-weight:800;letter-spacing:-.3px;
   background:linear-gradient(135deg,var(--coral),var(--coral2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
@@ -87,8 +89,8 @@ body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,sans-serif;background
 
 /* ── Stats ── */
 .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:28px}
-.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden;transition:var(--transition)}
-.stat:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:var(--shadow)}
+.stat{background:var(--surface);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border2);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden;transition:var(--transition);box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.stat:hover{border-color:var(--coral);transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .stat .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3)}
 .stat .v{font-size:26px;font-weight:800;margin-top:4px;line-height:1}
 .stat .s{font-size:10px;color:var(--text3);margin-top:4px}
@@ -101,17 +103,17 @@ body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,sans-serif;background
 .stat.c6 .v{color:var(--rose)}.stat.c6 .glow{background:var(--rose)}
 
 /* ── Panel ── */
-.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px}
+.panel{background:var(--surface);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden;margin-bottom:20px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
 .panel-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .panel-head h3{font-size:13px;font-weight:700;letter-spacing:-.2px}
 .panel-body{padding:0}
 
 /* ── Table ── */
 .tbl{width:100%;border-collapse:collapse}
-.tbl th{text-align:left;padding:10px 16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)}
-.tbl td{padding:10px 16px;font-size:12px;border-bottom:1px solid var(--border);color:var(--text2)}
+.tbl th{text-align:left;padding:12px 16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);background:rgba(0,0,0,.2);border-bottom:1px solid var(--border2)}
+.tbl td{padding:12px 16px;font-size:12px;border-bottom:1px solid var(--border);color:var(--text2);transition:var(--transition)}
 .tbl tr:last-child td{border-bottom:none}
-.tbl tr:hover td{background:rgba(255,255,255,.02);color:var(--text)}
+.tbl tr:hover td{background:rgba(255,255,255,.05);color:var(--text)}
 .tbl td strong{color:var(--text);font-weight:700}
 
 /* ── Badges ── */
@@ -156,18 +158,19 @@ body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,sans-serif;background
 
 /* ── Server Grid ── */
 .srv-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.srv-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.srv-card{background:var(--surface);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border2);border-radius:var(--radius);padding:20px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
 .srv-card h3{font-size:13px;font-weight:700;color:var(--coral);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)}
-.srv-row{display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px solid var(--border)}
+.srv-row{display:flex;justify-content:space-between;padding:8px 0;font-size:12px;border-bottom:1px solid var(--border);transition:var(--transition)}
+.srv-row:hover{background:rgba(255,255,255,.02);padding-left:4px;padding-right:4px;border-radius:4px}
 .srv-row:last-child{border-bottom:none}
 .srv-row span:first-child{color:var(--text2)}
 .srv-row span:last-child{font-weight:700;color:var(--text)}
 
 /* ── User Detail Modal ── */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:100;align-items:center;justify-content:center;animation:fadeIn .2s}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:100;align-items:center;justify-content:center;animation:fadeIn .2s}
 .modal-overlay.active{display:flex}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);width:560px;max-height:80vh;overflow-y:auto;position:relative;animation:popIn .25s ease;box-shadow:0 16px 48px rgba(0,0,0,.5)}
+.modal{background:var(--surface);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border2);border-radius:var(--radius-lg);width:560px;max-height:80vh;overflow-y:auto;position:relative;animation:popIn .25s ease;box-shadow:0 16px 48px rgba(0,0,0,.5)}
 @keyframes popIn{from{opacity:0;transform:scale(.95) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
 .modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
 .modal-head h3{font-size:15px;font-weight:800}
@@ -187,8 +190,8 @@ body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,sans-serif;background
 .empty{text-align:center;padding:40px;color:var(--text3);font-size:13px}
 
 /* ── Toast ── */
-.toast{position:fixed;top:20px;right:20px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 20px;font-size:13px;font-weight:700;z-index:200;animation:slideIn .3s ease;transition:opacity .3s;box-shadow:0 8px 24px rgba(0,0,0,.4)}
-.toast.success{border-color:rgba(0,184,148,.3);color:var(--sage)}
+.toast{position:fixed;top:20px;right:20px;background:var(--surface);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 20px;font-size:13px;font-weight:700;z-index:200;animation:slideIn .3s cubic-bezier(.175,.885,.32,1.275);transition:opacity .3s;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.toast.success{border-color:var(--sage);color:var(--sage)}
 .toast.error{border-color:rgba(225,112,85,.3);color:var(--coral2)}
 @keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 
@@ -330,6 +333,9 @@ body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,sans-serif;background
     <!-- Islands -->
     <div id="sec-islands" class="sec">
       <h1><span class="deco"></span>岛屿管理</h1>
+      <div class="search">
+        <input type="text" id="iSearch" placeholder="在当前页过滤岛屿..." oninput="filterTable('iSearch', 'iBody')">
+      </div>
       <div class="panel">
         <div class="panel-body"><table class="tbl">
           <thead><tr><th>岛名</th><th>岛主</th><th>状态</th><th>创建</th><th>更新</th></tr></thead>
@@ -342,6 +348,9 @@ body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,sans-serif;background
     <!-- Messages -->
     <div id="sec-messages" class="sec">
       <h1><span class="deco"></span>对话记录</h1>
+      <div class="search">
+        <input type="text" id="mSearch" placeholder="在当前页过滤对话..." oninput="filterTable('mSearch', 'mBody')">
+      </div>
       <div class="panel">
         <div class="panel-head"><h3>最近对话</h3><button class="refresh" onclick="loadMsgs()">↻ 刷新</button></div>
         <div class="panel-body"><table class="tbl">
@@ -354,6 +363,9 @@ body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,sans-serif;background
     <!-- Mailbox -->
     <div id="sec-mailbox" class="sec">
       <h1><span class="deco"></span>信箱记录</h1>
+      <div class="search">
+        <input type="text" id="mbSearch" placeholder="在当前页过滤信件..." oninput="filterTable('mbSearch', 'mbBody')">
+      </div>
       <div class="panel">
         <div class="panel-head"><h3>全部信件</h3><button class="refresh" onclick="loadMail()">↻ 刷新</button></div>
         <div class="panel-body"><table class="tbl">
@@ -366,6 +378,9 @@ body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,sans-serif;background
     <!-- Bottles -->
     <div id="sec-bottles" class="sec">
       <h1><span class="deco"></span>漂流瓶</h1>
+      <div class="search">
+        <input type="text" id="bSearch" placeholder="在当前页过滤漂流瓶..." oninput="filterTable('bSearch', 'bBody')">
+      </div>
       <div class="panel">
         <div class="panel-head"><h3>全部漂流瓶</h3><button class="refresh" onclick="loadBottles()">↻ 刷新</button></div>
         <div class="panel-body"><table class="tbl">
@@ -409,6 +424,16 @@ const ago=ts=>{if(!ts)return'';const s=Math.floor(Date.now()/1000)-ts;if(s<60)re
 function toast(msg,type='success'){const el=document.getElementById('toast');el.textContent=msg;el.className='toast '+type;el.style.display='block';setTimeout(()=>el.style.display='none',2500)}
 
 function avatarUrl(u){return u.avatar||`data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect fill="%23212436" width="40" height="40" rx="20"/><text x="20" y="26" text-anchor="middle" fill="%23e17055" font-size="16" font-family="sans-serif">${(u.username||'?')[0]}</text></svg>`}
+
+function filterTable(inputId, tbodyId) {
+  const q = document.getElementById(inputId).value.toLowerCase();
+  const rows = document.getElementById(tbodyId).getElementsByTagName('tr');
+  for (let r of rows) {
+    if (r.children.length === 1 && r.children[0].classList.contains('empty')) continue;
+    const text = r.textContent.toLowerCase();
+    r.style.display = text.includes(q) ? '' : 'none';
+  }
+}
 
 // Login
 async function doLogin(){
