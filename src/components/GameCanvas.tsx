@@ -1,13 +1,27 @@
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Text } from '@react-three/drei';
-import { Suspense, useRef, useEffect } from 'react';
+import { Suspense, useRef, useEffect, useState } from 'react';
 import { Terrain } from './Terrain';
 import { Water } from './Water';
 import { SkySystem, WeatherSystem, FirefliesSystem } from './SkySystem';
 import { Assets } from './Assets';
 import * as THREE from 'three';
-import { EffectComposer, Bloom, Vignette, HueSaturation, DepthOfField } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Vignette, HueSaturation } from '@react-three/postprocessing';
 import { useGameStore } from '../store';
+
+// 触屏检测 hook
+function useIsTouchDevice() {
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    const hasCoarse = window.matchMedia('(pointer: coarse)').matches;
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    setIsTouch(hasCoarse || hasTouch);
+    if (hasCoarse || hasTouch) {
+      document.documentElement.classList.add('is-touch');
+    }
+  }, []);
+  return isTouch;
+}
 
 // WASD pans the camera (and orbit target) along the camera's horizontal axes
 function WASDControls({ controlsRef }: { controlsRef: React.RefObject<any> }) {
@@ -59,6 +73,7 @@ export function GameCanvas() {
   const isDrawing = useGameStore(state => state.isDrawing);
   const screen = useGameStore(state => state.screen);
   const assetCount = useGameStore(state => state.assets.length);
+  const isTouch = useIsTouchDevice();
   
   // Disable orbit controls if we are using brush, or if we have a tool selected maybe?
   // Let's only disable it while actively drawing, so user can still rotate if they drag outside terrain.
@@ -66,7 +81,7 @@ export function GameCanvas() {
   const orbitRef = useRef<any>(null);
 
   return (
-    <div className="w-full h-full bg-slate-950">
+    <div className="w-full h-full bg-slate-950" style={{ touchAction: 'none' }}>
       <Canvas 
         shadows 
         camera={{ position: [50, 4, 50], fov: 45 }}
@@ -108,16 +123,31 @@ export function GameCanvas() {
              <Vignette eskil={false} offset={0.15} darkness={0.8} />
           </EffectComposer>
         </Suspense>
-        <WASDControls controlsRef={orbitRef} />
+        {!isTouch && <WASDControls controlsRef={orbitRef} />}
         <OrbitControls
           ref={orbitRef}
           enabled={enableOrbitControls}
           autoRotate={screen !== 'PLAYING'}
           autoRotateSpeed={0.8}
-          maxPolarAngle={Math.PI / 2 - 0.05} // Prevent going below ground
+          maxPolarAngle={Math.PI / 2 - 0.05}
           minDistance={5}
           maxDistance={120}
           target={[0, 0, 0]}
+          // 触屏优化：双指旋转/缩放/平移
+          touches={{
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN
+          }}
+          // 触屏优化：更平滑的阻尼
+          enableDamping={isTouch}
+          dampingFactor={0.08}
+          // 触屏优化：旋转速度
+          rotateSpeed={isTouch ? 0.5 : 1.0}
+          // 触屏优化：缩放速度
+          zoomSpeed={isTouch ? 0.8 : 1.2}
+          // 触屏优化：平移
+          enablePan={true}
+          panSpeed={isTouch ? 0.6 : 1.0}
         />
       </Canvas>
     </div>

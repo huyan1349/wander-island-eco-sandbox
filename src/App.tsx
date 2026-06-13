@@ -279,6 +279,24 @@ export default function App() {
   const lastToolRef = useRef<ToolType>('none');
   const lastCategoryRef = useRef<string | null>(null);
 
+  // 触屏检测 + tooltip 状态
+  const [isTouch, setIsTouch] = useState(false);
+  const [touchTooltip, setTouchTooltip] = useState<string | null>(null);
+  const touchTooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const hasCoarse = window.matchMedia('(pointer: coarse)').matches;
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    setIsTouch(hasCoarse || hasTouch);
+  }, []);
+
+  const showTouchTooltip = (label: string) => {
+    if (!isTouch) return;
+    setTouchTooltip(label);
+    if (touchTooltipTimer.current) clearTimeout(touchTooltipTimer.current);
+    touchTooltipTimer.current = setTimeout(() => setTouchTooltip(null), 1500);
+  };
+
   const incrementPlaytime = useGameStore(state => state.incrementPlaytime);
 
   // Playtime loop
@@ -455,30 +473,34 @@ export default function App() {
         <>
           {/* Top Left Header & HUD */}
       {!isImmersive && (
-        <div className="absolute top-6 left-6 z-50 flex flex-col items-start gap-4 transition-opacity duration-300">
+        <div className={`absolute top-6 left-6 z-50 flex flex-col items-start gap-4 transition-opacity duration-300 ${isTouch ? 'touch-safe-top touch-safe-left' : ''}`}>
            {/* Profile / Avatar (Top Left) */}
            <PlayerPanel />
 
            {/* Tool Column (Below Avatar) */}
            <div className="flex flex-col gap-4">
              <button
-                onClick={() => setIsImmersive(!isImmersive)}
-                className="group relative w-12 h-12 flex items-center justify-center hand-drawn-btn shrink-0"
+                onClick={() => { setIsImmersive(!isImmersive); showTouchTooltip(isImmersive ? '退出沉浸模式' : '沉浸模式'); }}
+                className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 ${isTouch ? 'w-14 h-14' : 'w-12 h-12'}`}
              >
-                {isImmersive ? <EyeOff size={24} className="text-slate-800" /> : <Eye size={24} className="text-slate-800" />}
+                {isImmersive ? <EyeOff size={isTouch ? 28 : 24} className="text-slate-800" /> : <Eye size={isTouch ? 28 : 24} className="text-slate-800" />}
+                {!isTouch && (
                 <span className="absolute -right-24 top-1/2 -translate-y-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                     {isImmersive ? "退出沉浸模式" : "沉浸模式"}
                 </span>
+                )}
              </button>
 
              <button
-                onClick={() => setEnvMenuOpen(!envMenuOpen)}
-                className={`group relative w-12 h-12 flex items-center justify-center hand-drawn-btn shrink-0 ${envMenuOpen ? 'hand-drawn-btn-active' : ''}`}
+                onClick={() => { setEnvMenuOpen(!envMenuOpen); showTouchTooltip('生态面板'); }}
+                className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 ${isTouch ? 'w-14 h-14' : 'w-12 h-12'} ${envMenuOpen ? 'hand-drawn-btn-active' : ''}`}
              >
-                <Globe size={24} className={envMenuOpen ? 'text-amber-700' : 'text-slate-800'} />
+                <Globe size={isTouch ? 28 : 24} className={envMenuOpen ? 'text-amber-700' : 'text-slate-800'} />
+                {!isTouch && (
                 <span className="absolute -right-20 top-1/2 -translate-y-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                     生态面板
                 </span>
+                )}
              </button>
 
              <SocialPanel />
@@ -564,8 +586,15 @@ export default function App() {
 
       {/* Liquid Glass Bottom Dock - Tools & Categories */}
       {!isImmersive && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-4 pointer-events-none">
+        <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-4 pointer-events-none ${isTouch ? 'touch-safe-bottom' : ''}`}>
           
+          {/* Touch tooltip banner */}
+          {touchTooltip && isTouch && (
+            <div className="hand-drawn-panel px-4 py-2 text-sm font-bold text-slate-800 animate-in fade-in duration-200 pointer-events-none">
+              {touchTooltip}
+            </div>
+          )}
+
           {/* Balloon color picker (shown while a balloon tool is selected) */}
           {String(selectedTool).startsWith('balloon') && (
             <div className="hand-drawn-panel px-3 py-2 flex gap-2 items-center pointer-events-auto animate-in slide-in-from-bottom-2 fade-in duration-300">
@@ -574,7 +603,7 @@ export default function App() {
                 <button
                   key={c}
                   onClick={() => setBalloonColor(c)}
-                  className={`w-6 h-6 rounded-full border-2 transition-transform ${balloonColor === c ? 'border-slate-800 scale-125' : 'border-white/60'}`}
+                  className={`w-8 h-8 rounded-full border-2 transition-transform ${balloonColor === c ? 'border-slate-800 scale-125' : 'border-white/60'}`}
                   style={{ backgroundColor: c }}
                 />
               ))}
@@ -583,7 +612,7 @@ export default function App() {
 
           {/* Active Category Tools (Floats above the dock) */}
           {activeCategory && activeCatObj && (
-            <div className="hand-drawn-panel px-2 py-2 flex gap-2 pointer-events-auto animate-in slide-in-from-bottom-2 fade-in duration-300">
+            <div className={`hand-drawn-panel px-2 py-2 pointer-events-auto animate-in slide-in-from-bottom-2 fade-in duration-300 ${isTouch ? 'touch-tools-scroll' : 'flex gap-2'}`}>
               {activeCatObj.tools.map((t) => {
                 const Icon = t.icon;
                 const isActive = selectedTool === t.id;
@@ -596,27 +625,31 @@ export default function App() {
                     key={t.id}
                     onClick={() => {
                       if (!isUnlocked) {
-                         if (canAfford && confirm(`Unlock ${t.label} for ${t.cost} EP?`)) {
+                         if (canAfford && confirm(`解锁 ${t.label} 需要 ${t.cost} EP？`)) {
                              unlockAsset(t.id, t.cost);
                          }
                          return;
                       }
-                      if (t.id === 'save') { saveGame(); alert('Island Saved!'); }
-                      else if (t.id === 'load') { useGameStore.getState().loadGame(); alert('Island Loaded!'); }
-                      else if (t.id === 'clear') { if (confirm('Clear the entire island?')) clearAll(); }
+                      if (t.id === 'save') { saveGame(); alert('岛屿已保存！'); }
+                      else if (t.id === 'load') { useGameStore.getState().loadGame(); alert('岛屿已加载！'); }
+                      else if (t.id === 'clear') { if (confirm('确定清空岛屿？')) clearAll(); }
                       else setSelectedTool(t.id as ToolType);
+                      showTouchTooltip(t.label);
                     }}
-                    className={`hand-drawn-btn relative w-12 h-12 flex items-center justify-center group
+                    className={`hand-drawn-btn relative flex items-center justify-center group shrink-0
+                      ${isTouch ? 'w-14 h-14' : 'w-12 h-12'}
                       ${!isUnlocked ? "opacity-50" : (isActive ? "hand-drawn-btn-active" : "")}
                     `}
                   >
-                    <Icon size={isActive ? 22 : 20} className={isActive ? "text-amber-700" : "text-slate-800"} />
+                    <Icon size={isActive ? (isTouch ? 26 : 22) : (isTouch ? 24 : 20)} className={isActive ? "text-amber-700" : "text-slate-800"} />
                     {!isUnlocked && <Lock size={10} className="absolute bottom-1 right-1 text-amber-400 drop-shadow-md" />}
                     
-                    {/* Hand-Drawn Tooltip */}
-                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-[12px] font-bold py-1 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                      {t.label}
-                    </span>
+                    {/* Desktop: hover tooltip / Touch: hidden (use banner) */}
+                    {!isTouch && (
+                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-[12px] font-bold py-1 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                        {t.label}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -624,7 +657,7 @@ export default function App() {
           )}
 
           {/* Main Category Dock */}
-          <div className="hand-drawn-panel px-4 py-3 flex gap-4 pointer-events-auto">
+          <div className={`hand-drawn-panel px-4 py-3 flex gap-4 pointer-events-auto ${isTouch ? 'touch-dock' : ''}`}>
             {categories.map((c) => {
               const CategoryIcon = c.icon;
               const isActive = activeCategory === c.name;
@@ -632,17 +665,23 @@ export default function App() {
               return (
                 <button
                   key={c.name}
-                  onClick={() => setActiveCategory(isActive ? null : c.name)}
-                  className={`hand-drawn-btn relative p-3 group
+                  onClick={() => {
+                    setActiveCategory(isActive ? null : c.name);
+                    showTouchTooltip(c.name);
+                  }}
+                  className={`hand-drawn-btn relative group
+                    ${isTouch ? 'p-4' : 'p-3'}
                     ${isActive ? "hand-drawn-btn-active" : ""}
                   `}
                 >
-                  <CategoryIcon size={24} className={isActive ? "text-amber-700" : "text-slate-800"} />
+                  <CategoryIcon size={isTouch ? 28 : 24} className={isActive ? "text-amber-700" : "text-slate-800"} />
                   
-                  {/* Tooltip */}
-                  <span className="absolute -top-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-[12px] font-bold py-1 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                    {c.name}
-                  </span>
+                  {/* Desktop: hover tooltip */}
+                  {!isTouch && (
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-[12px] font-bold py-1 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                      {c.name}
+                    </span>
+                  )}
                   
                   {/* Active Indicator dot */}
                   {isActive && <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-2 h-2 bg-amber-700 rounded-full" />}
@@ -655,7 +694,7 @@ export default function App() {
 
       {/* Right Panel - Ecology Menu Content */}
       {!isImmersive && (
-        <div className="absolute right-6 top-6 bottom-6 flex flex-col items-end z-50 pointer-events-none w-80">
+        <div className={`absolute right-6 top-6 bottom-6 flex flex-col items-end z-50 pointer-events-none w-80 ${isTouch ? 'touch-panel-full touch-safe-bottom touch-safe-right' : ''}`}>
           {/* Collapsible Ecology Menu */}
           {envMenuOpen && (
             <div className="hand-drawn-panel p-5 pointer-events-auto flex flex-col gap-5 w-72 max-h-[70vh] overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-200">
