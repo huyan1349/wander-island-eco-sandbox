@@ -2610,38 +2610,41 @@ function Crop({ position, scale = 1, type, growthProgress = 0, id }: any) {
 export function Tent(props: any) {
   const ref = usePopIn(props.scale || 1);
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
-      {/* Wooden Frame */}
-      <mesh position={[0, 0.8, -0.9]} rotation={[0, 0, Math.PI / 4]} castShadow>
-        <boxGeometry args={[0.1, 2.4, 0.1]} />
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
+      {/* Front Wooden Frame */}
+      <mesh position={[0, 0.9, 1.0]} rotation={[0, 0, Math.PI / 4]} castShadow>
+        <boxGeometry args={[0.1, 2.6, 0.1]} />
         <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
-      <mesh position={[0, 0.8, -0.9]} rotation={[0, 0, -Math.PI / 4]} castShadow>
-        <boxGeometry args={[0.1, 2.4, 0.1]} />
+      <mesh position={[0, 0.9, 1.0]} rotation={[0, 0, -Math.PI / 4]} castShadow>
+        <boxGeometry args={[0.1, 2.6, 0.1]} />
         <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
-      {/* Tent Poles - Slightly tilted for hand-drawn feel */}
-      <mesh position={[0, 1.05, 0.9]} rotation={[Math.PI / 2 + 0.1, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.05, 0.06, 2.3, 5]} />
-        <meshStandardMaterial color="#78350f" roughness={0.8} flatShading />
+
+      {/* Back Wooden Frame */}
+      <mesh position={[0, 0.9, -1.0]} rotation={[0, 0, Math.PI / 4]} castShadow>
+        <boxGeometry args={[0.1, 2.6, 0.1]} />
+        <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
-      <mesh position={[0, 1.05, -0.9]} rotation={[Math.PI / 2 - 0.1, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.05, 0.06, 2.3, 5]} />
-        <meshStandardMaterial color="#78350f" roughness={0.8} flatShading />
+      <mesh position={[0, 0.9, -1.0]} rotation={[0, 0, -Math.PI / 4]} castShadow>
+        <boxGeometry args={[0.1, 2.6, 0.1]} />
+        <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
-      {/* Crossbar */}
-      <mesh position={[0, 1.05, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-        <cylinderGeometry args={[0.05, 0.05, 2.0, 5]} />
+
+      {/* Top Ridge Pole (Crossbar) */}
+      <mesh position={[0, 1.7, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.06, 0.06, 2.4, 6]} />
         <meshStandardMaterial color="#451a03" roughness={0.8} flatShading />
       </mesh>
       
-      {/* Canvas Main */}
-      <mesh position={[-0.5, 0.75, 0]} rotation={[0, 0, Math.PI / 5]} castShadow receiveShadow>
-        <boxGeometry args={[0.08, 2.3, 2.1]} />
+      {/* Canvas Main - Left side */}
+      <mesh position={[-0.6, 0.9, 0]} rotation={[0, 0, Math.PI / 6]} castShadow receiveShadow>
+        <boxGeometry args={[0.05, 2.1, 2.1]} />
         <meshStandardMaterial color="#fef3c7" roughness={1} flatShading />
       </mesh>
-      <mesh position={[0.5, 0.75, 0]} rotation={[0, 0, -Math.PI / 5]} castShadow receiveShadow>
-        <boxGeometry args={[0.08, 2.3, 2.1]} />
+      {/* Canvas Main - Right side */}
+      <mesh position={[0.6, 0.9, 0]} rotation={[0, 0, -Math.PI / 6]} castShadow receiveShadow>
+        <boxGeometry args={[0.05, 2.1, 2.1]} />
         <meshStandardMaterial color="#fef3c7" roughness={1} flatShading />
       </mesh>
 
@@ -2933,7 +2936,7 @@ export function SpiritTree(props: any) {
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
     if (leavesRef.current) {
-      leavesRef.current.position.y = Math.sin(clock.elapsedTime * 2) * 0.1;
+      leavesRef.current.position.y = 3.5 + Math.sin(clock.elapsedTime * 2) * 0.1;
       leavesRef.current.rotation.y = Math.sin(clock.elapsedTime * 0.5) * 0.05;
     }
   });
