@@ -313,6 +313,7 @@ export default function App() {
   const [isImmersive, setIsImmersive] = useState(false);
   const [isFloating, setIsFloating] = useState(false);
   const [timer3D, setTimer3D] = useState(false);
+  const [autoRotateOn, setAutoRotateOn] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [envMenuOpen, setEnvMenuOpen] = useState(false);
   const lastToolRef = useRef<ToolType>('none');
@@ -533,7 +534,7 @@ export default function App() {
     >
       {/* Center Canvas */}
       <div className={`absolute inset-0 z-0 transition-all duration-1000 ${screen !== 'PLAYING' ? 'blur-none brightness-100' : 'blur-none brightness-100'}`}>
-        <GameCanvas immersive={isImmersive} timer3D={timer3D} />
+        <GameCanvas immersive={isImmersive} timer3D={timer3D} autoRotateOn={autoRotateOn} />
       </div>
 
       {screen === 'TITLE' && <TitleScreen />}
@@ -640,6 +641,12 @@ export default function App() {
                     className="pointer-events-auto flex items-center gap-2 text-white/40 hover:text-white transition-colors"
                  >
                     <span className="font-mono text-[10px] tracking-[0.2em] uppercase">{timer3D ? 'Center Clock' : 'Clock On Island'}</span>
+                 </button>
+                 <button
+                    onClick={() => setAutoRotateOn((v) => !v)}
+                    className="pointer-events-auto flex items-center gap-2 text-white/40 hover:text-white transition-colors"
+                 >
+                    <span className="font-mono text-[10px] tracking-[0.2em] uppercase">{autoRotateOn ? 'Rotation On' : 'Rotation Off'}</span>
                  </button>
                  <button
                     onClick={() => setIsFloating((f) => !f)}

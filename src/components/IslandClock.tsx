@@ -5,14 +5,13 @@ import * as THREE from 'three';
 import { useGameStore } from '../store';
 import { PomodoroTimer } from './PomodoroTimer';
 
-// 岛上 3D 番茄钟：鼠标移到整块面板上即可拖动（无需小把手）。
-// 拖动时把屏幕坐标投影到 y=3 水平面，移动整组；并禁用 OrbitControls。
+// 岛上 3D 番茄钟：鼠标移到整块面板上即可拖动。
+// 拖动时对场景做射线检测，落点高度自动贴合地形/物体表面（往高处拖会升高）。
 export function IslandClock() {
   const ref = useRef<THREE.Group>(null);
   const dragging = useRef(false);
-  const { camera, gl } = useThree();
+  const { camera, gl, scene } = useThree();
   const raycaster = useRef(new THREE.Raycaster());
-  const plane = useRef(new THREE.Plane(new THREE.Vector3(0, 1, 0), -3));
 
   useEffect(() => {
     const move = (e: PointerEvent) => {
@@ -23,9 +22,15 @@ export function IslandClock() {
         -((e.clientY - rect.top) / rect.height) * 2 + 1,
       );
       raycaster.current.setFromCamera(ndc, camera);
-      const pt = new THREE.Vector3();
-      if (raycaster.current.ray.intersectPlane(plane.current, pt)) {
-        ref.current.position.set(pt.x, 3, pt.z);
+      const hits = raycaster.current.intersectObjects(scene.children, true);
+      // 取第一个不属于时钟自身的命中点，贴合该表面
+      const hit = hits.find((h) => {
+        let o: THREE.Object3D | null = h.object;
+        while (o) { if (o === ref.current) return false; o = o.parent; }
+        return true;
+      });
+      if (hit) {
+        ref.current.position.set(hit.point.x, hit.point.y + 1.5, hit.point.z);
       }
     };
     const up = () => {
@@ -41,10 +46,10 @@ export function IslandClock() {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
     };
-  }, [camera, gl]);
+  }, [camera, gl, scene]);
 
   return (
-    <group ref={ref} position={[0, 3, 0]}>
+    <group ref={ref} position={[0, 4, 0]}>
       <Html transform distanceFactor={10}>
         <div
           onPointerDown={(e) => {

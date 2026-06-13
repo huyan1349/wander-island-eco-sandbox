@@ -135,7 +135,7 @@ function SmoothZoom({ controlsRef, minDistance, maxDistance }: {
   return null;
 }
 
-export function GameCanvas({ immersive = false, timer3D = false }: { immersive?: boolean; timer3D?: boolean }) {
+export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = true }: { immersive?: boolean; timer3D?: boolean; autoRotateOn?: boolean }) {
   const isDrawing = useGameStore(state => state.isDrawing);
   const screen = useGameStore(state => state.screen);
   const assetCount = useGameStore(state => state.assets.length);
@@ -196,7 +196,7 @@ export function GameCanvas({ immersive = false, timer3D = false }: { immersive?:
         <OrbitControls
           ref={orbitRef}
           enabled={enableOrbitControls}
-          autoRotate={screen !== 'PLAYING' || immersive}
+          autoRotate={screen !== 'PLAYING' || (immersive && autoRotateOn)}
           autoRotateSpeed={0.8}
           maxPolarAngle={Math.PI / 2 - 0.05}
           minDistance={5}
