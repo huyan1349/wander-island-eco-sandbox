@@ -3268,8 +3268,8 @@ export function WillowTree({ position, rotation, scale = 1 }: { position: any, r
       // Cascading wave effect on the hanging strands
       leavesRef.current.children.forEach((child: any, i: number) => {
         if (child.name === 'strand') {
-           child.rotation.x = Math.sin(clock.elapsedTime * 1.2 + i * 0.5) * 0.06;
-           child.rotation.z = Math.cos(clock.elapsedTime * 1.0 + i * 0.5) * 0.06;
+           child.rotation.x = Math.sin(clock.elapsedTime * 1.2 + i * 0.5) * 0.18;
+           child.rotation.z = Math.cos(clock.elapsedTime * 1.0 + i * 0.5) * 0.18;
         }
       });
     }
