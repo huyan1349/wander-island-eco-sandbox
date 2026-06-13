@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { AudioSystem } from './lib/audio';
+import { FlourishCardId, FLOURISH_CARDS, STARTING_DECK, HAND_SIZE, SEASON_BASE_ECO, evaluateSymbiosis, shuffle } from './game/flourish';
 
 export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel';
 export type WeatherType = 'sunny' | 'cloudy' | 'rainy' | 'foggy' | 'snowy' | 'stormy';
@@ -191,6 +192,20 @@ interface GameState {
   vfxQueue: VFX[];
   spawnVFX: (type: VFX['type'], position: Vector3Data) => void;
   removeVFX: (id: number) => void;
+
+  // 生生不息 (Flourish) 策略模式
+  mode: 'creative' | 'flourish';
+  setMode: (m: 'creative' | 'flourish') => void;
+  hand: FlourishCardId[];
+  drawPile: FlourishCardId[];
+  seasonTurn: number;
+  pendingCard: FlourishCardId | null;
+  lastChainLabel: string | null;
+  startFlourish: () => void;
+  selectCard: (id: FlourishCardId) => void;
+  cancelCard: () => void;
+  commitCardPlacement: (pos: { x: number; z: number }) => boolean;
+  advanceSeason: () => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -680,6 +695,100 @@ export const useGameStore = create<GameState>((set, get) => ({
           'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
           'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'
       ],
-      terrainData: { ...get().terrainData, positions: null, types: null } 
-  })
+      terrainData: { ...get().terrainData, positions: null, types: null }
+  }),
+
+  // ===== 生生不息 (Flourish) 策略模式 =====
+  mode: 'creative',
+  setMode: (m) => set({ mode: m }),
+  hand: [],
+  drawPile: [],
+  seasonTurn: 1,
+  pendingCard: null,
+  lastChainLabel: null,
+
+  startFlourish: () => {
+    const pile = shuffle(STARTING_DECK);
+    const hand: FlourishCardId[] = [];
+    while (hand.length < HAND_SIZE && pile.length > 0) hand.push(pile.pop()!);
+    set({
+      mode: 'flourish',
+      drawPile: pile,
+      hand,
+      seasonTurn: 1,
+      pendingCard: null,
+      lastChainLabel: null,
+      selectedTool: 'none',
+      ecoPoints: Math.max(get().ecoPoints, 60),
+    });
+  },
+
+  selectCard: (id) => {
+    const card = FLOURISH_CARDS[id];
+    if (!card) return;
+    if (get().ecoPoints < card.cost) {
+      get().addToast(`Eco 不足，需要 ${card.cost}`, 'info');
+      return;
+    }
+    set({ pendingCard: id, selectedTool: card.assetType as ToolType, connectingPillarId: null });
+  },
+
+  cancelCard: () => set({ pendingCard: null, selectedTool: 'none' }),
+
+  commitCardPlacement: (pos) => {
+    const state = get();
+    const id = state.pendingCard;
+    if (!id) return false;
+    const card = FLOURISH_CARDS[id];
+    if (state.ecoPoints < card.cost) return false;
+
+    // 用放置前的 assets 评估邻居共生（新物体尚未加入）
+    const sym = evaluateSymbiosis(card.assetType, pos, state.assets);
+
+    // 复用 addAsset：会处理 XP / VFX / 协同音效
+    state.addAsset({
+      type: card.assetType,
+      position: { x: pos.x, y: 0, z: pos.z },
+      rotation: { x: 0, y: Math.random() * Math.PI * 2, z: 0 },
+      scale: 0.9,
+    });
+
+    // 结算 Eco：扣成本 + 加共生奖励；从手牌移除一张
+    const net = sym.ecoBonus - card.cost;
+    const handCopy = [...get().hand];
+    const idx = handCopy.indexOf(id);
+    if (idx >= 0) handCopy.splice(idx, 1);
+
+    set({
+      ecoPoints: Math.max(0, get().ecoPoints + net),
+      hand: handCopy,
+      pendingCard: null,
+      selectedTool: 'none',
+      lastChainLabel: sym.label || null,
+    });
+
+    if (sym.label) {
+      get().addToast(sym.label, 'info');
+      AudioSystem.playSynergyChord();
+    }
+    return true;
+  },
+
+  advanceSeason: () => {
+    get().updateEcology(); // 生态演化 + 被动 EP
+    get().advanceDay();    // 推进天气
+
+    const pile = [...get().drawPile];
+    const hand = [...get().hand];
+    while (hand.length < HAND_SIZE) {
+      if (pile.length === 0) pile.push(...shuffle(STARTING_DECK)); // 无限经营：牌库循环
+      hand.push(pile.pop()!);
+    }
+    set({
+      seasonTurn: get().seasonTurn + 1,
+      ecoPoints: get().ecoPoints + SEASON_BASE_ECO,
+      drawPile: pile,
+      hand,
+    });
+  },
 }));

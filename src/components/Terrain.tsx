@@ -655,6 +655,13 @@ export function Terrain() {
             point.z = Math.round(point.z / 3) * 3;
         }
 
+        // 生生不息模式：打牌即放置，放下后走共生连锁结算
+        const flourishState = useGameStore.getState();
+        if (flourishState.mode === 'flourish' && flourishState.pendingCard) {
+            flourishState.commitCardPlacement({ x: point.x, z: point.z });
+            return;
+        }
+
         let assetType: any = selectedTool;
         if (selectedTool === 'hoe') assetType = 'farmland';
         if (selectedTool === 'seed_wheat') assetType = 'crop_wheat';
