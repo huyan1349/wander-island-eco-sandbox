@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wander Island - 管理后台</title>
+  <style>
+    @import url('/fonts/nunito-latin-400-normal.woff2');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0f172a; --surface: #1e293b; --surface2: #334155;
+      --border: #475569; --text: #f1f5f9; --text2: #94a3b8;
+      --accent: #f59e0b; --accent2: #d97706; --green: #10b981;
+      --red: #ef4444; --blue: #3b82f6; --purple: #8b5cf6;
+    }
+    body { font-family: 'Nunito', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* Login */
+    .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 360px; }
+    .login-box h1 { font-size: 20px; margin-bottom: 8px; color: var(--accent); }
+    .login-box p { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+    .login-box input { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px; margin-bottom: 12px; outline: none; }
+    .login-box input:focus { border-color: var(--accent); }
+    .login-box button { width: 100%; padding: 10px; border-radius: 8px; border: none; background: var(--accent); color: #000; font-weight: 700; font-size: 14px; cursor: pointer; }
+    .login-box button:hover { background: var(--accent2); }
+    .login-error { color: var(--red); font-size: 12px; margin-top: 8px; display: none; }
+
+    /* Dashboard */
+    .app { display: none; }
+    .app.active { display: flex; }
+    .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 20px 0; flex-shrink: 0; height: 100vh; position: sticky; top: 0; }
+    .sidebar h2 { font-size: 16px; padding: 0 20px 16px; color: var(--accent); border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+    .sidebar nav a { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 13px; color: var(--text2); text-decoration: none; transition: all .15s; }
+    .sidebar nav a:hover, .sidebar nav a.active { color: var(--text); background: var(--surface2); }
+    .sidebar nav a.active { border-right: 3px solid var(--accent); }
+    .sidebar .logout { margin-top: auto; position: absolute; bottom: 20px; left: 0; right: 0; }
+    .sidebar .logout a { color: var(--red); }
+
+    .main { flex: 1; padding: 24px 32px; overflow-y: auto; max-height: 100vh; }
+    .main h1 { font-size: 22px; margin-bottom: 20px; }
+
+    /* Stats Cards */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .stat-card .label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; }
+    .stat-card .value { font-size: 28px; font-weight: 800; margin-top: 4px; }
+    .stat-card .value.amber { color: var(--accent); }
+    .stat-card .value.green { color: var(--green); }
+    .stat-card .value.blue { color: var(--blue); }
+    .stat-card .value.purple { color: var(--purple); }
+    .stat-card .sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+    /* Table */
+    .data-table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 12px; overflow: hidden; }
+    .data-table th { text-align: left; padding: 10px 14px; font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+    .data-table td { padding: 10px 14px; font-size: 13px; border-bottom: 1px solid var(--border); }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(255,255,255,0.03); }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 700; }
+    .badge-green { background: rgba(16,185,129,.15); color: var(--green); }
+    .badge-amber { background: rgba(245,158,11,.15); color: var(--accent); }
+    .badge-red { background: rgba(239,68,68,.15); color: var(--red); }
+    .badge-blue { background: rgba(59,130,246,.15); color: var(--blue); }
+    .badge-purple { background: rgba(139,92,246,.15); color: var(--purple); }
+
+    .btn-sm { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text2); font-size: 11px; cursor: pointer; }
+    .btn-sm:hover { background: var(--surface2); color: var(--text); }
+    .btn-sm.danger { border-color: var(--red); color: var(--red); }
+    .btn-sm.danger:hover { background: rgba(239,68,68,.15); }
+
+    .search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+    .search-bar input { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; width: 240px; outline: none; }
+    .search-bar input:focus { border-color: var(--accent); }
+    .search-bar button { padding: 8px 16px; border-radius: 8px; border: none; background: var(--accent); color: #000; font-weight: 700; font-size: 13px; cursor: pointer; }
+
+    .page-nav { display: flex; gap: 8px; margin-top: 16px; align-items: center; }
+    .page-nav button { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; font-size: 12px; }
+    .page-nav button:hover { background: var(--surface2); }
+    .page-nav span { font-size: 12px; color: var(--text2); }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .avatar-sm { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); vertical-align: middle; margin-right: 6px; }
+    .mono { font-family: 'Courier New', monospace; font-size: 12px; }
+
+    .server-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .server-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .server-card h3 { font-size: 14px; color: var(--accent); margin-bottom: 12px; }
+    .server-card .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,.05); }
+    .server-card .row:last-child { border-bottom: none; }
+
+    .empty { text-align: center; padding: 40px; color: var(--text2); font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="loginPage" class="login-wrap">
+  <div class="login-box">
+    <h1>Wander Island 管理后台</h1>
+    <p>使用管理员账号登录</p>
+    <input type="text" id="loginUser" placeholder="用户名" value="wander_admin">
+    <input type="password" id="loginPass" placeholder="密码" value="">
+    <button onclick="doLogin()">登 录</button>
+    <div id="loginError" class="login-error"></div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="appPage" class="app">
+  <div class="sidebar">
+    <h2>Wander Island</h2>
+    <nav>
+      <a href="#" class="active" data-page="overview">📊 总览</a>
+      <a href="#" data-page="users">👥 用户管理</a>
+      <a href="#" data-page="islands">🏝️ 岛屿管理</a>
+      <a href="#" data-page="messages">💬 聊天记录</a>
+      <a href="#" data-page="mailbox">📮 信箱记录</a>
+      <a href="#" data-page="bottles">🧴 漂流瓶</a>
+      <a href="#" data-page="server">⚙️ 服务器状态</a>
+    </nav>
+    <div class="logout">
+      <a href="#" onclick="doLogout()">🚪 退出登录</a>
+    </div>
+  </div>
+  <div class="main">
+    <!-- Overview -->
+    <div id="sec-overview" class="section active">
+      <h1>📊 总览</h1>
+      <div class="stats-grid" id="overviewStats"></div>
+    </div>
+
+    <!-- Users -->
+    <div id="sec-users" class="section">
+      <h1>👥 用户管理</h1>
+      <div class="search-bar">
+        <input type="text" id="userSearch" placeholder="搜索用户名...">
+        <button onclick="loadUsers()">搜索</button>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>头像</th><th>用户名</th><th>座右铭</th><th>岛屿</th><th>好友</th><th>注册时间</th><th>最后在线</th><th>操作</th></tr></thead>
+        <tbody id="usersBody"></tbody>
+      </table>
+      <div class="page-nav" id="usersNav"></div>
+    </div>
+
+    <!-- Islands -->
+    <div id="sec-islands" class="section">
+      <h1>🏝️ 岛屿管理</h1>
+      <table class="data-table">
+        <thead><tr><th>岛名</th><th>岛主</th><th>公开</th><th>创建时间</th><th>更新时间</th></tr></thead>
+        <tbody id="islandsBody"></tbody>
+      </table>
+      <div class="page-nav" id="islandsNav"></div>
+    </div>
+
+    <!-- Messages -->
+    <div id="sec-messages" class="section">
+      <h1>💬 聊天记录</h1>
+      <table class="data-table">
+        <thead><tr><th>发送者</th><th>接收者</th><th>内容</th><th>时间</th><th>已读</th></tr></thead>
+        <tbody id="messagesBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Mailbox -->
+    <div id="sec-mailbox" class="section">
+      <h1>📮 信箱记录</h1>
+      <table class="data-table">
+        <thead><tr><th>发件人</th><th>收件人</th><th>主题</th><th>内容</th><th>礼物</th><th>时间</th></tr></thead>
+        <tbody id="mailboxBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Bottles -->
+    <div id="sec-bottles" class="section">
+      <h1>🧴 漂流瓶</h1>
+      <table class="data-table">
+        <thead><tr><th>发送者</th><th>内容</th><th>心情</th><th>发现者</th><th>回复</th><th>时间</th></tr></thead>
+        <tbody id="bottlesBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Server -->
+    <div id="sec-server" class="section">
+      <h1>⚙️ 服务器状态</h1>
+      <div class="server-grid" id="serverGrid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let TOKEN = localStorage.getItem('admin_token') || '';
+let currentPage = { users: 1, islands: 1 };
+
+const API = '';
+const headers = () => ({ 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' });
+
+function fmt(ts) {
+  if (!ts) return '-';
+  return new Date(ts * 1000).toLocaleString('zh-CN');
+}
+
+function fmtDuration(s) {
+  const d = Math.floor(s / 86400); const h = Math.floor((s % 86400) / 3600); const m = Math.floor((s % 3600) / 60);
+  return d > 0 ? `${d}天${h}时${m}分` : h > 0 ? `${h}时${m}分` : `${m}分`;
+}
+
+// Login
+async function doLogin() {
+  const username = document.getElementById('loginUser').value;
+  const password = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+
+  try {
+    const res = await fetch(`${API}/api/auth/login`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login failed');
+
+    // Check admin
+    if (data.user.username !== 'wander_admin') {
+      errEl.textContent = '此账号不是管理员';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    TOKEN = data.token;
+    localStorage.setItem('admin_token', TOKEN);
+    showDashboard();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+function doLogout() {
+  TOKEN = '';
+  localStorage.removeItem('admin_token');
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('appPage').classList.remove('active');
+}
+
+function showDashboard() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('appPage').classList.add('active');
+  loadOverview();
+}
+
+// Navigation
+document.querySelectorAll('.sidebar nav a').forEach(a => {
+  a.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.querySelectorAll('.sidebar nav a').forEach(x => x.classList.remove('active'));
+    a.classList.add('active');
+    const page = a.dataset.page;
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(`sec-${page}`).classList.add('active');
+
+    if (page === 'overview') loadOverview();
+    if (page === 'users') loadUsers();
+    if (page === 'islands') loadIslands();
+    if (page === 'messages') loadMessages();
+    if (page === 'mailbox') loadMailbox();
+    if (page === 'bottles') loadBottles();
+    if (page === 'server') loadServer();
+  });
+});
+
+// Overview
+async function loadOverview() {
+  try {
+    const res = await fetch(`${API}/api/admin/overview`, { headers: headers() });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error);
+
+    document.getElementById('overviewStats').innerHTML = `
+      <div class="stat-card"><div class="label">总用户</div><div class="value amber">${d.userCount}</div><div class="sub">今日新增 ${d.newUsersToday}</div></div>
+      <div class="stat-card"><div class="label">总岛屿</div><div class="value green">${d.islandCount}</div></div>
+      <div class="stat-card"><div class="label">聊天消息</div><div class="value blue">${d.messageCount}</div><div class="sub">今日 ${d.newMessagesToday}</div></div>
+      <div class="stat-card"><div class="label">信件</div><div class="value purple">${d.mailboxCount}</div></div>
+      <div class="stat-card"><div class="label">漂流瓶</div><div class="value amber">${d.bottleCount}</div></div>
+      <div class="stat-card"><div class="label">访客记录</div><div class="value green">${d.visitorCount}</div></div>
+      <div class="stat-card"><div class="label">好友关系</div><div class="value blue">${d.friendCount}</div></div>
+      <div class="stat-card"><div class="label">7日活跃</div><div class="value purple">${d.activeWeek}</div></div>
+    `;
+  } catch (e) {
+    if (e.message === 'Invalid token') doLogout();
+  }
+}
+
+// Users
+async function loadUsers() {
+  const search = document.getElementById('userSearch').value;
+  try {
+    const res = await fetch(`${API}/api/admin/users?page=${currentPage.users}&search=${encodeURIComponent(search)}`, { headers: headers() });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error);
+
+    document.getElementById('usersBody').innerHTML = d.users.map(u => `
+      <tr>
+        <td><img class="avatar-sm" src="${u.avatar || '/avatars/default.png'}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><rect fill=%22%23334155%22 width=%2240%22 height=%2240%22/><text x=%2220%22 y=%2226%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22 font-size=%2216%22>${u.username[0]}</text></svg>'"></td>
+        <td><strong>${u.username}</strong></td>
+        <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)">${u.motto || '-'}</td>
+        <td>${u.island_count}</td>
+        <td>${u.friend_count}</td>
+        <td class="mono">${fmt(u.created_at)}</td>
+        <td class="mono">${fmt(u.last_online)}</td>
+        <td>${u.username !== 'wander_admin' && u.username !== '辞' ? `<button class="btn-sm danger" onclick="deleteUser('${u.id}','${u.username}')">删除</button>` : '<span class="badge badge-green">系统</span>'}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="8" class="empty">暂无用户</td></tr>';
+
+    document.getElementById('usersNav').innerHTML = d.totalPages > 1 ? `
+      <button ${d.page <= 1 ? 'disabled' : ''} onclick="currentPage.users--;loadUsers()">上一页</button>
+      <span>${d.page} / ${d.totalPages} (共 ${d.total} 条)</span>
+      <button ${d.page >= d.totalPages ? 'disabled' : ''} onclick="currentPage.users++;loadUsers()">下一页</button>
+    ` : '';
+  } catch (e) {
+    if (e.message === 'Invalid token') doLogout();
+  }
+}
+
+async function deleteUser(id, name) {
+  if (!confirm(`确定删除用户 "${name}" 吗？此操作不可撤销！`)) return;
+  try {
+    const res = await fetch(`${API}/api/admin/users/${id}`, { method: 'DELETE', headers: headers() });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error);
+    loadUsers();
+  } catch (e) {
+    alert('删除失败: ' + e.message);
+  }
+}
+
+// Islands
+async function loadIslands() {
+  try {
+    const res = await fetch(`${API}/api/admin/islands?page=${currentPage.islands}`, { headers: headers() });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error);
+
+    document.getElementById('islandsBody').innerHTML = d.islands.map(i => `
+      <tr>
+        <td><strong>${i.name}</strong></td>
+        <td>${i.owner_name}</td>
+        <td>${i.is_public ? '<span class="badge badge-green">公开</span>' : '<span class="badge badge-amber">私有</span>'}</td>
+        <td class="mono">${fmt(i.created_at)}</td>
+        <td class="mono">${fmt(i.updated_at)}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" class="empty">暂无岛屿</td></tr>';
+
+    document.getElementById('islandsNav').innerHTML = d.totalPages > 1 ? `
+      <button ${d.page <= 1 ? 'disabled' : ''} onclick="currentPage.islands--;loadIslands()">上一页</button>
+      <span>${d.page} / ${d.totalPages} (共 ${d.total} 条)</span>
+      <button ${d.page >= d.totalPages ? 'disabled' : ''} onclick="currentPage.islands++;loadIslands()">下一页</button>
+    ` : '';
+  } catch (e) {
+    if (e.message === 'Invalid token') doLogout();
+  }
+}
+
+// Messages
+async function loadMessages() {
+  try {
+    const res = await fetch(`${API}/api/admin/messages?limit=100`, { headers: headers() });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error);
+
+    document.getElementById('messagesBody').innerHTML = d.messages.map(m => `
+      <tr>
+        <td>${m.from_name}</td>
+        <td>${m.to_name}</td>
+        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.content}</td>
+        <td class="mono">${fmt(m.created_at)}</td>
+        <td>${m.read ? '<span class="badge badge-green">已读</span>' : '<span class="badge badge-amber">未读</span>'}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" class="empty">暂无消息</td></tr>';
+  } catch (e) {
+    if (e.message === 'Invalid token') doLogout();
+  }
+}
+
+// Mailbox
+async function loadMailbox() {
+  try {
+    const res = await fetch(`${API}/api/admin/mailbox?limit=100`, { headers: headers() });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error);
+
+    document.getElementById('mailboxBody').innerHTML = d.mails.map(m => `
+      <tr>
+        <td>${m.from_name}</td>
+        <td>${m.to_name}</td>
+        <td>${m.subject || '(无主题)'}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.content}</td>
+        <td>${m.gift_type ? `<span class="badge badge-purple">${m.gift_type}</span>` : '-'}</td>
+        <td class="mono">${fmt(m.created_at)}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="6" class="empty">暂无信件</td></tr>';
+  } catch (e) {
+    if (e.message === 'Invalid token') doLogout();
+  }
+}
+
+// Bottles
+async function loadBottles() {
+  try {
+    const res = await fetch(`${API}/api/admin/bottles`, { headers: headers() });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error);
+
+    document.getElementById('bottlesBody').innerHTML = d.bottles.map(b => `
+      <tr>
+        <td>${b.sender_name}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.content}</td>
+        <td><span class="badge badge-blue">${b.mood}</span></td>
+        <td>${b.finder_name || '<span style="color:var(--text2)">未发现</span>'}</td>
+        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.reply || '-'}</td>
+        <td class="mono">${fmt(b.created_at)}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="6" class="empty">暂无漂流瓶</td></tr>';
+  } catch (e) {
+    if (e.message === 'Invalid token') doLogout();
+  }
+}
+
+// Server
+async function loadServer() {
+  try {
+    const res = await fetch(`${API}/api/admin/server`, { headers: headers() });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error);
+
+    document.getElementById('serverGrid').innerHTML = `
+      <div class="server-card">
+        <h3>运行状态</h3>
+        <div class="row"><span>运行时间</span><span>${fmtDuration(d.uptime)}</span></div>
+        <div class="row"><span>内存 (RSS)</span><span>${d.memory.rss} MB</span></div>
+        <div class="row"><span>堆内存 (已用)</span><span>${d.memory.heapUsed} MB</span></div>
+        <div class="row"><span>堆内存 (总量)</span><span>${d.memory.heapTotal} MB</span></div>
+        <div class="row"><span>数据库大小</span><span>${d.dbSize} KB</span></div>
+      </div>
+      <div class="server-card">
+        <h3>数据表统计</h3>
+        ${Object.entries(d.tableCounts).map(([k, v]) => `<div class="row"><span>${k}</span><span>${v}</span></div>`).join('')}
+      </div>
+    `;
+  } catch (e) {
+    if (e.message === 'Invalid token') doLogout();
+  }
+}
+
+// Auto-login
+if (TOKEN) {
+  fetch(`${API}/api/admin/overview`, { headers: headers() })
+    .then(r => { if (r.ok) showDashboard(); else doLogout(); })
+    .catch(() => doLogout());
+}
+</script>
+</body>
+</html>

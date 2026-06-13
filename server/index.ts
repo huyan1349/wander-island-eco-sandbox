@@ -16,6 +16,7 @@ import chatRoutes from './routes/chat.js';
 import mailboxRouter from './routes/mailbox.js';
 import visitorsRouter from './routes/visitors.js';
 import bottlesRouter from './routes/bottles.js';
+import adminRouter from './routes/admin.js';
 import { setupSocket } from './socket.js';
 
 dotenv.config({ path: '.env.local' });
@@ -65,6 +66,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/mailbox', mailboxRouter);
 app.use('/api/visitors', visitorsRouter);
 app.use('/api/bottles', bottlesRouter);
+app.use('/api/admin', adminRouter);
 
 // AI Narration endpoint (preserved from original server.js)
 const apiKey = process.env.DEEPSEEK_API_KEY;
