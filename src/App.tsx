@@ -300,6 +300,7 @@ export default function App() {
   }, [authUser, islandId]);
 
   const [isImmersive, setIsImmersive] = useState(false);
+  const [isFloating, setIsFloating] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [envMenuOpen, setEnvMenuOpen] = useState(false);
   const lastToolRef = useRef<ToolType>('none');
@@ -514,7 +515,10 @@ export default function App() {
   };
 
   return (
-    <div className="w-full h-screen relative bg-slate-950 overflow-hidden font-sans text-slate-100 flex">
+    <div
+      className="w-full h-screen relative bg-slate-950 overflow-hidden font-sans text-slate-100 flex"
+      style={isFloating ? { position: 'fixed', top: 16, right: 16, width: '100vw', height: '100vh', transform: 'scale(0.32)', transformOrigin: 'top right', borderRadius: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', zIndex: 100 } : undefined}
+    >
       {/* Center Canvas */}
       <div className={`absolute inset-0 z-0 transition-all duration-1000 ${screen !== 'PLAYING' ? 'blur-none brightness-100' : 'blur-none brightness-100'}`}>
         <GameCanvas />
@@ -618,13 +622,22 @@ export default function App() {
                    </div>
                </div>
                
-               <button 
-                  onClick={() => setIsImmersive(false)}
-                  className="pointer-events-auto flex items-center gap-3 text-white/40 hover:text-white transition-colors group"
-               >
-                  <span className="font-mono text-[10px] tracking-[0.2em] uppercase opacity-0 group-hover:opacity-100 transition-opacity">Wake Up</span>
-                  <EyeOff size={20} className="font-light" />
-               </button>
+               <div className="flex items-center gap-6">
+                 <button
+                    onClick={() => setIsFloating((f) => !f)}
+                    className="pointer-events-auto flex items-center gap-2 text-white/40 hover:text-white transition-colors"
+                 >
+                    <span className="font-mono text-[10px] tracking-[0.2em] uppercase">{isFloating ? 'Restore' : 'Float'}</span>
+                    <Maximize2 size={18} className="font-light" />
+                 </button>
+                 <button
+                    onClick={() => { setIsImmersive(false); setIsFloating(false); }}
+                    className="pointer-events-auto flex items-center gap-3 text-white/40 hover:text-white transition-colors group"
+                 >
+                    <span className="font-mono text-[10px] tracking-[0.2em] uppercase opacity-0 group-hover:opacity-100 transition-opacity">Wake Up</span>
+                    <EyeOff size={20} className="font-light" />
+                 </button>
+               </div>
            </div>
 
            {/* 专注番茄钟 */}
