@@ -223,7 +223,7 @@ function TreeA({ position, rotation, scale = 1 }: { position: any, rotation?: an
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
     if (leavesRef.current) {
-      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.5 + position.x) * 0.05;
+      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.5 + position.x) * 0.12;
     }
   });
   const season = useGameStore(state => state.season);
@@ -259,7 +259,7 @@ function TreeB({ position, rotation, scale = 1 }: { position: any, rotation?: an
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
     if (leavesRef.current) {
-      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.2 + position.z) * 0.05;
+      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.2 + position.z) * 0.12;
     }
   });
   const season = useGameStore(state => state.season);
