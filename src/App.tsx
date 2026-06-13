@@ -66,7 +66,16 @@ import {
   SunMedium,
   User,
   Cloud,
-  Maximize2
+  Maximize2,
+  Star,
+  Telescope,
+  Castle,
+  LifeBuoy,
+  Flower2,
+  Sprout,
+  Clover,
+  TreePine,
+  TreeDeciduous
 } from "lucide-react";
 
 import { PlayerPanel } from "./components/PlayerPanel";
@@ -408,6 +417,11 @@ export default function App() {
         { id: "dolphin", icon: Waves, label: "海豚", cost: 500 },
         { id: "fish", icon: Fish, label: "荧光鱼群", cost: 150 },
         { id: "spirit_tree", icon: Star, label: "远古神树", cost: 1000 },
+        { id: "cherry_tree", icon: Flower2, label: "樱花树", cost: 200 },
+        { id: "bamboo", icon: Sprout, label: "竹子", cost: 100 },
+        { id: "pine_tree", icon: TreePine, label: "松树", cost: 150 },
+        { id: "willow_tree", icon: TreeDeciduous, label: "垂柳", cost: 180 },
+        { id: "bush", icon: Clover, label: "灌木丛", cost: 50 },
       ]
     },
     {

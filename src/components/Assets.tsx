@@ -1898,7 +1898,7 @@ export function SubIsland(props: any) {
     }
 
     if (isDragEvent) {
-      const isObjectPlacement = ['treeA', 'treeB', 'rock', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'].includes(selectedTool);
+      const isObjectPlacement = ['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'].includes(selectedTool);
       const minDistance = isObjectPlacement ? 1.5 : 0.2;
       if (worldPoint.distanceTo(lastBrushPoint.current) < minDistance) return;
       lastBrushPoint.current.copy(worldPoint);
@@ -1914,7 +1914,7 @@ export function SubIsland(props: any) {
 
     if (!isDragEvent || Math.random() < 0.2) {
       let color = "#ffffff";
-      if (['treeA', 'treeB', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'].includes(selectedTool)) color = "#4ade80";
+      if (['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'].includes(selectedTool)) color = "#4ade80";
       if (['terrainUp', 'terrainDown', 'rock', 'pave'].includes(selectedTool)) color = "#d1d5db";
       if (selectedTool === 'spring') color = "#3b82f6";
       if (['deer', 'wolf'].includes(selectedTool)) color = "#fbbf24";
@@ -1978,13 +1978,13 @@ export function SubIsland(props: any) {
       return;
     }
 
-    const landPlaceableTools = ['treeA', 'treeB', 'rock', 'deer', 'wolf', 'spring', 'streetlamp', 'house', 'windmill', 'lighthouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
+    const landPlaceableTools = ['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'deer', 'wolf', 'spring', 'streetlamp', 'house', 'windmill', 'lighthouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
     if (!isDragEvent && landPlaceableTools.includes(selectedTool)) {
       if (placementY <= -0.5) return;
 
       let rx = 0;
       let rz = 0;
-      const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island', 'treeA', 'treeB', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
+      const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island', 'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
       if (event && event.face && event.face.normal && !verticalTools.includes(selectedTool)) {
         const normal = event.face.normal.clone();
         const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
@@ -2956,23 +2956,17 @@ export function SpiritTree(props: any) {
         </mesh>
       ))}
 
-      {/* Glowing Leaf Layers */}
+      {/* Leaf Layers */}
       <group ref={leavesRef} position={[0, 3.5, 0]}>
         {[...Array(6)].map((_, i) => {
           const s = 1.8 - i * 0.2;
           return (
-            <mesh key={i} position={[0, i * 0.6, 0]} rotation={[0, i * Math.PI / 3, 0]} castShadow>
+            <mesh key={i} position={[0, i * 0.6, 0]} rotation={[0, i * Math.PI / 3, 0]} castShadow receiveShadow>
               <dodecahedronGeometry args={[s, 0]} />
-              <meshStandardMaterial color="#10b981" emissive="#059669" emissiveIntensity={0.2} transparent opacity={0.9} flatShading />
+              <meshStandardMaterial color="#10b981" flatShading />
             </mesh>
           );
         })}
-        {/* Magic Light Source inside */}
-        <pointLight color="#6ee7b7" intensity={2} distance={10} position={[0, 1, 0]} castShadow />
-        <mesh position={[0, 1, 0]}>
-           <sphereGeometry args={[0.5, 8, 8]} />
-           <meshStandardMaterial color="#a7f3d0" emissive="#34d399" emissiveIntensity={2} flatShading />
-        </mesh>
       </group>
       
       {/* Floating Particles */}
@@ -3151,6 +3145,173 @@ export function Waterwheel(props: any) {
   );
 }
 
+export function CherryTree(props: any) {
+  const ref = usePopIn(props.scale || 1.1);
+  const leavesRef = useRef<any>(null);
+  useFrame(({ clock }) => {
+    if (!useGameStore.getState().isSplashDone) return;
+    if (leavesRef.current) {
+      leavesRef.current.rotation.y = Math.sin(clock.elapsedTime * 0.8) * 0.05;
+      leavesRef.current.position.y = 1.5 + Math.sin(clock.elapsedTime * 2) * 0.02;
+    }
+  });
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
+      <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.12, 0.18, 1, 5]} />
+        <meshStandardMaterial color="#451a03" flatShading />
+      </mesh>
+      <group ref={leavesRef} position={[0, 1.5, 0]}>
+        <mesh castShadow receiveShadow>
+          <dodecahedronGeometry args={[1.0, 0]} />
+          <meshStandardMaterial color="#fbcfe8" flatShading />
+        </mesh>
+        <mesh position={[0.5, 0.2, 0.5]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[0.6, 0]} />
+          <meshStandardMaterial color="#f9a8d4" flatShading />
+        </mesh>
+        <mesh position={[-0.4, 0.3, -0.4]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[0.7, 0]} />
+          <meshStandardMaterial color="#f472b6" flatShading />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+export function Bamboo(props: any) {
+  const ref = usePopIn(props.scale || 1);
+  const groupRef = useRef<any>(null);
+  useFrame(({ clock }) => {
+    if (!useGameStore.getState().isSplashDone) return;
+    if (groupRef.current) {
+      // Bamboo sways more noticeably
+      groupRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.5 + props.position.x) * 0.1;
+      groupRef.current.rotation.x = Math.sin(clock.elapsedTime * 1.2 + props.position.z) * 0.05;
+    }
+  });
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
+      <group ref={groupRef}>
+        <mesh position={[-0.2, 1.5, 0]} rotation={[0, 0, -0.05]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.04, 0.04, 3, 5]} />
+          <meshStandardMaterial color="#22c55e" flatShading />
+        </mesh>
+        <mesh position={[0.2, 1.2, 0.1]} rotation={[0, 0, 0.05]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.03, 0.03, 2.4, 5]} />
+          <meshStandardMaterial color="#16a34a" flatShading />
+        </mesh>
+        <mesh position={[0, 1.8, -0.2]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.05, 0.05, 3.6, 5]} />
+          <meshStandardMaterial color="#15803d" flatShading />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+export function PineTree(props: any) {
+  const ref = usePopIn(props.scale || 1.2);
+  const leavesRef = useRef<any>(null);
+  useFrame(({ clock }) => {
+    if (!useGameStore.getState().isSplashDone) return;
+    if (leavesRef.current) {
+      leavesRef.current.rotation.y = Math.sin(clock.elapsedTime) * 0.02;
+    }
+  });
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
+      <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.15, 0.2, 1, 5]} />
+        <meshStandardMaterial color="#451a03" flatShading />
+      </mesh>
+      <group ref={leavesRef}>
+        <mesh position={[0, 1.2, 0]} castShadow receiveShadow>
+          <coneGeometry args={[1.0, 1.5, 5]} />
+          <meshStandardMaterial color="#064e3b" flatShading />
+        </mesh>
+        <mesh position={[0, 2.0, 0]} castShadow receiveShadow>
+          <coneGeometry args={[0.8, 1.2, 5]} />
+          <meshStandardMaterial color="#065f46" flatShading />
+        </mesh>
+        <mesh position={[0, 2.7, 0]} castShadow receiveShadow>
+          <coneGeometry args={[0.6, 1.0, 5]} />
+          <meshStandardMaterial color="#047857" flatShading />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+export function WillowTree(props: any) {
+  const ref = usePopIn(props.scale || 1.1);
+  const leavesRef = useRef<any>(null);
+  useFrame(({ clock }) => {
+    if (!useGameStore.getState().isSplashDone) return;
+    if (leavesRef.current) {
+      // Swishing willow branches
+      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.5) * 0.08;
+      leavesRef.current.rotation.x = Math.sin(clock.elapsedTime * 1.1) * 0.08;
+    }
+  });
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
+      <mesh position={[0, 1.0, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.15, 0.25, 2, 5]} />
+        <meshStandardMaterial color="#3f2e20" flatShading />
+      </mesh>
+      <group ref={leavesRef} position={[0, 2.0, 0]}>
+        <mesh position={[0, 0.2, 0]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[0.8, 0]} />
+          <meshStandardMaterial color="#84cc16" flatShading />
+        </mesh>
+        {/* Hanging vines */}
+        <mesh position={[-0.6, -0.5, 0]} castShadow receiveShadow>
+          <boxGeometry args={[0.1, 1.5, 0.1]} />
+          <meshStandardMaterial color="#65a30d" flatShading />
+        </mesh>
+        <mesh position={[0.6, -0.6, 0.2]} castShadow receiveShadow>
+          <boxGeometry args={[0.1, 1.8, 0.1]} />
+          <meshStandardMaterial color="#65a30d" flatShading />
+        </mesh>
+        <mesh position={[0, -0.7, -0.6]} castShadow receiveShadow>
+          <boxGeometry args={[0.1, 2.0, 0.1]} />
+          <meshStandardMaterial color="#4d7c0f" flatShading />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+export function Bush(props: any) {
+  const ref = usePopIn(props.scale || 1);
+  const leavesRef = useRef<any>(null);
+  useFrame(({ clock }) => {
+    if (!useGameStore.getState().isSplashDone) return;
+    if (leavesRef.current) {
+      leavesRef.current.scale.y = 1 + Math.sin(clock.elapsedTime * 3 + props.position.x) * 0.05;
+    }
+  });
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
+      <group ref={leavesRef} position={[0, 0.4, 0]}>
+        <mesh position={[0, 0, 0]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[0.5, 0]} />
+          <meshStandardMaterial color="#22c55e" flatShading />
+        </mesh>
+        <mesh position={[0.3, -0.1, 0.2]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[0.4, 0]} />
+          <meshStandardMaterial color="#16a34a" flatShading />
+        </mesh>
+        <mesh position={[-0.3, -0.15, -0.2]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[0.35, 0]} />
+          <meshStandardMaterial color="#15803d" flatShading />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
 export function Assets() {
   const assets = useGameStore(state => state.assets);
 
@@ -3196,6 +3357,11 @@ export function Assets() {
           case 'observatory': return <Observatory key={asset.id} {...asset} />;
           case 'ruins_arch': return <RuinsArch key={asset.id} {...asset} />;
           case 'waterwheel': return <Waterwheel key={asset.id} {...asset} />;
+          case 'cherry_tree': return <CherryTree key={asset.id} {...asset} />;
+          case 'bamboo': return <Bamboo key={asset.id} {...asset} />;
+          case 'pine_tree': return <PineTree key={asset.id} {...asset} />;
+          case 'willow_tree': return <WillowTree key={asset.id} {...asset} />;
+          case 'bush': return <Bush key={asset.id} {...asset} />;
           default: return null;
         }
       })}

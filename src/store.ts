@@ -662,7 +662,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           ecoPoints: data.ecoPoints !== undefined ? data.ecoPoints : 200,
           unlockedAssets: Array.from(new Set([
             ...(data.unlockedAssets || []),
-            'treeA', 'treeB', 'rock', 'terrainUp', 'terrainDown', 'eraser',
+            'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'terrainUp', 'terrainDown', 'eraser',
             'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'streetlamp', 'house', 'windmill', 
             'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
             'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'
@@ -690,7 +690,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       ecoPoints: 200,
       stats: { playtime: 0, itemsPlaced: 0 },
       unlockedAssets: [
-          'treeA', 'treeB', 'rock', 'terrainUp', 'terrainDown', 'eraser',
+          'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'terrainUp', 'terrainDown', 'eraser',
           'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'streetlamp', 'house', 'windmill', 
           'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
           'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'
