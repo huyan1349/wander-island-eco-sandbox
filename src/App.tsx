@@ -76,6 +76,7 @@ import { PlayerPanel } from "./components/PlayerPanel";
 import { LoginScreen } from "./components/LoginScreen";
 import { SocialPanel } from "./components/SocialPanel";
 import { Toast } from "./components/Toast";
+import { FlourishHUD } from "./components/FlourishHUD";
 import { VisitOverlay } from "./components/VisitOverlay";
 import { TimeWeatherSystem } from "./components/systems/TimeWeatherSystem";
 import { SolarMeridian } from "./components/ui/SolarMeridian";
@@ -914,6 +915,7 @@ export default function App() {
       </>
       )}
       {screen === 'PLAYING' && <Toast />}
+      <FlourishHUD />
       {visitingIsland && <VisitOverlay />}
     </div>
   );
