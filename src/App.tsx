@@ -66,7 +66,11 @@ import {
   SunMedium,
   User,
   Cloud,
-  Maximize2
+  Maximize2,
+  Star,
+  Telescope,
+  Castle,
+  LifeBuoy
 } from "lucide-react";
 
 import { PlayerPanel } from "./components/PlayerPanel";
@@ -773,7 +777,7 @@ export default function App() {
             <div className="flex flex-col gap-2">
               <span className="text-xs text-slate-700 font-bold">天气</span>
               <div className={`grid grid-cols-3 gap-2 ${isTouch ? 'gap-3' : ''}`}>
-                {(["sunny","晴天"], ["rainy","雨天"], ["snowy","雪天"], ["cloudy","多云"], ["foggy","浓雾"], ["stormy","雷暴"] as const).map(([w, label]) => (
+                {([["sunny","晴天"], ["rainy","雨天"], ["snowy","雪天"], ["cloudy","多云"], ["foggy","浓雾"], ["stormy","雷暴"]] as const).map(([w, label]) => (
                   <button key={w} onClick={() => setWeather(w)} className={`rounded text-xs transition-colors ${isTouch ? 'py-3' : 'py-1.5'} ${weather === w ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>{label}</button>
                 ))}
               </div>
@@ -795,7 +799,7 @@ export default function App() {
             <div className="flex flex-col gap-2">
               <span className="text-xs text-slate-700 font-bold">季节</span>
               <div className={`grid grid-cols-2 gap-2 ${isTouch ? 'gap-3' : ''}`}>
-                {(["spring","春季"], ["summer","夏季"], ["autumn","秋季"], ["winter","冬季"] as const).map(([s, label]) => (
+                {([["spring","春季"], ["summer","夏季"], ["autumn","秋季"], ["winter","冬季"]] as const).map(([s, label]) => (
                   <button key={s} onClick={() => setSeason(s)} className={`rounded text-xs transition-colors ${isTouch ? 'py-3' : 'py-1.5'} ${season === s ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>{label}</button>
                 ))}
               </div>
@@ -805,7 +809,7 @@ export default function App() {
             <div className="flex flex-col gap-2">
               <span className="text-xs text-slate-700 font-bold">地貌</span>
               <div className={`grid grid-cols-3 gap-2 ${isTouch ? 'gap-3' : ''}`}>
-                {(["default","经典"], ["forest","森林"], ["desert","沙漠"], ["tundra","冰封"], ["volcanic","火山"] as const).map(([b, label]) => (
+                {([["default","经典"], ["forest","森林"], ["desert","沙漠"], ["tundra","冰封"], ["volcanic","火山"]] as const).map(([b, label]) => (
                   <button key={b} onClick={() => setBiome(b)} className={`rounded text-xs font-medium transition-colors ${isTouch ? 'py-3' : 'py-1.5'} ${biome === b ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>{label}</button>
                 ))}
               </div>
