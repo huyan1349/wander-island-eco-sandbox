@@ -1,467 +1,498 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wander Island - 管理后台</title>
-  <style>
-    @import url('/fonts/nunito-latin-400-normal.woff2');
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    :root {
-      --bg: #0f172a; --surface: #1e293b; --surface2: #334155;
-      --border: #475569; --text: #f1f5f9; --text2: #94a3b8;
-      --accent: #f59e0b; --accent2: #d97706; --green: #10b981;
-      --red: #ef4444; --blue: #3b82f6; --purple: #8b5cf6;
-    }
-    body { font-family: 'Nunito', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wander Island · 守望台</title>
+<style>
+@font-face{font-family:'Nunito';src:url('/fonts/nunito-latin-400-normal.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'Nunito';src:url('/fonts/nunito-latin-600-normal.woff2') format('woff2');font-weight:600;font-display:swap}
+@font-face{font-family:'Nunito';src:url('/fonts/nunito-latin-700-normal.woff2') format('woff2');font-weight:700;font-display:swap}
+@font-face{font-family:'Nunito';src:url('/fonts/nunito-latin-800-normal.woff2') format('woff2');font-weight:800;font-display:swap}
+@font-face{font-family:'ZCOOL KuaiLe';src:url('/fonts/zcool-kuaile-chinese-simplified-400-normal.woff2') format('woff2');font-weight:400;font-display:swap}
 
-    /* Login */
-    .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-    .login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 360px; }
-    .login-box h1 { font-size: 20px; margin-bottom: 8px; color: var(--accent); }
-    .login-box p { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
-    .login-box input { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px; margin-bottom: 12px; outline: none; }
-    .login-box input:focus { border-color: var(--accent); }
-    .login-box button { width: 100%; padding: 10px; border-radius: 8px; border: none; background: var(--accent); color: #000; font-weight: 700; font-size: 14px; cursor: pointer; }
-    .login-box button:hover { background: var(--accent2); }
-    .login-error { color: var(--red); font-size: 12px; margin-top: 8px; display: none; }
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --paper:#fcf8ec;--paper2:#f5edd6;--ink:#2d3436;--ink2:#636e72;
+  --accent:#e17055;--accent2:#d63031;--green:#00b894;--blue:#0984e3;
+  --purple:#6c5ce7;--yellow:#fdcb6e;--border:#2d3436;
+  --sketch:255px 15px 225px 15px/15px 225px 15px 255px;
+  --sketch2:15px 225px 15px 255px/255px 15px 225px 15px;
+}
+html{font-size:14px}
+body{font-family:'Nunito',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;
+  background-image:
+    linear-gradient(rgba(0,0,0,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,0,0,.03) 1px,transparent 1px);
+  background-size:24px 24px;
+}
 
-    /* Dashboard */
-    .app { display: none; }
-    .app.active { display: flex; }
-    .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 20px 0; flex-shrink: 0; height: 100vh; position: sticky; top: 0; }
-    .sidebar h2 { font-size: 16px; padding: 0 20px 16px; color: var(--accent); border-bottom: 1px solid var(--border); margin-bottom: 8px; }
-    .sidebar nav a { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 13px; color: var(--text2); text-decoration: none; transition: all .15s; }
-    .sidebar nav a:hover, .sidebar nav a.active { color: var(--text); background: var(--surface2); }
-    .sidebar nav a.active { border-right: 3px solid var(--accent); }
-    .sidebar .logout { margin-top: auto; position: absolute; bottom: 20px; left: 0; right: 0; }
-    .sidebar .logout a { color: var(--red); }
+/* ── Login ── */
+.login{display:flex;align-items:center;justify-content:center;min-height:100vh;position:relative}
+.login::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(225,112,85,.08),transparent 60%),radial-gradient(ellipse at 70% 80%,rgba(108,92,231,.06),transparent 60%)}
+.login-card{position:relative;background:var(--paper);border:3px solid var(--ink);border-radius:var(--sketch);box-shadow:6px 6px 0 var(--ink);padding:48px 40px;width:380px}
+.login-card h1{font-family:'ZCOOL KuaiLe',sans-serif;font-size:24px;color:var(--accent);margin-bottom:4px}
+.login-card .sub{font-size:12px;color:var(--ink2);margin-bottom:28px;letter-spacing:.5px}
+.login-card label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink2);margin-bottom:6px}
+.login-card input{width:100%;padding:10px 14px;border:2px solid var(--ink);border-radius:8px;background:var(--paper2);color:var(--ink);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s}
+.login-card input:focus{border-color:var(--accent)}
+.login-card .field{margin-bottom:16px}
+.login-card button{width:100%;padding:12px;border:3px solid var(--ink);border-radius:var(--sketch2);background:var(--accent);color:#fff;font-family:'ZCOOL KuaiLe',sans-serif;font-size:16px;cursor:pointer;transition:all .2s;letter-spacing:2px}
+.login-card button:hover{transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--ink);background:var(--accent2)}
+.login-card button:active{transform:translate(2px,2px);box-shadow:none}
+.login-err{color:var(--accent2);font-size:12px;margin-top:10px;text-align:center;display:none}
+.stamp{position:absolute;top:-8px;right:-8px;border:3px dashed var(--accent2);color:var(--accent2);transform:rotate(12deg);padding:2px 10px;font-family:'Courier New',monospace;font-weight:700;font-size:10px;text-transform:uppercase;opacity:.7}
 
-    .main { flex: 1; padding: 24px 32px; overflow-y: auto; max-height: 100vh; }
-    .main h1 { font-size: 22px; margin-bottom: 20px; }
+/* ── App Shell ── */
+.app{display:none;min-height:100vh}
+.app.active{display:grid;grid-template-columns:200px 1fr}
 
-    /* Stats Cards */
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
-    .stat-card .label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; }
-    .stat-card .value { font-size: 28px; font-weight: 800; margin-top: 4px; }
-    .stat-card .value.amber { color: var(--accent); }
-    .stat-card .value.green { color: var(--green); }
-    .stat-card .value.blue { color: var(--blue); }
-    .stat-card .value.purple { color: var(--purple); }
-    .stat-card .sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
+/* ── Sidebar ── */
+.side{background:var(--paper2);border-right:3px solid var(--ink);padding:24px 0;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.side-brand{padding:0 20px 20px;border-bottom:2px dashed var(--ink2);margin-bottom:8px}
+.side-brand h2{font-family:'ZCOOL KuaiLe',sans-serif;font-size:18px;color:var(--accent)}
+.side-brand span{font-size:10px;color:var(--ink2);letter-spacing:1px;text-transform:uppercase}
+.side nav{flex:1;padding:8px 0}
+.side nav a{display:flex;align-items:center;gap:10px;padding:9px 20px;font-size:13px;color:var(--ink2);text-decoration:none;transition:all .15s;border-left:3px solid transparent}
+.side nav a:hover{color:var(--ink);background:rgba(0,0,0,.04)}
+.side nav a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(225,112,85,.06);font-weight:700}
+.side nav a .ico{width:18px;text-align:center;font-size:14px}
+.side-footer{padding:12px 20px;border-top:2px dashed var(--ink2)}
+.side-footer a{font-size:11px;color:var(--ink2);text-decoration:none;transition:color .15s}
+.side-footer a:hover{color:var(--accent2)}
 
-    /* Table */
-    .data-table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 12px; overflow: hidden; }
-    .data-table th { text-align: left; padding: 10px 14px; font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; background: var(--surface2); border-bottom: 1px solid var(--border); }
-    .data-table td { padding: 10px 14px; font-size: 13px; border-bottom: 1px solid var(--border); }
-    .data-table tr:last-child td { border-bottom: none; }
-    .data-table tr:hover td { background: rgba(255,255,255,0.03); }
+/* ── Main ── */
+.main{padding:28px 36px;overflow-y:auto;max-height:100vh}
+.main h1{font-family:'ZCOOL KuaiLe',sans-serif;font-size:26px;margin-bottom:24px;display:flex;align-items:center;gap:10px}
+.main h1 .deco{width:32px;height:3px;background:var(--accent);border-radius:2px}
 
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 700; }
-    .badge-green { background: rgba(16,185,129,.15); color: var(--green); }
-    .badge-amber { background: rgba(245,158,11,.15); color: var(--accent); }
-    .badge-red { background: rgba(239,68,68,.15); color: var(--red); }
-    .badge-blue { background: rgba(59,130,246,.15); color: var(--blue); }
-    .badge-purple { background: rgba(139,92,246,.15); color: var(--purple); }
+/* ── Stats ── */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:28px}
+.stat{background:var(--paper);border:2px solid var(--ink);border-radius:var(--sketch);padding:16px;position:relative;transition:all .2s}
+.stat:hover{transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--ink)}
+.stat .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink2)}
+.stat .v{font-size:32px;font-weight:800;margin-top:2px;line-height:1}
+.stat .v.c1{color:var(--accent)}.stat .v.c2{color:var(--green)}.stat .v.c3{color:var(--blue)}.stat .v.c4{color:var(--purple)}
+.stat .s{font-size:10px;color:var(--ink2);margin-top:4px}
+.stat::after{content:'';position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;opacity:.3}
+.stat:nth-child(1)::after,.stat:nth-child(5)::after{background:var(--accent)}
+.stat:nth-child(2)::after,.stat:nth-child(6)::after{background:var(--green)}
+.stat:nth-child(3)::after,.stat:nth-child(7)::after{background:var(--blue)}
+.stat:nth-child(4)::after,.stat:nth-child(8)::after{background:var(--purple)}
 
-    .btn-sm { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text2); font-size: 11px; cursor: pointer; }
-    .btn-sm:hover { background: var(--surface2); color: var(--text); }
-    .btn-sm.danger { border-color: var(--red); color: var(--red); }
-    .btn-sm.danger:hover { background: rgba(239,68,68,.15); }
+/* ── Panel ── */
+.panel{background:var(--paper);border:2px solid var(--ink);border-radius:var(--sketch);overflow:hidden;margin-bottom:20px}
+.panel-head{padding:12px 18px;border-bottom:2px dashed var(--ink2);display:flex;align-items:center;justify-content:space-between}
+.panel-head h3{font-family:'ZCOOL KuaiLe',sans-serif;font-size:15px}
+.panel-body{padding:0}
 
-    .search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
-    .search-bar input { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; width: 240px; outline: none; }
-    .search-bar input:focus { border-color: var(--accent); }
-    .search-bar button { padding: 8px 16px; border-radius: 8px; border: none; background: var(--accent); color: #000; font-weight: 700; font-size: 13px; cursor: pointer; }
+/* ── Table ── */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;padding:8px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink2);background:var(--paper2);border-bottom:2px solid var(--ink)}
+.tbl td{padding:8px 14px;font-size:12px;border-bottom:1px dashed rgba(0,0,0,.1)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(225,112,85,.03)}
 
-    .page-nav { display: flex; gap: 8px; margin-top: 16px; align-items: center; }
-    .page-nav button { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; font-size: 12px; }
-    .page-nav button:hover { background: var(--surface2); }
-    .page-nav span { font-size: 12px; color: var(--text2); }
+/* ── Badges ── */
+.badge{display:inline-block;padding:1px 7px;border-radius:99px;font-size:9px;font-weight:800;letter-spacing:.5px}
+.b-green{background:rgba(0,184,148,.12);color:var(--green)}.b-amber{background:rgba(253,203,110,.2);color:#d68910}
+.b-red{background:rgba(214,48,49,.1);color:var(--accent2)}.b-blue{background:rgba(9,132,227,.1);color:var(--blue)}
+.b-purple{background:rgba(108,92,231,.1);color:var(--purple)}.b-ink{background:rgba(45,52,54,.08);color:var(--ink)}
 
-    .section { display: none; }
-    .section.active { display: block; }
+/* ── Buttons ── */
+.btn{padding:5px 12px;border:2px solid var(--ink);border-radius:var(--sketch2);background:var(--paper);color:var(--ink);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.btn:hover{background:var(--yellow);transform:translate(-1px,-1px);box-shadow:2px 2px 0 var(--ink)}
+.btn:active{transform:translate(1px,1px);box-shadow:none}
+.btn-danger{border-color:var(--accent2);color:var(--accent2)}
+.btn-danger:hover{background:rgba(214,48,49,.1);border-color:var(--accent2);color:var(--accent2)}
 
-    .avatar-sm { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); vertical-align: middle; margin-right: 6px; }
-    .mono { font-family: 'Courier New', monospace; font-size: 12px; }
+/* ── Search ── */
+.search{display:flex;gap:8px;margin-bottom:16px}
+.search input{padding:8px 14px;border:2px solid var(--ink);border-radius:8px;background:var(--paper);color:var(--ink);font-size:13px;font-family:inherit;width:220px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search button{padding:8px 16px;border:2px solid var(--ink);border-radius:var(--sketch2);background:var(--accent);color:#fff;font-weight:700;font-size:13px;cursor:pointer;transition:all .15s}
+.search button:hover{transform:translate(-1px,-1px);box-shadow:2px 2px 0 var(--ink)}
 
-    .server-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .server-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-    .server-card h3 { font-size: 14px; color: var(--accent); margin-bottom: 12px; }
-    .server-card .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,.05); }
-    .server-card .row:last-child { border-bottom: none; }
+/* ── Pagination ── */
+.pager{display:flex;gap:6px;align-items:center;padding:12px 14px;justify-content:flex-end}
+.pager button{padding:4px 10px;border:2px solid var(--ink);border-radius:6px;background:transparent;color:var(--ink2);font-size:11px;cursor:pointer;font-family:inherit}
+.pager button:hover:not(:disabled){background:var(--paper2);color:var(--ink)}
+.pager button:disabled{opacity:.3;cursor:default}
+.pager span{font-size:11px;color:var(--ink2)}
 
-    .empty { text-align: center; padding: 40px; color: var(--text2); font-size: 14px; }
-  </style>
+/* ── Avatar ── */
+.av{width:26px;height:26px;border-radius:50%;border:2px solid var(--ink);object-fit:cover;vertical-align:middle}
+
+/* ── Mono ── */
+.mono{font-family:'Courier New',monospace;font-size:11px;color:var(--ink2)}
+
+/* ── Section ── */
+.sec{display:none;animation:fadeUp .3s ease}
+.sec.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Server Grid ── */
+.srv-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.srv-card{background:var(--paper);border:2px solid var(--ink);border-radius:var(--sketch);padding:20px}
+.srv-card h3{font-family:'ZCOOL KuaiLe',sans-serif;font-size:14px;color:var(--accent);margin-bottom:14px;padding-bottom:8px;border-bottom:2px dashed var(--ink2)}
+.srv-row{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px dashed rgba(0,0,0,.06)}
+.srv-row:last-child{border-bottom:none}
+.srv-row span:last-child{font-weight:700;color:var(--ink)}
+
+/* ── User Detail Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(45,52,54,.4);z-index:100;align-items:center;justify-content:center;animation:fadeIn .2s}
+.modal-overlay.active{display:flex}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--paper);border:3px solid var(--ink);border-radius:var(--sketch);box-shadow:8px 8px 0 var(--ink);width:480px;max-height:80vh;overflow-y:auto;position:relative;animation:popIn .25s ease}
+@keyframes popIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.modal-head{padding:16px 20px;border-bottom:2px dashed var(--ink2);display:flex;justify-content:space-between;align-items:center}
+.modal-head h3{font-family:'ZCOOL KuaiLe',sans-serif;font-size:16px}
+.modal-close{width:28px;height:28px;border:2px solid var(--ink);border-radius:50%;background:transparent;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink)}
+.modal-close:hover{background:var(--accent2);color:#fff;border-color:var(--accent2)}
+.modal-body{padding:20px}
+.modal-body .field{margin-bottom:12px}
+.modal-body .field .fl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ink2);margin-bottom:2px}
+.modal-body .field .fv{font-size:13px}
+.modal-body .section-title{font-family:'ZCOOL KuaiLe',sans-serif;font-size:13px;color:var(--accent);margin:16px 0 8px;padding-top:12px;border-top:2px dashed var(--ink2)}
+
+/* ── Refresh ── */
+.refresh{padding:6px 14px;border:2px solid var(--ink);border-radius:var(--sketch2);background:var(--paper);color:var(--ink);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.refresh:hover{background:var(--green);color:#fff;border-color:var(--green);transform:translate(-1px,-1px)}
+
+/* ── Empty ── */
+.empty{text-align:center;padding:40px;color:var(--ink2);font-size:13px}
+
+/* ── Toast ── */
+.toast{position:fixed;top:20px;right:20px;background:var(--paper);border:2px solid var(--ink);border-radius:var(--sketch);box-shadow:4px 4px 0 var(--ink);padding:12px 20px;font-size:13px;font-weight:700;z-index:200;animation:slideIn .3s ease;transition:opacity .3s}
+.toast.success{border-color:var(--green);color:var(--green)}
+.toast.error{border-color:var(--accent2);color:var(--accent2)}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+/* ── Live dot ── */
+.live{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:10px}
+</style>
 </head>
 <body>
 
 <!-- Login -->
-<div id="loginPage" class="login-wrap">
-  <div class="login-box">
-    <h1>Wander Island 管理后台</h1>
-    <p>使用管理员账号登录</p>
-    <input type="text" id="loginUser" placeholder="用户名" value="wander_admin">
-    <input type="password" id="loginPass" placeholder="密码" value="">
-    <button onclick="doLogin()">登 录</button>
-    <div id="loginError" class="login-error"></div>
+<div id="loginPage" class="login">
+  <div class="login-card">
+    <div class="stamp">ADMIN</div>
+    <h1>守望台</h1>
+    <p class="sub">Wander Island 管理后台</p>
+    <div class="field">
+      <label>账号</label>
+      <input type="text" id="loginUser" value="wander_admin" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>密码</label>
+      <input type="password" id="loginPass" autocomplete="current-password">
+    </div>
+    <button onclick="doLogin()">进入守望台</button>
+    <div id="loginErr" class="login-err"></div>
   </div>
 </div>
 
-<!-- Dashboard -->
+<!-- App -->
 <div id="appPage" class="app">
-  <div class="sidebar">
-    <h2>Wander Island</h2>
+  <div class="side">
+    <div class="side-brand">
+      <h2>守望台</h2>
+      <span><span class="live"></span> &nbsp;系统运行中</span>
+    </div>
     <nav>
-      <a href="#" class="active" data-page="overview">📊 总览</a>
-      <a href="#" data-page="users">👥 用户管理</a>
-      <a href="#" data-page="islands">🏝️ 岛屿管理</a>
-      <a href="#" data-page="messages">💬 聊天记录</a>
-      <a href="#" data-page="mailbox">📮 信箱记录</a>
-      <a href="#" data-page="bottles">🧴 漂流瓶</a>
-      <a href="#" data-page="server">⚙️ 服务器状态</a>
+      <a href="#" class="active" data-p="overview"><span class="ico">📊</span>总览</a>
+      <a href="#" data-p="users"><span class="ico">👥</span>岛民</a>
+      <a href="#" data-p="islands"><span class="ico">🏝️</span>岛屿</a>
+      <a href="#" data-p="messages"><span class="ico">💬</span>对话</a>
+      <a href="#" data-p="mailbox"><span class="ico">📮</span>信箱</a>
+      <a href="#" data-p="bottles"><span class="ico">🧴</span>漂流瓶</a>
+      <a href="#" data-p="server"><span class="ico">⚙️</span>系统</a>
     </nav>
-    <div class="logout">
-      <a href="#" onclick="doLogout()">🚪 退出登录</a>
+    <div class="side-footer">
+      <a href="/" target="_blank">← 返回游戏</a> &nbsp;·&nbsp;
+      <a href="#" onclick="doLogout()">退出</a>
     </div>
   </div>
+
   <div class="main">
     <!-- Overview -->
-    <div id="sec-overview" class="section active">
-      <h1>📊 总览</h1>
-      <div class="stats-grid" id="overviewStats"></div>
+    <div id="sec-overview" class="sec active">
+      <h1><span class="deco"></span>总览</h1>
+      <div class="stats" id="ovStats"></div>
+      <div class="panel">
+        <div class="panel-head"><h3>最近注册的岛民</h3></div>
+        <div class="panel-body"><table class="tbl"><thead><tr><th>头像</th><th>用户名</th><th>座右铭</th><th>注册时间</th></tr></thead><tbody id="ovRecent"></tbody></table></div>
+      </div>
     </div>
 
     <!-- Users -->
-    <div id="sec-users" class="section">
-      <h1>👥 用户管理</h1>
-      <div class="search-bar">
-        <input type="text" id="userSearch" placeholder="搜索用户名...">
+    <div id="sec-users" class="sec">
+      <h1><span class="deco"></span>岛民管理</h1>
+      <div class="search">
+        <input type="text" id="uSearch" placeholder="搜索岛民...">
         <button onclick="loadUsers()">搜索</button>
       </div>
-      <table class="data-table">
-        <thead><tr><th>头像</th><th>用户名</th><th>座右铭</th><th>岛屿</th><th>好友</th><th>注册时间</th><th>最后在线</th><th>操作</th></tr></thead>
-        <tbody id="usersBody"></tbody>
-      </table>
-      <div class="page-nav" id="usersNav"></div>
+      <div class="panel">
+        <div class="panel-body"><table class="tbl">
+          <thead><tr><th></th><th>用户名</th><th>座右铭</th><th>岛屿</th><th>好友</th><th>注册</th><th>最后在线</th><th></th></tr></thead>
+          <tbody id="uBody"></tbody>
+        </table></div>
+        <div class="pager" id="uPager"></div>
+      </div>
     </div>
 
     <!-- Islands -->
-    <div id="sec-islands" class="section">
-      <h1>🏝️ 岛屿管理</h1>
-      <table class="data-table">
-        <thead><tr><th>岛名</th><th>岛主</th><th>公开</th><th>创建时间</th><th>更新时间</th></tr></thead>
-        <tbody id="islandsBody"></tbody>
-      </table>
-      <div class="page-nav" id="islandsNav"></div>
+    <div id="sec-islands" class="sec">
+      <h1><span class="deco"></span>岛屿管理</h1>
+      <div class="panel">
+        <div class="panel-body"><table class="tbl">
+          <thead><tr><th>岛名</th><th>岛主</th><th>状态</th><th>创建</th><th>更新</th></tr></thead>
+          <tbody id="iBody"></tbody>
+        </table></div>
+        <div class="pager" id="iPager"></div>
+      </div>
     </div>
 
     <!-- Messages -->
-    <div id="sec-messages" class="section">
-      <h1>💬 聊天记录</h1>
-      <table class="data-table">
-        <thead><tr><th>发送者</th><th>接收者</th><th>内容</th><th>时间</th><th>已读</th></tr></thead>
-        <tbody id="messagesBody"></tbody>
-      </table>
+    <div id="sec-messages" class="sec">
+      <h1><span class="deco"></span>对话记录</h1>
+      <div class="panel">
+        <div class="panel-head"><h3>最近对话</h3><button class="refresh" onclick="loadMsgs()">↻ 刷新</button></div>
+        <div class="panel-body"><table class="tbl">
+          <thead><tr><th>来自</th><th>发往</th><th>内容</th><th>时间</th><th>状态</th></tr></thead>
+          <tbody id="mBody"></tbody>
+        </table></div>
+      </div>
     </div>
 
     <!-- Mailbox -->
-    <div id="sec-mailbox" class="section">
-      <h1>📮 信箱记录</h1>
-      <table class="data-table">
-        <thead><tr><th>发件人</th><th>收件人</th><th>主题</th><th>内容</th><th>礼物</th><th>时间</th></tr></thead>
-        <tbody id="mailboxBody"></tbody>
-      </table>
+    <div id="sec-mailbox" class="sec">
+      <h1><span class="deco"></span>信箱记录</h1>
+      <div class="panel">
+        <div class="panel-head"><h3>全部信件</h3><button class="refresh" onclick="loadMail()">↻ 刷新</button></div>
+        <div class="panel-body"><table class="tbl">
+          <thead><tr><th>发件人</th><th>收件人</th><th>主题</th><th>内容</th><th>礼物</th><th>时间</th></tr></thead>
+          <tbody id="mbBody"></tbody>
+        </table></div>
+      </div>
     </div>
 
     <!-- Bottles -->
-    <div id="sec-bottles" class="section">
-      <h1>🧴 漂流瓶</h1>
-      <table class="data-table">
-        <thead><tr><th>发送者</th><th>内容</th><th>心情</th><th>发现者</th><th>回复</th><th>时间</th></tr></thead>
-        <tbody id="bottlesBody"></tbody>
-      </table>
+    <div id="sec-bottles" class="sec">
+      <h1><span class="deco"></span>漂流瓶</h1>
+      <div class="panel">
+        <div class="panel-head"><h3>全部漂流瓶</h3><button class="refresh" onclick="loadBottles()">↻ 刷新</button></div>
+        <div class="panel-body"><table class="tbl">
+          <thead><tr><th>投瓶人</th><th>内容</th><th>心情</th><th>发现者</th><th>回复</th><th>时间</th></tr></thead>
+          <tbody id="bBody"></tbody>
+        </table></div>
+      </div>
     </div>
 
     <!-- Server -->
-    <div id="sec-server" class="section">
-      <h1>⚙️ 服务器状态</h1>
-      <div class="server-grid" id="serverGrid"></div>
+    <div id="sec-server" class="sec">
+      <h1><span class="deco"></span>系统状态</h1>
+      <div class="srv-grid" id="srvGrid"></div>
     </div>
   </div>
 </div>
 
+<!-- User Detail Modal -->
+<div id="userModal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-head"><h3 id="modalTitle">岛民详情</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast" style="display:none"></div>
+
 <script>
-let TOKEN = localStorage.getItem('admin_token') || '';
-let currentPage = { users: 1, islands: 1 };
+let T=localStorage.getItem('admin_token')||'';
+let pg={users:1,islands:1};
+const H=()=>({'Authorization':`Bearer ${T}`,'Content-Type':'application/json'});
 
-const API = '';
-const headers = () => ({ 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' });
+const fmt=ts=>{if(!ts)return'—';return new Date(ts*1000).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})};
+const fmtFull=ts=>{if(!ts)return'—';return new Date(ts*1000).toLocaleString('zh-CN')};
+const fmtDur=s=>{const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);return d>0?`${d}天${h}时${m}分`:h>0?`${h}时${m}分`:`${m}分`};
 
-function fmt(ts) {
-  if (!ts) return '-';
-  return new Date(ts * 1000).toLocaleString('zh-CN');
-}
+function toast(msg,type='success'){const el=document.getElementById('toast');el.textContent=msg;el.className='toast '+type;el.style.display='block';setTimeout(()=>el.style.display='none',2500)}
 
-function fmtDuration(s) {
-  const d = Math.floor(s / 86400); const h = Math.floor((s % 86400) / 3600); const m = Math.floor((s % 3600) / 60);
-  return d > 0 ? `${d}天${h}时${m}分` : h > 0 ? `${h}时${m}分` : `${m}分`;
-}
+function avatarUrl(u){return u.avatar||`data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect fill="%23f5edd6" width="40" height="40" rx="20"/><text x="20" y="26" text-anchor="middle" fill="%232d3436" font-size="16" font-family="sans-serif">${(u.username||'?')[0]}</text></svg>`}
 
 // Login
-async function doLogin() {
-  const username = document.getElementById('loginUser').value;
-  const password = document.getElementById('loginPass').value;
-  const errEl = document.getElementById('loginError');
-  errEl.style.display = 'none';
-
-  try {
-    const res = await fetch(`${API}/api/auth/login`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Login failed');
-
-    // Check admin
-    if (data.user.username !== 'wander_admin') {
-      errEl.textContent = '此账号不是管理员';
-      errEl.style.display = 'block';
-      return;
-    }
-
-    TOKEN = data.token;
-    localStorage.setItem('admin_token', TOKEN);
-    showDashboard();
-  } catch (e) {
-    errEl.textContent = e.message;
-    errEl.style.display = 'block';
-  }
+async function doLogin(){
+  const u=document.getElementById('loginUser').value,p=document.getElementById('loginPass').value,e=document.getElementById('loginErr');
+  e.style.display='none';
+  try{
+    const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||'登录失败');
+    if(d.user.username!=='wander_admin'){e.textContent='此账号不是管理员';e.style.display='block';return}
+    T=d.token;localStorage.setItem('admin_token',T);showApp();
+  }catch(err){e.textContent=err.message;e.style.display='block'}
 }
+function doLogout(){T='';localStorage.removeItem('admin_token');document.getElementById('loginPage').style.display='flex';document.getElementById('appPage').classList.remove('active')}
+function showApp(){document.getElementById('loginPage').style.display='none';document.getElementById('appPage').classList.add('active');loadOverview()}
 
-function doLogout() {
-  TOKEN = '';
-  localStorage.removeItem('admin_token');
-  document.getElementById('loginPage').style.display = 'flex';
-  document.getElementById('appPage').classList.remove('active');
-}
-
-function showDashboard() {
-  document.getElementById('loginPage').style.display = 'none';
-  document.getElementById('appPage').classList.add('active');
-  loadOverview();
-}
-
-// Navigation
-document.querySelectorAll('.sidebar nav a').forEach(a => {
-  a.addEventListener('click', (e) => {
+// Nav
+document.querySelectorAll('.side nav a').forEach(a=>{
+  a.addEventListener('click',e=>{
     e.preventDefault();
-    document.querySelectorAll('.sidebar nav a').forEach(x => x.classList.remove('active'));
-    a.classList.add('active');
-    const page = a.dataset.page;
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    document.getElementById(`sec-${page}`).classList.add('active');
-
-    if (page === 'overview') loadOverview();
-    if (page === 'users') loadUsers();
-    if (page === 'islands') loadIslands();
-    if (page === 'messages') loadMessages();
-    if (page === 'mailbox') loadMailbox();
-    if (page === 'bottles') loadBottles();
-    if (page === 'server') loadServer();
-  });
+    document.querySelectorAll('.side nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');
+    const p=a.dataset.p;
+    document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));document.getElementById('sec-'+p).classList.add('active');
+    ({overview:loadOverview,users:loadUsers,islands:loadIslands,messages:loadMsgs,mailbox:loadMail,bottles:loadBottles,server:loadServer})[p]?.();
+  })
 });
 
 // Overview
-async function loadOverview() {
-  try {
-    const res = await fetch(`${API}/api/admin/overview`, { headers: headers() });
-    const d = await res.json();
-    if (!res.ok) throw new Error(d.error);
-
-    document.getElementById('overviewStats').innerHTML = `
-      <div class="stat-card"><div class="label">总用户</div><div class="value amber">${d.userCount}</div><div class="sub">今日新增 ${d.newUsersToday}</div></div>
-      <div class="stat-card"><div class="label">总岛屿</div><div class="value green">${d.islandCount}</div></div>
-      <div class="stat-card"><div class="label">聊天消息</div><div class="value blue">${d.messageCount}</div><div class="sub">今日 ${d.newMessagesToday}</div></div>
-      <div class="stat-card"><div class="label">信件</div><div class="value purple">${d.mailboxCount}</div></div>
-      <div class="stat-card"><div class="label">漂流瓶</div><div class="value amber">${d.bottleCount}</div></div>
-      <div class="stat-card"><div class="label">访客记录</div><div class="value green">${d.visitorCount}</div></div>
-      <div class="stat-card"><div class="label">好友关系</div><div class="value blue">${d.friendCount}</div></div>
-      <div class="stat-card"><div class="label">7日活跃</div><div class="value purple">${d.activeWeek}</div></div>
-    `;
-  } catch (e) {
-    if (e.message === 'Invalid token') doLogout();
-  }
+async function loadOverview(){
+  try{
+    const r=await fetch('/api/admin/overview',{headers:H()});const d=await r.json();if(!r.ok)throw new Error(d.error);
+    document.getElementById('ovStats').innerHTML=`
+      <div class="stat"><div class="l">岛民</div><div class="v c1">${d.userCount}</div><div class="s">今日 +${d.newUsersToday}</div></div>
+      <div class="stat"><div class="l">岛屿</div><div class="v c2">${d.islandCount}</div></div>
+      <div class="stat"><div class="l">对话</div><div class="v c3">${d.messageCount}</div><div class="s">今日 +${d.newMessagesToday}</div></div>
+      <div class="stat"><div class="l">信件</div><div class="v c4">${d.mailboxCount}</div></div>
+      <div class="stat"><div class="l">漂流瓶</div><div class="v c1">${d.bottleCount}</div></div>
+      <div class="stat"><div class="l">访客</div><div class="v c2">${d.visitorCount}</div></div>
+      <div class="stat"><div class="l">好友关系</div><div class="v c3">${d.friendCount}</div></div>
+      <div class="stat"><div class="l">7日活跃</div><div class="v c4">${d.activeWeek}</div></div>`;
+    // Recent users
+    const ru=await fetch('/api/admin/users?page=1&limit=5',{headers:H()});const rd=await ru.json();
+    document.getElementById('ovRecent').innerHTML=rd.users.map(u=>`<tr><td><img class="av" src="${avatarUrl(u)}" onerror="this.style.display='none'"></td><td><strong>${u.username}</strong>${u.username==='辞'?' <span class="badge b-purple">AI</span>':u.username==='wander_admin'?' <span class="badge b-amber">管理</span>':''}</td><td style="color:var(--ink2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.motto||'—'}</td><td class="mono">${fmt(u.created_at)}</td></tr>`).join('')||'<tr><td colspan="4" class="empty">暂无岛民</td></tr>';
+  }catch(e){if(e.message==='Invalid token')doLogout()}
 }
 
 // Users
-async function loadUsers() {
-  const search = document.getElementById('userSearch').value;
-  try {
-    const res = await fetch(`${API}/api/admin/users?page=${currentPage.users}&search=${encodeURIComponent(search)}`, { headers: headers() });
-    const d = await res.json();
-    if (!res.ok) throw new Error(d.error);
-
-    document.getElementById('usersBody').innerHTML = d.users.map(u => `
-      <tr>
-        <td><img class="avatar-sm" src="${u.avatar || '/avatars/default.png'}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><rect fill=%22%23334155%22 width=%2240%22 height=%2240%22/><text x=%2220%22 y=%2226%22 text-anchor=%22middle%22 fill=%22%2394a3b8%22 font-size=%2216%22>${u.username[0]}</text></svg>'"></td>
-        <td><strong>${u.username}</strong></td>
-        <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)">${u.motto || '-'}</td>
-        <td>${u.island_count}</td>
-        <td>${u.friend_count}</td>
-        <td class="mono">${fmt(u.created_at)}</td>
-        <td class="mono">${fmt(u.last_online)}</td>
-        <td>${u.username !== 'wander_admin' && u.username !== '辞' ? `<button class="btn-sm danger" onclick="deleteUser('${u.id}','${u.username}')">删除</button>` : '<span class="badge badge-green">系统</span>'}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="8" class="empty">暂无用户</td></tr>';
-
-    document.getElementById('usersNav').innerHTML = d.totalPages > 1 ? `
-      <button ${d.page <= 1 ? 'disabled' : ''} onclick="currentPage.users--;loadUsers()">上一页</button>
-      <span>${d.page} / ${d.totalPages} (共 ${d.total} 条)</span>
-      <button ${d.page >= d.totalPages ? 'disabled' : ''} onclick="currentPage.users++;loadUsers()">下一页</button>
-    ` : '';
-  } catch (e) {
-    if (e.message === 'Invalid token') doLogout();
-  }
+async function loadUsers(){
+  const s=document.getElementById('uSearch').value;
+  try{
+    const r=await fetch(`/api/admin/users?page=${pg.users}&search=${encodeURIComponent(s)}`,{headers:H()});const d=await r.json();if(!r.ok)throw new Error(d.error);
+    document.getElementById('uBody').innerHTML=d.users.map(u=>`<tr>
+      <td><img class="av" src="${avatarUrl(u)}" onerror="this.style.display='none'"></td>
+      <td><strong>${u.username}</strong>${u.username==='辞'?' <span class="badge b-purple">AI</span>':u.username==='wander_admin'?' <span class="badge b-amber">管理</span>':''}</td>
+      <td style="color:var(--ink2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.motto||'—'}</td>
+      <td>${u.island_count}</td><td>${u.friend_count}</td>
+      <td class="mono">${fmt(u.created_at)}</td><td class="mono">${fmt(u.last_online)}</td>
+      <td><button class="btn" onclick="showUser('${u.id}')">详情</button>${u.username!=='wander_admin'&&u.username!=='辞'?` <button class="btn btn-danger" onclick="delUser('${u.id}','${u.username}')">删除</button>`:''}</td>
+    </tr>`).join('')||'<tr><td colspan="8" class="empty">暂无岛民</td></tr>';
+    document.getElementById('uPager').innerHTML=d.totalPages>1?`<button ${d.page<=1?'disabled':''} onclick="pg.users--;loadUsers()">←</button><span>${d.page} / ${d.totalPages}</span><button ${d.page>=d.totalPages?'disabled':''} onclick="pg.users++;loadUsers()">→</button>`:'';
+  }catch(e){if(e.message==='Invalid token')doLogout()}
 }
 
-async function deleteUser(id, name) {
-  if (!confirm(`确定删除用户 "${name}" 吗？此操作不可撤销！`)) return;
-  try {
-    const res = await fetch(`${API}/api/admin/users/${id}`, { method: 'DELETE', headers: headers() });
-    const d = await res.json();
-    if (!res.ok) throw new Error(d.error);
-    loadUsers();
-  } catch (e) {
-    alert('删除失败: ' + e.message);
-  }
+async function showUser(id){
+  try{
+    const r=await fetch(`/api/admin/users/${id}`,{headers:H()});const d=await r.json();if(!r.ok)throw new Error(d.error);
+    const u=d.user;
+    document.getElementById('modalTitle').textContent=u.username+' 的详情';
+    document.getElementById('modalBody').innerHTML=`
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+        <img class="av" style="width:48px;height:48px" src="${avatarUrl(u)}" onerror="this.style.display='none'">
+        <div><strong style="font-size:16px">${u.username}</strong>${u.username==='辞'?' <span class="badge b-purple">AI</span>':u.username==='wander_admin'?' <span class="badge b-amber">管理</span>':''}<br><span style="font-size:12px;color:var(--ink2)">${u.motto||'无座右铭'}</span></div>
+      </div>
+      <div class="field"><div class="fl">ID</div><div class="fv mono">${u.id}</div></div>
+      <div class="field"><div class="fl">注册时间</div><div class="fv">${fmtFull(u.created_at)}</div></div>
+      <div class="field"><div class="fl">最后在线</div><div class="fv">${fmtFull(u.last_online)}</div></div>
+      <div class="field"><div class="fl">消息数</div><div class="fv">${d.messageCount}</div></div>
+      <div class="section-title">🏝️ 岛屿 (${d.islands.length})</div>
+      ${d.islands.length?d.islands.map(i=>`<div class="field"><div class="fv">${i.name} ${i.is_public?'<span class="badge b-green">公开</span>':'<span class="badge b-amber">私有</span>'}</div></div>`).join(''):'<div style="color:var(--ink2);font-size:12px">暂无岛屿</div>'}
+      <div class="section-title">👥 好友 (${d.friends.length})</div>
+      ${d.friends.length?d.friends.map(f=>`<div class="field"><div class="fv">${f.username} <span class="badge ${f.status==='accepted'?'b-green':'b-amber'}">${f.status==='accepted'?'已接受':'待确认'}</span></div></div>`).join(''):'<div style="color:var(--ink2);font-size:12px">暂无好友</div>'}
+    `;
+    document.getElementById('userModal').classList.add('active');
+  }catch(e){toast(e.message,'error')}
+}
+function closeModal(){document.getElementById('userModal').classList.remove('active')}
+
+async function delUser(id,name){
+  if(!confirm(`确定要删除岛民「${name}」吗？此操作不可撤销！`))return;
+  try{const r=await fetch(`/api/admin/users/${id}`,{method:'DELETE',headers:H()});const d=await r.json();if(!r.ok)throw new Error(d.error);toast(`已删除 ${name}`);loadUsers()}catch(e){toast(e.message,'error')}
 }
 
 // Islands
-async function loadIslands() {
-  try {
-    const res = await fetch(`${API}/api/admin/islands?page=${currentPage.islands}`, { headers: headers() });
-    const d = await res.json();
-    if (!res.ok) throw new Error(d.error);
-
-    document.getElementById('islandsBody').innerHTML = d.islands.map(i => `
-      <tr>
-        <td><strong>${i.name}</strong></td>
-        <td>${i.owner_name}</td>
-        <td>${i.is_public ? '<span class="badge badge-green">公开</span>' : '<span class="badge badge-amber">私有</span>'}</td>
-        <td class="mono">${fmt(i.created_at)}</td>
-        <td class="mono">${fmt(i.updated_at)}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="5" class="empty">暂无岛屿</td></tr>';
-
-    document.getElementById('islandsNav').innerHTML = d.totalPages > 1 ? `
-      <button ${d.page <= 1 ? 'disabled' : ''} onclick="currentPage.islands--;loadIslands()">上一页</button>
-      <span>${d.page} / ${d.totalPages} (共 ${d.total} 条)</span>
-      <button ${d.page >= d.totalPages ? 'disabled' : ''} onclick="currentPage.islands++;loadIslands()">下一页</button>
-    ` : '';
-  } catch (e) {
-    if (e.message === 'Invalid token') doLogout();
-  }
+async function loadIslands(){
+  try{
+    const r=await fetch(`/api/admin/islands?page=${pg.islands}`,{headers:H()});const d=await r.json();if(!r.ok)throw new Error(d.error);
+    document.getElementById('iBody').innerHTML=d.islands.map(i=>`<tr>
+      <td><strong>${i.name}</strong></td><td>${i.owner_name}</td>
+      <td>${i.is_public?'<span class="badge b-green">公开</span>':'<span class="badge b-amber">私有</span>'}</td>
+      <td class="mono">${fmt(i.created_at)}</td><td class="mono">${fmt(i.updated_at)}</td>
+    </tr>`).join('')||'<tr><td colspan="5" class="empty">暂无岛屿</td></tr>';
+    document.getElementById('iPager').innerHTML=d.totalPages>1?`<button ${d.page<=1?'disabled':''} onclick="pg.islands--;loadIslands()">←</button><span>${d.page} / ${d.totalPages}</span><button ${d.page>=d.totalPages?'disabled':''} onclick="pg.islands++;loadIslands()">→</button>`:'';
+  }catch(e){if(e.message==='Invalid token')doLogout()}
 }
 
 // Messages
-async function loadMessages() {
-  try {
-    const res = await fetch(`${API}/api/admin/messages?limit=100`, { headers: headers() });
-    const d = await res.json();
-    if (!res.ok) throw new Error(d.error);
-
-    document.getElementById('messagesBody').innerHTML = d.messages.map(m => `
-      <tr>
-        <td>${m.from_name}</td>
-        <td>${m.to_name}</td>
-        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.content}</td>
-        <td class="mono">${fmt(m.created_at)}</td>
-        <td>${m.read ? '<span class="badge badge-green">已读</span>' : '<span class="badge badge-amber">未读</span>'}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="5" class="empty">暂无消息</td></tr>';
-  } catch (e) {
-    if (e.message === 'Invalid token') doLogout();
-  }
+async function loadMsgs(){
+  try{
+    const r=await fetch('/api/admin/messages?limit=100',{headers:H()});const d=await r.json();if(!r.ok)throw new Error(d.error);
+    document.getElementById('mBody').innerHTML=d.messages.map(m=>`<tr>
+      <td>${m.from_name}</td><td>${m.to_name}</td>
+      <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.content}</td>
+      <td class="mono">${fmt(m.created_at)}</td>
+      <td>${m.read?'<span class="badge b-green">已读</span>':'<span class="badge b-amber">未读</span>'}</td>
+    </tr>`).join('')||'<tr><td colspan="5" class="empty">暂无对话</td></tr>';
+  }catch(e){if(e.message==='Invalid token')doLogout()}
 }
 
 // Mailbox
-async function loadMailbox() {
-  try {
-    const res = await fetch(`${API}/api/admin/mailbox?limit=100`, { headers: headers() });
-    const d = await res.json();
-    if (!res.ok) throw new Error(d.error);
-
-    document.getElementById('mailboxBody').innerHTML = d.mails.map(m => `
-      <tr>
-        <td>${m.from_name}</td>
-        <td>${m.to_name}</td>
-        <td>${m.subject || '(无主题)'}</td>
-        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.content}</td>
-        <td>${m.gift_type ? `<span class="badge badge-purple">${m.gift_type}</span>` : '-'}</td>
-        <td class="mono">${fmt(m.created_at)}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="6" class="empty">暂无信件</td></tr>';
-  } catch (e) {
-    if (e.message === 'Invalid token') doLogout();
-  }
+async function loadMail(){
+  try{
+    const r=await fetch('/api/admin/mailbox?limit=100',{headers:H()});const d=await r.json();if(!r.ok)throw new Error(d.error);
+    document.getElementById('mbBody').innerHTML=d.mails.map(m=>`<tr>
+      <td>${m.from_name}</td><td>${m.to_name}</td>
+      <td>${m.subject||'<span style="color:var(--ink2)">无主题</span>'}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.content}</td>
+      <td>${m.gift_type?`<span class="badge b-purple">${m.gift_type}</span>`:'—'}</td>
+      <td class="mono">${fmt(m.created_at)}</td>
+    </tr>`).join('')||'<tr><td colspan="6" class="empty">暂无信件</td></tr>';
+  }catch(e){if(e.message==='Invalid token')doLogout()}
 }
 
 // Bottles
-async function loadBottles() {
-  try {
-    const res = await fetch(`${API}/api/admin/bottles`, { headers: headers() });
-    const d = await res.json();
-    if (!res.ok) throw new Error(d.error);
-
-    document.getElementById('bottlesBody').innerHTML = d.bottles.map(b => `
-      <tr>
-        <td>${b.sender_name}</td>
-        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.content}</td>
-        <td><span class="badge badge-blue">${b.mood}</span></td>
-        <td>${b.finder_name || '<span style="color:var(--text2)">未发现</span>'}</td>
-        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.reply || '-'}</td>
-        <td class="mono">${fmt(b.created_at)}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="6" class="empty">暂无漂流瓶</td></tr>';
-  } catch (e) {
-    if (e.message === 'Invalid token') doLogout();
-  }
+async function loadBottles(){
+  try{
+    const r=await fetch('/api/admin/bottles',{headers:H()});const d=await r.json();if(!r.ok)throw new Error(d.error);
+    document.getElementById('bBody').innerHTML=d.bottles.map(b=>`<tr>
+      <td>${b.sender_name}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.content}</td>
+      <td><span class="badge b-blue">${b.mood}</span></td>
+      <td>${b.finder_name||'<span style="color:var(--ink2)">未发现</span>'}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.reply||'—'}</td>
+      <td class="mono">${fmt(b.created_at)}</td>
+    </tr>`).join('')||'<tr><td colspan="6" class="empty">暂无漂流瓶</td></tr>';
+  }catch(e){if(e.message==='Invalid token')doLogout()}
 }
 
 // Server
-async function loadServer() {
-  try {
-    const res = await fetch(`${API}/api/admin/server`, { headers: headers() });
-    const d = await res.json();
-    if (!res.ok) throw new Error(d.error);
-
-    document.getElementById('serverGrid').innerHTML = `
-      <div class="server-card">
+async function loadServer(){
+  try{
+    const r=await fetch('/api/admin/server',{headers:H()});const d=await r.json();if(!r.ok)throw new Error(d.error);
+    document.getElementById('srvGrid').innerHTML=`
+      <div class="srv-card">
         <h3>运行状态</h3>
-        <div class="row"><span>运行时间</span><span>${fmtDuration(d.uptime)}</span></div>
-        <div class="row"><span>内存 (RSS)</span><span>${d.memory.rss} MB</span></div>
-        <div class="row"><span>堆内存 (已用)</span><span>${d.memory.heapUsed} MB</span></div>
-        <div class="row"><span>堆内存 (总量)</span><span>${d.memory.heapTotal} MB</span></div>
-        <div class="row"><span>数据库大小</span><span>${d.dbSize} KB</span></div>
+        <div class="srv-row"><span>运行时间</span><span>${fmtDur(d.uptime)}</span></div>
+        <div class="srv-row"><span>内存 (RSS)</span><span>${d.memory.rss} MB</span></div>
+        <div class="srv-row"><span>堆内存 (已用)</span><span>${d.memory.heapUsed} MB</span></div>
+        <div class="srv-row"><span>堆内存 (总量)</span><span>${d.memory.heapTotal} MB</span></div>
+        <div class="srv-row"><span>数据库大小</span><span>${d.dbSize} KB</span></div>
       </div>
-      <div class="server-card">
-        <h3>数据表统计</h3>
-        ${Object.entries(d.tableCounts).map(([k, v]) => `<div class="row"><span>${k}</span><span>${v}</span></div>`).join('')}
-      </div>
-    `;
-  } catch (e) {
-    if (e.message === 'Invalid token') doLogout();
-  }
+      <div class="srv-card">
+        <h3>数据表</h3>
+        ${Object.entries(d.tableCounts).map(([k,v])=>`<div class="srv-row"><span>${k}</span><span>${v}</span></div>`).join('')}
+      </div>`;
+  }catch(e){if(e.message==='Invalid token')doLogout()}
 }
 
 // Auto-login
-if (TOKEN) {
-  fetch(`${API}/api/admin/overview`, { headers: headers() })
-    .then(r => { if (r.ok) showDashboard(); else doLogout(); })
-    .catch(() => doLogout());
-}
+if(T){fetch('/api/admin/overview',{headers:H()}).then(r=>{r.ok?showApp():doLogout()}).catch(doLogout)}
 </script>
 </body>
 </html>

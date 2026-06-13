@@ -1,21 +1,16 @@
 # Handoff
 
 ## 已完成
-1. Bug修复批次（8个bug）：头像代理、FormData、AI回复、在线状态、embedded模式等
-2. **部署到阿里云服务器** ✅
-   - 服务器: 121.41.239.12 (4C/8G Ubuntu 24.04)
-   - 访问地址: http://121.41.239.12
-   - Nginx 反向代理 80→8080，支持 WebSocket
-   - PM2 进程管理，自动重启
-   - 数据库已初始化（wander_admin/admin123 + AI角色"辞"）
-   - DeepSeek API 在阿里云直连，无需代理
+1. 字体本地化 — Google Fonts 改为本地 woff2，国内可正常显示
+2. 管理员后台 — http://121.41.239.12/admin.html
+   - 用 wander_admin / admin123 登录
+   - 总览/用户管理/岛屿管理/聊天记录/信箱/漂流瓶/服务器状态
+   - 支持搜索用户、删除用户、分页
+3. 修复 JWT_SECRET 不一致导致 admin API 认证失败
+4. 修复 SQLite 双引号字符串比较错误
 
-## 服务器信息
+## 服务器
+- 游戏: http://121.41.239.12
+- 管理后台: http://121.41.239.12/admin.html
 - SSH: root@121.41.239.12 密码: Wander@Island2026!
-- 项目路径: /root/wander-island
-- PM2 进程名: wander-island
-- 常用命令: `pm2 restart wander-island` / `pm2 logs wander-island`
-- 数据库: /root/wander-island/data/wander-island.db
-
-## 未完成
-- 无
+- PM2: wander-island
