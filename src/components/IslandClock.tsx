@@ -45,10 +45,11 @@ export function IslandClock() {
         }}
         onPointerOver={() => (document.body.style.cursor = 'grab')}
         onPointerOut={() => (document.body.style.cursor = 'auto')}
-        position={[0, -1.1, 0]}
+        position={[0, -0.9, 0]}
+        renderOrder={999}
       >
-        <sphereGeometry args={[0.32, 20, 20]} />
-        <meshBasicMaterial color="#fbbf24" toneMapped={false} />
+        <sphereGeometry args={[0.45, 24, 24]} />
+        <meshBasicMaterial color="#f59e0b" toneMapped={false} depthTest={false} />
       </mesh>
       <Html transform distanceFactor={10}>
         <PomodoroTimer />
