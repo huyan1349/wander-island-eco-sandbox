@@ -214,7 +214,7 @@ export function GameCanvas({ immersive = false, timer3D = false }: { immersive?:
           panSpeed={isTouch ? 0.55 : 0.85}
         />
         {timer3D && immersive && (
-          <Html transform occlude="blending" position={[0, 3, 0]} distanceFactor={10} className="pointer-events-none">
+          <Html transform position={[0, 3, 0]} distanceFactor={10} className="pointer-events-none">
             <PomodoroTimer />
           </Html>
         )}
