@@ -36,6 +36,14 @@ export const PlayerPanel: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempName, setTempName] = useState(playerName);
 
+  // 触屏检测
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    const hasCoarse = window.matchMedia('(pointer: coarse)').matches;
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    setIsTouch(hasCoarse || hasTouch);
+  }, []);
+
   // Social state
   const [friends, setFriends] = useState<any[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
@@ -203,56 +211,81 @@ export const PlayerPanel: React.FC = () => {
       {/* Full Modal */}
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-500">
-          <div className="hand-drawn-panel w-[960px] h-[640px] flex overflow-hidden shadow-2xl animate-slide-up ring-1">
+          <div className={`hand-drawn-panel flex overflow-hidden shadow-2xl animate-slide-up ring-1 ${isTouch ? 'touch-modal-full touch-safe-bottom flex-col' : 'w-[960px] h-[640px]'}`}>
 
-            {/* Sidebar */}
-            <div className="w-56 border-r-2 border-slate-800 p-6 flex flex-col gap-2">
-              {/* Avatar */}
-              <div className="flex items-center gap-3 mb-8">
-                {authUser ? (
-                  <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-slate-800 shadow-inner relative group shrink-0">
-                    <img src={authUser.avatar} alt="" className="w-full h-full object-cover bg-gradient-to-br from-emerald-500/20 to-cyan-500/20" />
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                      <Camera size={18} className="text-white" />
-                      <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
-                    </label>
-                  </div>
-                ) : (
-                  <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-slate-800 shadow-inner shrink-0 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center">
-                    <User size={24} className="text-slate-600" />
-                  </div>
-                )}
-                <div>
-                  <h3 className="text-lg font-bold tracking-wide text-slate-800">{authUser ? authUser.username : playerName}</h3>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <p className="text-[10px] font-bold font-mono text-emerald-400 bg-emerald-500/10 ring-1 ring-emerald-500/20 px-2 py-0.5 rounded-full">LV.{playerLevel}</p>
-                    {authUser && <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">在线</span>}
+            {/* Sidebar - Desktop: left column / Touch: bottom tab bar */}
+            {!isTouch ? (
+              <div className="w-56 border-r-2 border-slate-800 p-6 flex flex-col gap-2">
+                {/* Avatar */}
+                <div className="flex items-center gap-3 mb-8">
+                  {authUser ? (
+                    <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-slate-800 shadow-inner relative group shrink-0">
+                      <img src={authUser.avatar} alt="" className="w-full h-full object-cover bg-gradient-to-br from-emerald-500/20 to-cyan-500/20" />
+                      <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                        <Camera size={18} className="text-white" />
+                        <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-slate-800 shadow-inner shrink-0 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center">
+                      <User size={24} className="text-slate-600" />
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-lg font-bold tracking-wide text-slate-800">{authUser ? authUser.username : playerName}</h3>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-[10px] font-bold font-mono text-emerald-400 bg-emerald-500/10 ring-1 ring-emerald-500/20 px-2 py-0.5 rounded-full">LV.{playerLevel}</p>
+                      {authUser && <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">在线</span>}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Nav Items */}
-              <button onClick={() => setActiveTab('stats')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'stats' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
-                <BarChart2 size={16} /> 护照
-              </button>
-              <button onClick={() => setActiveTab('ecology')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'ecology' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
-                <Leaf size={16} /> 生态
-              </button>
-              <button onClick={() => setActiveTab('unlocks')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'unlocks' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
-                <Unlock size={16} /> 蓝图
-              </button>
-              <button onClick={() => { setActiveTab('social'); setActiveSocialTab('friends'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all relative ${activeTab === 'social' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
-                <Users size={16} /> 社交
-                {(unreadCount > 0 || unreadMailCount > 0) && (
-                  <span className="absolute right-3 top-2 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-[16px] flex items-center justify-center rounded-full border border-slate-800">
-                    {unreadCount + unreadMailCount > 9 ? '9+' : unreadCount + unreadMailCount}
-                  </span>
-                )}
-              </button>
-              <button onClick={() => setActiveTab('system')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all mt-auto ${activeTab === 'system' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
-                <Settings size={16} /> 系统
-              </button>
-            </div>
+                <button onClick={() => setActiveTab('stats')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'stats' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
+                  <BarChart2 size={16} /> 护照
+                </button>
+                <button onClick={() => setActiveTab('ecology')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'ecology' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
+                  <Leaf size={16} /> 生态
+                </button>
+                <button onClick={() => setActiveTab('unlocks')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'unlocks' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
+                  <Unlock size={16} /> 蓝图
+                </button>
+                <button onClick={() => { setActiveTab('social'); setActiveSocialTab('friends'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all relative ${activeTab === 'social' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
+                  <Users size={16} /> 社交
+                  {(unreadCount > 0 || unreadMailCount > 0) && (
+                    <span className="absolute right-3 top-2 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-[16px] flex items-center justify-center rounded-full border border-slate-800">
+                      {unreadCount + unreadMailCount > 9 ? '9+' : unreadCount + unreadMailCount}
+                    </span>
+                  )}
+                </button>
+                <button onClick={() => setActiveTab('system')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all mt-auto ${activeTab === 'system' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
+                  <Settings size={16} /> 系统
+                </button>
+              </div>
+            ) : (
+              /* 触屏：底部 Tab 导航 */
+              <div className="flex-shrink-0 border-t-2 border-slate-800 flex items-center justify-around px-2 py-2 touch-safe-bottom bg-[#fcf8ec]">
+                <button onClick={() => setActiveTab('stats')} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'stats' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+                  <BarChart2 size={20} /><span className="text-[10px] font-bold">护照</span>
+                </button>
+                <button onClick={() => setActiveTab('ecology')} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'ecology' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+                  <Leaf size={20} /><span className="text-[10px] font-bold">生态</span>
+                </button>
+                <button onClick={() => setActiveTab('unlocks')} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'unlocks' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+                  <Unlock size={20} /><span className="text-[10px] font-bold">蓝图</span>
+                </button>
+                <button onClick={() => { setActiveTab('social'); setActiveSocialTab('friends'); }} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl relative ${activeTab === 'social' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+                  <Users size={20} /><span className="text-[10px] font-bold">社交</span>
+                  {(unreadCount > 0 || unreadMailCount > 0) && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold min-w-[14px] h-[14px] flex items-center justify-center rounded-full">
+                      {unreadCount + unreadMailCount > 9 ? '9+' : unreadCount + unreadMailCount}
+                    </span>
+                  )}
+                </button>
+                <button onClick={() => setActiveTab('system')} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'system' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+                  <Settings size={20} /><span className="text-[10px] font-bold">系统</span>
+                </button>
+              </div>
+            )}
 
             {/* Content Area */}
             <div className="flex-1 flex flex-col relative">
@@ -509,7 +542,7 @@ export const PlayerPanel: React.FC = () => {
                   <div className="flex flex-col gap-6 max-w-sm mt-4">
                     <div className="hand-drawn-panel p-4" style={{ borderWidth: '2px' }}>
                       <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-1">版本</p>
-                      <p className="text-sm font-bold text-slate-800 tracking-wider">v2.1.0 Social</p>
+                      <p className="text-sm font-bold text-slate-800 tracking-wider">v2.2.0 Touch</p>
                     </div>
                     <div className="hand-drawn-panel p-4" style={{ borderWidth: '2px' }}>
                       <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-2">网络</p>
