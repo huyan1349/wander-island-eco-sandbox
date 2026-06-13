@@ -645,11 +645,13 @@ export const useGameStore = create<GameState>((set, get) => ({
           playerXP: data.playerXP || 0,
           playerLevel: data.playerLevel || 1,
           ecoPoints: data.ecoPoints !== undefined ? data.ecoPoints : 200,
-          unlockedAssets: data.unlockedAssets || [
+          unlockedAssets: Array.from(new Set([
+            ...(data.unlockedAssets || []),
             'treeA', 'treeB', 'rock', 'terrainUp', 'terrainDown', 'eraser',
-            'deer', 'wolf', 'spring', 'streetlamp', 'house', 'windmill', 
-            'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island'
-          ],
+            'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'streetlamp', 'house', 'windmill', 
+            'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
+            'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'
+          ])),
           stats: data.stats || { playtime: 0, itemsPlaced: data.assets?.length || 0 },
           terrainData: {
              ...get().terrainData,
@@ -674,8 +676,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       stats: { playtime: 0, itemsPlaced: 0 },
       unlockedAssets: [
           'treeA', 'treeB', 'rock', 'terrainUp', 'terrainDown', 'eraser',
-          'deer', 'wolf', 'spring', 'streetlamp', 'house', 'windmill', 
-          'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island'
+          'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'streetlamp', 'house', 'windmill', 
+          'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
+          'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'
       ],
       terrainData: { ...get().terrainData, positions: null, types: null } 
   })
