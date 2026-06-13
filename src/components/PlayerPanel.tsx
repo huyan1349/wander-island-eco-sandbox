@@ -8,8 +8,9 @@ import { SocialPlaza } from './SocialPlaza';
 import {
   User, Edit2, BarChart2, Leaf, Unlock, Settings, LogOut, Clock, Layers,
   Wifi, WifiOff, Camera, X, Users, MessageCircle, Globe, Search, Send,
-  UserPlus, Check, ArrowLeft, Mail, BookOpen, Compass, Star, Waves
+  UserPlus, Check, ArrowLeft, Mail, BookOpen, Compass, Star, Waves, Download, Gift
 } from 'lucide-react';
+import { exportIslandFile } from '../utils/islandIO';
 
 type Tab = 'stats' | 'ecology' | 'unlocks' | 'social' | 'system';
 type SocialTab = 'friends' | 'chat' | 'mailbox' | 'visitors' | 'plaza';
@@ -562,6 +563,7 @@ export const PlayerPanel: React.FC = () => {
                       )}
                     </div>
                     <button onClick={() => { saveGame(); alert("Game Saved Successfully!"); }} className="hand-drawn-btn px-8 py-4 text-xl font-bold w-full">保存进度</button>
+                    <button onClick={() => exportIslandFile()} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Download size={18} /> 导出小岛文件</button>
                     {authUser && (
                       <button onClick={() => { api.setToken(null); disconnectSocket(); clearAuthUser(); setIsOpen(false); }} className="w-full flex items-center justify-center gap-3 hand-drawn-btn px-8 py-4 text-red-600 font-bold">
                         <LogOut size={18} /><span className="font-light tracking-[0.2em] uppercase text-sm">退出登录</span>
