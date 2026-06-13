@@ -266,13 +266,21 @@ export function WeatherForecast() {
                 <span className="relative text-slate-800 font-bold text-[11px] tracking-wide mt-1 text-center leading-tight px-1">{card.title}</span>
               )}
 
-              {/* 高级进度条：仅正在播放的卡走条 */}
+              {/* 高级进度条：加粗 + 高对比填充 + playhead 圆点 */}
               {mode === 'music' && (
-                <div className="relative w-full mt-2 h-1.5 bg-slate-200/80 rounded-full border border-slate-800/60 overflow-hidden">
-                  <div
-                    className="h-full bg-slate-800 rounded-full transition-[width] duration-300 ease-linear"
-                    style={{ width: `${isPlaying ? progress * 100 : 0}%` }}
-                  />
+                <div className="relative w-full mt-3 h-2.5 rounded-full bg-white/70 border border-slate-800/50 shadow-inner">
+                  <div className="absolute inset-0 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-slate-700 to-slate-900 transition-[width] duration-300 ease-linear"
+                      style={{ width: `${isPlaying ? progress * 100 : 0}%` }}
+                    />
+                  </div>
+                  {isPlaying && (
+                    <div
+                      className="absolute top-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-slate-800 shadow-md transition-[left] duration-300 ease-linear"
+                      style={{ left: `calc(${progress * 100}% - 7px)`, transform: 'translateY(-50%)' }}
+                    />
+                  )}
                 </div>
               )}
             </div>

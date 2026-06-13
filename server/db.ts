@@ -120,6 +120,7 @@ function initTables() {
       id TEXT PRIMARY KEY,
       name TEXT DEFAULT '',
       from_name TEXT DEFAULT '',
+      message TEXT DEFAULT '',
       data TEXT NOT NULL,
       created_at INTEGER DEFAULT (unixepoch()),
       claimed_count INTEGER DEFAULT 0
@@ -130,6 +131,12 @@ function initTables() {
     db.exec('ALTER TABLE users ADD COLUMN motto TEXT DEFAULT \'\'');
   } catch {
     // motto column already exists
+  }
+
+  try {
+    db.exec('ALTER TABLE gifts ADD COLUMN message TEXT DEFAULT \'\'');
+  } catch {
+    // message column already exists
   }
 }
 

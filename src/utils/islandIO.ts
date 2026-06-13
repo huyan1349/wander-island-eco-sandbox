@@ -67,24 +67,59 @@ export function applyIslandData(d: any, name: string) {
   store.loadGame(id);
 }
 
-// 生成礼物分享链接（上传当前岛，返回独一无二的链接）
-export async function createGiftLink(fromName: string): Promise<string> {
-  const data = serializeIsland();
-  const res = await fetch('/api/gifts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: data.name, fromName, data }),
-  });
-  if (!res.ok) throw new Error('生成礼物失败');
-  const { id } = await res.json();
-  return `${location.origin}/?gift=${id}`;
+// Unicode 安全的 base64 编解码（岛数据含中文）
+function encodeB64(json: string): string {
+  const bytes = new TextEncoder().encode(json);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+function decodeB64(b64: string): string {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
 }
 
-// 领取礼物：按 ID 拉取并载入游戏，返回岛名
-export async function claimGift(id: string): Promise<string> {
+export interface GiftPayload {
+  name: string;
+  fromName: string;
+  message: string;
+  data: any;
+}
+
+// 生成礼物分享链接：在线走后端返回短链；离线/失败时降级把礼物打包进链接本身
+export async function createGiftLink(fromName: string, message: string): Promise<string> {
+  const data = serializeIsland();
+  const payload = { name: data.name, fromName, message, data };
+  try {
+    const res = await fetch('/api/gifts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('server');
+    const { id } = await res.json();
+    return `${location.origin}/?gift=${id}`;
+  } catch {
+    // 离线降级：礼物数据直接编码进链接（无需服务器）
+    return `${location.origin}/?gift=data:${encodeB64(JSON.stringify(payload))}`;
+  }
+}
+
+// 取礼物信息（不立即载入，供开礼物动画使用）。支持后端短链与离线 data: 链接
+export async function fetchGift(id: string): Promise<GiftPayload> {
+  if (id.startsWith('data:')) {
+    return JSON.parse(decodeB64(id.slice(5)));
+  }
   const res = await fetch(`/api/gifts/${id}`);
   if (!res.ok) throw new Error('礼物不存在或已失效');
-  const gift = await res.json();
+  return res.json();
+}
+
+// 领取礼物：取数据并载入游戏，返回展示用岛名
+export async function claimGift(id: string): Promise<string> {
+  const gift = await fetchGift(id);
   const name = gift.fromName ? `${gift.name || '小岛'} (来自 ${gift.fromName})` : (gift.name || '收到的礼物');
   applyIslandData(gift.data, name);
   return name;

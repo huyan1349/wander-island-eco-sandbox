@@ -5,15 +5,15 @@ const router = Router();
 
 // POST /api/gifts - 生成礼物（无需登录，任何人可生成分享链接）
 router.post('/', (req: Request, res: Response) => {
-  const { name, fromName, data } = req.body;
+  const { name, fromName, message, data } = req.body;
   if (!data) {
     res.status(400).json({ error: '缺少岛屿数据' });
     return;
   }
   const db = getDb();
   const id = crypto.randomUUID();
-  db.prepare('INSERT INTO gifts (id, name, from_name, data) VALUES (?, ?, ?, ?)')
-    .run(id, name || '', fromName || '', JSON.stringify(data));
+  db.prepare('INSERT INTO gifts (id, name, from_name, message, data) VALUES (?, ?, ?, ?, ?)')
+    .run(id, name || '', fromName || '', message || '', JSON.stringify(data));
   res.json({ id });
 });
 
@@ -30,6 +30,7 @@ router.get('/:id', (req: Request, res: Response) => {
     id: gift.id,
     name: gift.name,
     fromName: gift.from_name,
+    message: gift.message || '',
     data: JSON.parse(gift.data),
   });
 });
