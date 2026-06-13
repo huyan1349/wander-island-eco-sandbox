@@ -21,6 +21,11 @@ export class AudioSystem {
     private static bgmSource: AudioBufferSourceNode | null = null;
     private static bgmBuffer: AudioBuffer | null = null;
     private static isBgmPlaying = false;
+    private static bgmLoadedUrl: string | null = null;
+    private static currentBgmUrl: string | null = null;
+    private static bgmVolumeTarget = 0.5;
+    private static bgmCache = new Map<string, AudioBuffer>();
+    private static bgmSwitchToken = 0;
 
     static init() {
         if (!this.ctx) {
@@ -44,6 +49,7 @@ export class AudioSystem {
     }
 
     static setBGMVolume(volume: number) {
+        this.bgmVolumeTarget = volume;
         if (!this.ctx || !this.bgmGain) return;
         const t = this.ctx.currentTime;
         this.bgmGain.gain.cancelScheduledValues(t);
@@ -53,11 +59,19 @@ export class AudioSystem {
     static async loadBGM(url: string) {
         this.init();
         if (!this.ctx) return;
+
+        if (this.bgmCache.has(url)) {
+            this.bgmBuffer = this.bgmCache.get(url)!;
+            this.bgmLoadedUrl = url;
+            return;
+        }
         
         try {
             const response = await fetch(url);
             const arrayBuffer = await response.arrayBuffer();
             this.bgmBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+            this.bgmLoadedUrl = url;
+            this.bgmCache.set(url, this.bgmBuffer);
         } catch (e) {
             console.error("Failed to load BGM", e);
         }
@@ -79,10 +93,11 @@ export class AudioSystem {
         this.bgmSource.connect(this.bgmGain);
         this.bgmSource.start();
         this.isBgmPlaying = true;
+        this.currentBgmUrl = this.bgmLoadedUrl;
         
         // Fade in
         const t = this.ctx.currentTime;
-        this.bgmGain.gain.linearRampToValueAtTime(0.5, t + 4.0);
+        this.bgmGain.gain.linearRampToValueAtTime(this.bgmVolumeTarget, t + 4.0);
     }
 
     static stopBGM() {
@@ -100,18 +115,54 @@ export class AudioSystem {
                 this.bgmSource = null;
             }
             this.isBgmPlaying = false;
+            this.currentBgmUrl = null;
         }, 2200);
     }
 
     static async switchBGM(url: string) {
-        // Fade out current BGM, load new one, fade in
-        this.stopBGM();
-        
-        // Wait for fade out
-        await new Promise(resolve => setTimeout(resolve, 2300));
-        
+        this.init();
+        if (!this.ctx || !this.masterGain) return;
+        if (this.currentBgmUrl === url && this.isBgmPlaying) return;
+
+        const switchToken = ++this.bgmSwitchToken;
         await this.loadBGM(url);
-        this.playBGM();
+        if (!this.ctx || !this.masterGain || !this.bgmBuffer) return;
+        if (switchToken !== this.bgmSwitchToken) return;
+
+        const nextGain = this.ctx.createGain();
+        nextGain.gain.value = 0;
+        nextGain.connect(this.masterGain);
+
+        const nextSource = this.ctx.createBufferSource();
+        nextSource.buffer = this.bgmBuffer;
+        nextSource.loop = true;
+        nextSource.connect(nextGain);
+        nextSource.start();
+
+        const prevGain = this.bgmGain;
+        const prevSource = this.bgmSource;
+        const t = this.ctx.currentTime;
+
+        nextGain.gain.cancelScheduledValues(t);
+        nextGain.gain.linearRampToValueAtTime(this.bgmVolumeTarget, t + 2.2);
+
+        if (prevGain) {
+            prevGain.gain.cancelScheduledValues(t);
+            prevGain.gain.linearRampToValueAtTime(0, t + 2.2);
+        }
+
+        this.bgmGain = nextGain;
+        this.bgmSource = nextSource;
+        this.isBgmPlaying = true;
+        this.currentBgmUrl = url;
+
+        if (prevSource) {
+            window.setTimeout(() => {
+                try { prevSource.stop(); } catch {}
+                try { prevSource.disconnect(); } catch {}
+                try { prevGain?.disconnect(); } catch {}
+            }, 2400);
+        }
     }
 
     private static setupEffectsChain() {

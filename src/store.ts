@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { AudioSystem } from './lib/audio';
 import { FlourishCardId, FLOURISH_CARDS, STARTING_DECK, HAND_SIZE, SEASON_BASE_ECO, evaluateSymbiosis, shuffle } from './game/flourish';
 
-export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel';
+export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush';
 export type WeatherType = 'sunny' | 'cloudy' | 'rainy' | 'foggy' | 'snowy' | 'stormy';
 
 export interface Vector3Data {
@@ -13,12 +13,13 @@ export interface Vector3Data {
 
 export interface PlacedAsset {
   id: string;
-  type: 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'streetlamp' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'sub_island' | 'birdhouse' | 'hoe' | 'farmland' | 'crop_wheat' | 'crop_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel';
+  type: 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'streetlamp' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'sub_island' | 'birdhouse' | 'hoe' | 'farmland' | 'crop_wheat' | 'crop_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush';
   position: Vector3Data;
   rotation: Vector3Data;
   scale?: number;
   customState?: string;
   growthProgress?: number;
+  plantedAt?: number;
   connections?: string[]; // IDs of connected objects (for ropes/bridges)
   terrain?: {
     positions: number[];
@@ -105,6 +106,8 @@ interface GameState {
 
   timeOfDay: number; // 0-24
   setTimeOfDay: (time: number) => void;
+  isTimeScrubbing: boolean;
+  setIsTimeScrubbing: (scrubbing: boolean) => void;
   timeSpeed: number; // 1 = 1 real minute per game hour
   setTimeSpeed: (speed: number) => void;
   
@@ -255,6 +258,8 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   timeOfDay: 6,
   setTimeOfDay: (time) => set({ timeOfDay: time }),
+  isTimeScrubbing: false,
+  setIsTimeScrubbing: (scrubbing) => set({ isTimeScrubbing: scrubbing }),
   timeSpeed: 1,
   setTimeSpeed: (speed) => set({ timeSpeed: speed }),
   
@@ -353,7 +358,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     assets: state.assets.map((asset) => asset.id === id ? updater(asset) : asset)
   })),
   addAsset: (assetData) => set((state) => {
-    const asset: PlacedAsset = { ...assetData, id: Math.random().toString(36).substring(2, 9) };
+    const asset: PlacedAsset = {
+      ...assetData,
+      id: Math.random().toString(36).substring(2, 9),
+      plantedAt: (
+        assetData.type === 'crop_wheat' || assetData.type === 'crop_carrot'
+      ) ? state.stats.playtime : assetData.plantedAt
+    };
 
     const newAssets = [...state.assets, asset];
     const deerCount = newAssets.filter(a => a.type === 'deer').length;

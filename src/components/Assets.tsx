@@ -14,6 +14,79 @@ const SUB_ISLAND_SIZE = MAIN_ISLAND_SIZE * (2 / 3);
 const SUB_ISLAND_SEGMENTS = 32;
 const LEGACY_SUB_ISLAND_SIZE = 20;
 const STRUCTURE_WALK_RADIUS_SQ = 1.8 * 1.8;
+const CROP_GROWTH_DURATION = 40;
+
+function getCropGrowthProgress(asset: Partial<PlacedAsset>, playtime: number) {
+  if (typeof asset.growthProgress === 'number' && asset.growthProgress >= 1) return 1;
+  if (typeof asset.plantedAt === 'number') {
+    return Math.min(1, Math.max(asset.growthProgress ?? 0, (playtime - asset.plantedAt) / CROP_GROWTH_DURATION));
+  }
+  return asset.growthProgress ?? 0;
+}
+
+function SelectableAssetWrapper({
+  assetId,
+  children
+}: {
+  assetId: string;
+  children: React.ReactNode;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+  const helperRef = useRef<THREE.Box3Helper | null>(null);
+  const scene = useThree(state => state.scene);
+  const selectedTool = useGameStore(state => state.selectedTool);
+  const selectedEntityId = useGameStore(state => state.selectedEntityId);
+  const setSelectedEntityId = useGameStore(state => state.setSelectedEntityId);
+  const isSelected = selectedTool === 'eraser' && selectedEntityId === assetId;
+
+  useEffect(() => {
+    if (!isSelected || !groupRef.current) {
+      if (helperRef.current) {
+        scene.remove(helperRef.current);
+        helperRef.current.geometry.dispose();
+        (helperRef.current.material as THREE.Material).dispose();
+        helperRef.current = null;
+      }
+      return;
+    }
+
+    const helper = new THREE.Box3Helper(new THREE.Box3().setFromObject(groupRef.current), new THREE.Color('#facc15'));
+    const material = helper.material as THREE.LineBasicMaterial;
+    material.depthTest = false;
+    material.transparent = true;
+    material.opacity = 0.95;
+    helper.renderOrder = 999;
+    helperRef.current = helper;
+    scene.add(helper);
+
+    return () => {
+      scene.remove(helper);
+      helper.geometry.dispose();
+      material.dispose();
+      if (helperRef.current === helper) helperRef.current = null;
+    };
+  }, [isSelected, scene]);
+
+  useFrame(() => {
+    if (isSelected && helperRef.current && groupRef.current) {
+      helperRef.current.box.setFromObject(groupRef.current);
+      helperRef.current.updateMatrixWorld(true);
+    }
+  });
+
+  return (
+    <group
+      ref={groupRef}
+      onPointerDown={(e) => {
+        if (selectedTool !== 'eraser') return;
+        e.stopPropagation();
+        setSelectedEntityId(assetId);
+      }}
+    >
+      {children}
+    </group>
+  );
+}
 
 function normalizeSubIslandTerrainData(terrain: {
   positions: number[];
@@ -456,7 +529,11 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
                 }
             } else if (!nearestTree && (asset.type === 'treeA' || asset.type === 'treeB')) {
                 nearestTree = asset;
-            } else if (!nearestFood && (asset.type === 'crop_wheat' || asset.type === 'crop_carrot') && asset.growthProgress === 1) {
+            } else if (
+                !nearestFood &&
+                (asset.type === 'crop_wheat' || asset.type === 'crop_carrot') &&
+                getCropGrowthProgress(asset, useGameStore.getState().stats.playtime) >= 1
+            ) {
                 nearestFood = asset;
             }
         }
@@ -1987,13 +2064,7 @@ export function SubIsland(props: any) {
     }
 
     if (selectedTool === 'eraser') {
-      removeAssetAt({ x: worldPoint.x, y: worldPoint.y, z: worldPoint.z }, isDragEvent ? 2.5 : 2);
-      for (let i = 0; i < posAttr.count; i++) {
-        brushVertex.fromBufferAttribute(posAttr, i);
-        const dist = Math.sqrt((brushVertex.x - localPoint.x) ** 2 + (brushVertex.z - localPoint.z) ** 2);
-        if (dist < 2.0) typesRef.current[i] = 0;
-      }
-      refreshColors();
+      useGameStore.getState().setSelectedEntityId(null);
       return;
     }
 
@@ -2027,6 +2098,10 @@ export function SubIsland(props: any) {
     if (selectedTool === 'none') return;
     e.stopPropagation();
     if (e.button !== 0) return;
+    if (selectedTool === 'eraser') {
+      useGameStore.getState().setSelectedEntityId(null);
+      return;
+    }
     setIsDrawing(true);
     applyBrush(e.point, false, e);
     if (e.target && e.pointerId !== undefined) {
@@ -2354,7 +2429,7 @@ export function Seagull(props: any) {
     const groupRef = useRef<THREE.Group>(null);
     const leftWing = useRef<THREE.Mesh>(null);
     const rightWing = useRef<THREE.Mesh>(null);
-    const assets = useGameStore(state => state.assets);
+    const searchTickRef = useRef(0);
     
     const flightParams = useMemo(() => ({
         radius: 10 + Math.random() * 20,
@@ -2366,38 +2441,53 @@ export function Seagull(props: any) {
 
     const currentCenter = useRef(new THREE.Vector3(props.position.x, flightParams.baseY, props.position.z));
     const currentRadius = useRef(flightParams.radius);
+    const targetCenterRef = useRef(new THREE.Vector3(props.position.x, flightParams.baseY, props.position.z));
+    const targetRadiusRef = useRef(flightParams.radius);
+    const isGatheringRef = useRef(false);
 
     useFrame(({ clock }, delta) => {
         if (!groupRef.current) return;
         const t = clock.elapsedTime;
-        
-        // Find nearest gathering birdhouse
-        const activeBirdhouses = assets.filter(a => a.type === 'birdhouse' && a.customState === 'gather');
-        let targetCenter = new THREE.Vector3(props.position.x, flightParams.baseY, props.position.z);
-        let targetRadius = flightParams.radius;
-        let isGathering = false;
+        searchTickRef.current += delta;
 
-        if (activeBirdhouses.length > 0) {
-            let nearest = activeBirdhouses[0];
+        if (searchTickRef.current >= 0.35) {
+            searchTickRef.current = 0;
+            const assets = useGameStore.getState().assets;
+            let nearest: PlacedAsset | null = null;
             let minDistSq = Infinity;
-            for (const bh of activeBirdhouses) {
-                const dx = bh.position.x - props.position.x;
-                const dz = bh.position.z - props.position.z;
-                const dSq = dx*dx + dz*dz;
-                if (dSq < minDistSq) { minDistSq = dSq; nearest = bh; }
+
+            for (let i = 0; i < assets.length; i++) {
+                const asset = assets[i];
+                if (asset.type !== 'birdhouse' || asset.customState !== 'gather') continue;
+                const dx = asset.position.x - props.position.x;
+                const dz = asset.position.z - props.position.z;
+                const dSq = dx * dx + dz * dz;
+                if (dSq < minDistSq) {
+                    minDistSq = dSq;
+                    nearest = asset;
+                }
             }
-            
-            // Gather around this birdhouse
-            targetCenter.set(nearest.position.x, nearest.position.y + 2.5 + Math.random(), nearest.position.z);
-            targetRadius = 1.5 + Math.random() * 2; // tight circle
-            isGathering = true;
+
+            if (nearest) {
+                targetCenterRef.current.set(
+                    nearest.position.x,
+                    nearest.position.y + 2.5 + Math.random(),
+                    nearest.position.z
+                );
+                targetRadiusRef.current = 1.5 + Math.random() * 2;
+                isGatheringRef.current = true;
+            } else {
+                targetCenterRef.current.set(props.position.x, flightParams.baseY, props.position.z);
+                targetRadiusRef.current = flightParams.radius;
+                isGatheringRef.current = false;
+            }
         }
 
         // Smoothly interpolate current center and radius towards target
-        currentCenter.current.lerp(targetCenter, delta * 1.5);
-        currentRadius.current += (targetRadius - currentRadius.current) * delta * 1.5;
+        currentCenter.current.lerp(targetCenterRef.current, delta * 1.5);
+        currentRadius.current += (targetRadiusRef.current - currentRadius.current) * delta * 1.5;
 
-        const currentSpeedMultiplier = isGathering ? 3 : 1;
+        const currentSpeedMultiplier = isGatheringRef.current ? 3 : 1;
         const angle = t * flightParams.speed * currentSpeedMultiplier + flightParams.offset;
         
         groupRef.current.position.x = currentCenter.current.x + Math.cos(angle) * currentRadius.current;
@@ -2573,15 +2663,10 @@ function Farmland({ position, scale = 1, id }: any) {
   );
 }
 
-function Crop({ position, scale = 1, type, growthProgress = 0, id }: any) {
+function Crop({ position, scale = 1, type, growthProgress = 0, plantedAt }: any) {
   const isWheat = type === 'crop_wheat';
-  const [localProgress, setLocalProgress] = useState(growthProgress || 0);
-  
-  useFrame((_, delta) => {
-    if (useGameStore.getState().isSplashDone && localProgress < 1) {
-      setLocalProgress((p: number) => Math.min(1, p + delta * 0.025)); // 40 seconds to fully grow
-    }
-  });
+  const playtime = useGameStore(state => state.stats.playtime);
+  const localProgress = getCropGrowthProgress({ growthProgress, plantedAt }, playtime);
   
   const h = isWheat ? 1.5 : 0.6;
   const currentHeight = Math.max(0.1, h * localProgress);
@@ -3364,49 +3449,57 @@ export function Assets() {
       <RopeRenderer />
       <BridgeRenderer />
       {assets.map(asset => {
+        let content: React.ReactNode = null;
         switch (asset.type) {
-          case 'treeA': return <TreeA key={asset.id} {...asset} />;
-          case 'treeB': return <TreeB key={asset.id} {...asset} />;
-          case 'rock': return <Rock key={asset.id} {...asset} />;
-          case 'deer': return <Deer key={asset.id} {...asset} />;
-          case 'wolf': return <Wolf key={asset.id} {...asset} />;
-          case 'seagull': return <Seagull key={asset.id} {...asset} />;
-          case 'dolphin': return <Dolphin key={asset.id} {...asset} />;
-          case 'fish': return <FishSchool key={asset.id} {...asset} />;
-          case 'spring': return <Spring key={asset.id} {...asset} />;
-          case 'streetlamp': return <Streetlamp key={asset.id} {...asset} />;
-          case 'house': return <House key={asset.id} {...asset} />;
-          case 'windmill': return <Windmill key={asset.id} {...asset} />;
-          case 'lighthouse': return <Lighthouse key={asset.id} {...asset} />;
-          case 'platform': return <Platform key={asset.id} {...asset} />;
-          case 'pier': return <Pier key={asset.id} {...asset} />;
-          case 'bridge_pillar': return <BridgePillar key={asset.id} {...asset} assetId={asset.id} />;
-          case 'boat': return <Boat key={asset.id} {...asset} />;
+          case 'treeA': content = <TreeA {...asset} />; break;
+          case 'treeB': content = <TreeB {...asset} />; break;
+          case 'rock': content = <Rock {...asset} />; break;
+          case 'deer': content = <Deer {...asset} />; break;
+          case 'wolf': content = <Wolf {...asset} />; break;
+          case 'seagull': content = <Seagull {...asset} />; break;
+          case 'dolphin': content = <Dolphin {...asset} />; break;
+          case 'fish': content = <FishSchool {...asset} />; break;
+          case 'spring': content = <Spring {...asset} />; break;
+          case 'streetlamp': content = <Streetlamp {...asset} />; break;
+          case 'house': content = <House {...asset} />; break;
+          case 'windmill': content = <Windmill {...asset} />; break;
+          case 'lighthouse': content = <Lighthouse {...asset} />; break;
+          case 'platform': content = <Platform {...asset} />; break;
+          case 'pier': content = <Pier {...asset} />; break;
+          case 'bridge_pillar': content = <BridgePillar {...asset} assetId={asset.id} />; break;
+          case 'boat': content = <Boat {...asset} />; break;
           case 'balloon':
           case 'balloon_ladder':
-          case 'balloon_bridge': return <Balloon key={asset.id} {...asset} />;
-          case 'sub_island': return <SubIsland key={asset.id} {...asset} />;
-          case 'birdhouse': return <Birdhouse key={asset.id} {...asset} />;
+          case 'balloon_bridge': content = <Balloon {...asset} />; break;
+          case 'sub_island': content = <SubIsland {...asset} />; break;
+          case 'birdhouse': content = <Birdhouse {...asset} />; break;
           case 'hoe': 
-          case 'farmland': return <Farmland key={asset.id} {...asset} />;
+          case 'farmland': content = <Farmland {...asset} />; break;
           case 'crop_wheat':
-          case 'crop_carrot': return <Crop key={asset.id} {...asset} />;
-          case 'tent': return <Tent key={asset.id} {...asset} />;
-          case 'campfire': return <Campfire key={asset.id} {...asset} />;
-          case 'fence': return <Fence key={asset.id} {...asset} />;
-          case 'well': return <Well key={asset.id} {...asset} />;
-          case 'bench': return <Bench key={asset.id} {...asset} />;
-          case 'spirit_tree': return <SpiritTree key={asset.id} {...asset} />;
-          case 'observatory': return <Observatory key={asset.id} {...asset} />;
-          case 'ruins_arch': return <RuinsArch key={asset.id} {...asset} />;
-          case 'waterwheel': return <Waterwheel key={asset.id} {...asset} />;
-          case 'cherry_tree': return <CherryTree key={asset.id} {...asset} />;
-          case 'bamboo': return <Bamboo key={asset.id} {...asset} />;
-          case 'pine_tree': return <PineTree key={asset.id} {...asset} />;
-          case 'willow_tree': return <WillowTree key={asset.id} {...asset} />;
-          case 'bush': return <Bush key={asset.id} {...asset} />;
-          default: return null;
+          case 'crop_carrot': content = <Crop {...asset} />; break;
+          case 'tent': content = <Tent {...asset} />; break;
+          case 'campfire': content = <Campfire {...asset} />; break;
+          case 'fence': content = <Fence {...asset} />; break;
+          case 'well': content = <Well {...asset} />; break;
+          case 'bench': content = <Bench {...asset} />; break;
+          case 'spirit_tree': content = <SpiritTree {...asset} />; break;
+          case 'observatory': content = <Observatory {...asset} />; break;
+          case 'ruins_arch': content = <RuinsArch {...asset} />; break;
+          case 'waterwheel': content = <Waterwheel {...asset} />; break;
+          case 'cherry_tree': content = <CherryTree {...asset} />; break;
+          case 'bamboo': content = <Bamboo {...asset} />; break;
+          case 'pine_tree': content = <PineTree {...asset} />; break;
+          case 'willow_tree': content = <WillowTree {...asset} />; break;
+          case 'bush': content = <Bush {...asset} />; break;
+          default: content = null;
         }
+
+        if (!content) return null;
+        return (
+          <SelectableAssetWrapper key={asset.id} assetId={asset.id}>
+            {content}
+          </SelectableAssetWrapper>
+        );
       })}
     </>
   );

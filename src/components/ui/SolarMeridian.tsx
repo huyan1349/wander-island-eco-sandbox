@@ -5,6 +5,7 @@ import { Sun, Moon } from 'lucide-react';
 export function SolarMeridian() {
   const timeOfDay = useGameStore(state => state.timeOfDay);
   const setTimeOfDay = useGameStore(state => state.setTimeOfDay);
+  const setIsTimeScrubbing = useGameStore(state => state.setIsTimeScrubbing);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -14,6 +15,7 @@ export function SolarMeridian() {
 
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
+    setIsTimeScrubbing(true);
     updateTimeFromPointer(e.clientX, e.clientY);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
@@ -26,6 +28,7 @@ export function SolarMeridian() {
 
   const handlePointerUp = (e: React.PointerEvent) => {
     setIsDragging(false);
+    setIsTimeScrubbing(false);
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
   };
 
@@ -37,14 +40,13 @@ export function SolarMeridian() {
     
     const dx = clientX - center_x;
     const dy = clientY - center_y;
-    
-    // Calculate angle from 0 to PI
+
+    // Keep the interaction on the visible upper semicircle only.
     let angle = Math.atan2(-dy, dx);
-    // Clamp values if dragged below the sundial horizon
     if (angle < 0) {
       angle = dx > 0 ? 0 : Math.PI;
     }
-    
+
     const newTime = 24 * (1 - angle / Math.PI);
     setTimeOfDay(newTime);
   };

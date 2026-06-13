@@ -608,22 +608,7 @@ export function Terrain() {
 
     // Eraser Tool
     if (selectedTool === 'eraser') {
-        useGameStore.getState().removeAssetAt({ x: point.x, y: point.y, z: point.z }, isDragEvent ? 2.5 : 2);
-        
-        // Also erase paths
-        if (meshRef.current) {
-            const geometry = meshRef.current.geometry;
-            const posAttr = geometry.attributes.position;
-            const v = new THREE.Vector3();
-            for (let i = 0; i < posAttr.count; i++) {
-                v.fromBufferAttribute(posAttr, i);
-                const dist = Math.sqrt((v.x - point.x) ** 2 + (v.z - point.z) ** 2);
-                if (dist < 2.0) {
-                    types[i] = 0; // 0 = grass
-                }
-            }
-            refreshTerrainColors();
-        }
+        useGameStore.getState().setSelectedEntityId(null);
         return;
     }
 
@@ -683,6 +668,11 @@ export function Terrain() {
     
     // Check if right click (button 2) to cancel or allow anything
     if (e.button !== 0) return;
+
+    if (selectedTool === 'eraser') {
+        useGameStore.getState().setSelectedEntityId(null);
+        return;
+    }
 
     useGameStore.getState().setIsDrawing(true);
     applyBrush(e.point, false, e);

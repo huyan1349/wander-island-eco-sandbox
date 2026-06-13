@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store';
@@ -6,8 +6,6 @@ import { AudioSystem } from '../lib/audio';
 import { Edges } from '@react-three/drei';
 
 const ISAND_SIZE = 40;
-const SEGMENTS = 64;
-const DYNAMIC_WATER_DT = 1 / 20;
 
 // --- Shared ocean wave model ---
 // Single source of truth for the ocean surface: the visual mesh and all
@@ -87,54 +85,6 @@ export function Water() {
   const timeOfDay = useGameStore(state => state.timeOfDay);
   const season = useGameStore(state => state.season);
   const biome = useGameStore(state => state.biome);
-
-  // Dynamic accumulated water
-  const dynamicWaterRef = useRef<THREE.Mesh>(null);
-  const waterLevels = useRef<Float32Array>(new Float32Array((SEGMENTS + 1) * (SEGMENTS + 1)));
-  const waterScratch = useRef<Float32Array>(new Float32Array((SEGMENTS + 1) * (SEGMENTS + 1)));
-  const waterSimAccumulator = useRef(0);
-
-  // Generate dynamic water plane geometry matching the terrain
-  const { positions, uvs, indices } = useMemo(() => {
-    const pos = [];
-    const uv = [];
-    const ind = [];
-    const halfSize = ISAND_SIZE / 2;
-    const segmentSize = ISAND_SIZE / SEGMENTS;
-
-    for (let i = 0; i <= SEGMENTS; i++) {
-        const y = (i * segmentSize) - halfSize;
-        for (let j = 0; j <= SEGMENTS; j++) {
-            const x = (j * segmentSize) - halfSize;
-            pos.push(x, -5, y); // Initialize below ground
-            uv.push(j / SEGMENTS, 1 - (i / SEGMENTS));
-        }
-    }
-
-    for (let i = 0; i < SEGMENTS; i++) {
-        for (let j = 0; j < SEGMENTS; j++) {
-            const x = (j + 0.5) * segmentSize - halfSize;
-            const y = (i + 0.5) * segmentSize - halfSize;
-            const dist = Math.sqrt(x*x + y*y);
-
-            if (dist > 18.5) continue;
-
-            const a = i * (SEGMENTS + 1) + (j + 1);
-            const b = i * (SEGMENTS + 1) + j;
-            const c = (i + 1) * (SEGMENTS + 1) + j;
-            const d = (i + 1) * (SEGMENTS + 1) + (j + 1);
-
-            ind.push(a, b, d);
-            ind.push(b, c, d);
-        }
-    }
-
-    return {
-      positions: new Float32Array(pos),
-      uvs: new Float32Array(uv),
-      indices: new Uint16Array(ind)
-    };
-  }, []);
 
   const cursorRef = useRef<THREE.Group>(null);
   const connectionStartRef = useRef<THREE.Vector3 | null>(null);
@@ -226,140 +176,11 @@ export function Water() {
             material.opacity = 0.8;
         }
     }
-
-    // 2. Dynamic Water Simulation (Rivers/Lakes)
-    const terrainData = useGameStore.getState().terrainData;
-    if (!dynamicWaterRef.current || !terrainData.positions) return;
-
-    const terrainHeights = terrainData.positions;
-    const w = waterLevels.current;
-    const size = SEGMENTS + 1;
-    waterSimAccumulator.current = Math.min(waterSimAccumulator.current + delta, DYNAMIC_WATER_DT * 3);
-    if (waterSimAccumulator.current < DYNAMIC_WATER_DT) return;
-    waterSimAccumulator.current -= DYNAMIC_WATER_DT;
-
-    const nextW = waterScratch.current;
-    nextW.set(w);
-
-    // a. Add Water from Springs
-    const assets = useGameStore.getState().assets;
-    let hasSprings = false;
-    for (let i = 0; i < assets.length; i++) {
-        if (assets[i].type !== 'spring') continue;
-        hasSprings = true;
-        const asset = assets[i];
-        const u = (asset.position.x + ISAND_SIZE / 2) / ISAND_SIZE;
-        const v = (asset.position.z + ISAND_SIZE / 2) / ISAND_SIZE;
-        
-        if (u >= 0 && u <= 1 && v >= 0 && v <= 1) {
-            const col = Math.floor(u * SEGMENTS);
-            const row = Math.floor(v * SEGMENTS);
-            
-            // Spring fills 3x3 area
-            for (let dr = -1; dr <= 1; dr++) {
-                for (let dc = -1; dc <= 1; dc++) {
-                    const rr = row + dr;
-                    const cc = col + dc;
-                    if (rr >= 0 && rr < size && cc >= 0 && cc < size) {
-                         nextW[rr * size + cc] += 0.02;
-                    }
-                }
-            }
-        }
-    }
-
-    // b. Rain addition
-    const isRainy = weather === 'rainy' || weather === 'stormy';
-    if (isRainy) {
-       for (let i = 0; i < w.length; i++) {
-           if (terrainHeights[i * 3 + 1] > 0.5) {
-               nextW[i] += 0.005;
-           }
-       }
-    }
-
-    // c. Flow Simulation (Cellular Automata on Terrain Gradients)
-    const maxFlowRate = 0.4;
-    let activeCells = false;
-
-    for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-            const idx = r * size + c;
-            if (w[idx] <= 0.001) continue;
-            activeCells = true;
-
-            const currentHeight = terrainHeights[idx * 3 + 1] + w[idx];
-            let totalDiff = 0;
-            const diffs = [0, 0, 0, 0];
-            const neighbors = [-1, -1, -1, -1];
-
-            if (r > 0) neighbors[0] = (r - 1) * size + c;
-            if (r < size - 1) neighbors[1] = (r + 1) * size + c;
-            if (c > 0) neighbors[2] = r * size + (c - 1);
-            if (c < size - 1) neighbors[3] = r * size + (c + 1);
-
-            for (let i = 0; i < 4; i++) {
-                if (neighbors[i] === -1) continue;
-                const nIdx = neighbors[i];
-                const neighborHeight = terrainHeights[nIdx * 3 + 1] + w[nIdx];
-                if (currentHeight > neighborHeight) {
-                    diffs[i] = currentHeight - neighborHeight;
-                    totalDiff += diffs[i];
-                }
-            }
-
-            if (totalDiff > 0) {
-                const flowAmount = Math.min(w[idx], totalDiff / 4) * maxFlowRate;
-                for (let i = 0; i < 4; i++) {
-                    if (diffs[i] <= 0) continue;
-                    const out = (diffs[i] / totalDiff) * flowAmount;
-                    nextW[idx] -= out;
-                    nextW[neighbors[i]] += out;
-                }
-            }
-
-            nextW[idx] -= 0.002;
-            if (nextW[idx] < 0) nextW[idx] = 0;
-        }
-    }
-
-    // d. Update Geometry
-    if (activeCells || hasSprings || isRainy) {
-        const dynGeom = dynamicWaterRef.current.geometry;
-        const dynPos = dynGeom.attributes.position;
-        
-        for (let i = 0; i < w.length; i++) {
-            const th = terrainHeights[i * 3 + 1];
-            let level = nextW[i];
-
-            if (th <= 0.2) {
-                level = 0;
-                nextW[i] = 0;
-            }
-
-            w[i] = level;
-
-            if (level >= 0.01) {
-                dynPos.setY(i, th + level);
-            } else {
-                dynPos.setY(i, -100);
-                w[i] = 0;
-            }
-        }
-        
-        dynPos.needsUpdate = true;
-        dynGeom.computeVertexNormals();
-    }
   });
 
   // Determine properties based on biome and season
   const isFrozen = biome === 'tundra' || season === 'winter';
   const isVolcanic = biome === 'volcanic';
-
-  let dynColor = '#60a5fa';
-  let dynOpacity = 0.8;
-  if (isVolcanic) { dynColor = '#ea580c'; dynOpacity = 1.0; }
-  else if (isFrozen) { dynColor = '#e0f2fe'; dynOpacity = 0.95; }
 
   // Cloud-sea look: the island floats on a sea of clouds. Near-white base,
   // fully diffuse, fog-colored glow so the far field melts into the sky.
@@ -403,25 +224,6 @@ export function Water() {
 
   return (
     <group>
-        {/* Dynamic Flowing Water / Rivers / Lakes */}
-        <mesh ref={dynamicWaterRef}>
-          <bufferGeometry>
-            <bufferAttribute attach="attributes-position" array={positions} count={positions.length / 3} itemSize={3} />
-            <bufferAttribute attach="attributes-uv" array={uvs} count={uvs.length / 2} itemSize={2} />
-            <bufferAttribute attach="index" array={indices} count={indices.length} itemSize={1} />
-          </bufferGeometry>
-          <meshPhysicalMaterial 
-            color={dynColor}
-            transparent 
-            opacity={dynOpacity}
-            metalness={isVolcanic ? 0.1 : 0.1}
-            roughness={isVolcanic ? 0.8 : (isFrozen ? 0.5 : 0.1)}
-            transmission={isVolcanic || isFrozen ? 0 : 0.5}
-            thickness={2.0}
-            flatShading
-          />
-        </mesh>
-
         {/* Global Ocean Base (visual only — no pointer handlers, so the
             event system never raycasts its 97k displaced triangles) */}
         <mesh

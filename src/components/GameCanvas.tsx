@@ -27,6 +27,8 @@ function useIsTouchDevice() {
 // WASD pans the camera (and orbit target) along the camera's horizontal axes
 function WASDControls({ controlsRef }: { controlsRef: React.RefObject<any> }) {
   const keys = useRef<Record<string, boolean>>({});
+  const velocity = useRef(new THREE.Vector3());
+  const desiredVelocity = useRef(new THREE.Vector3());
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -52,19 +54,101 @@ function WASDControls({ controlsRef }: { controlsRef: React.RefObject<any> }) {
     if (k['s']) mz -= 1;
     if (k['a']) mx -= 1;
     if (k['d']) mx += 1;
-    if (!mx && !mz) return;
-
-    const speed = 25 * delta;
     const fwd = new THREE.Vector3();
     state.camera.getWorldDirection(fwd);
     fwd.y = 0;
     fwd.normalize();
     const right = new THREE.Vector3().crossVectors(fwd, state.camera.up).normalize();
-    const move = new THREE.Vector3()
-      .addScaledVector(fwd, mz * speed)
-      .addScaledVector(right, mx * speed);
+
+    desiredVelocity.current
+      .set(0, 0, 0)
+      .addScaledVector(fwd, mz)
+      .addScaledVector(right, mx);
+
+    if (desiredVelocity.current.lengthSq() > 0) {
+      desiredVelocity.current.normalize().multiplyScalar(25);
+    }
+
+    const blend = 1 - Math.exp(-delta * 10);
+    velocity.current.lerp(desiredVelocity.current, blend);
+
+    if (velocity.current.lengthSq() < 0.0001) {
+      velocity.current.set(0, 0, 0);
+      return;
+    }
+
+    const move = velocity.current.clone().multiplyScalar(delta);
     state.camera.position.add(move);
     c.target.add(move);
+  });
+
+  return null;
+}
+
+function SmoothZoomControls({
+  controlsRef,
+  enabled,
+  minDistance,
+  maxDistance
+}: {
+  controlsRef: React.RefObject<any>;
+  enabled: boolean;
+  minDistance: number;
+  maxDistance: number;
+}) {
+  const targetDistance = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!enabled) {
+      targetDistance.current = null;
+      return;
+    }
+
+    const controls = controlsRef.current;
+    const dom = controls?.domElement as HTMLElement | undefined;
+    if (!controls || !dom) return;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const camera = controls.object as THREE.Camera;
+      const currentDistance = camera.position.distanceTo(controls.target);
+      const baseDistance = targetDistance.current ?? currentDistance;
+      const zoomFactor = Math.exp(e.deltaY * 0.0012);
+      targetDistance.current = THREE.MathUtils.clamp(
+        baseDistance * zoomFactor,
+        minDistance,
+        maxDistance
+      );
+    };
+
+    dom.addEventListener('wheel', onWheel, { passive: false });
+    return () => dom.removeEventListener('wheel', onWheel);
+  }, [controlsRef, enabled, minDistance, maxDistance]);
+
+  useFrame((_, delta) => {
+    if (!enabled) return;
+    const controls = controlsRef.current;
+    if (!controls) return;
+
+    const camera = controls.object as THREE.PerspectiveCamera;
+    const currentDistance = camera.position.distanceTo(controls.target);
+    if (targetDistance.current === null) {
+      targetDistance.current = currentDistance;
+      return;
+    }
+
+    const nextDistance = THREE.MathUtils.damp(
+      currentDistance,
+      targetDistance.current,
+      10,
+      delta
+    );
+
+    const offset = camera.position.clone().sub(controls.target);
+    if (offset.lengthSq() === 0) return;
+    offset.setLength(nextDistance);
+    camera.position.copy(controls.target).add(offset);
+    camera.updateProjectionMatrix();
   });
 
   return null;
@@ -82,9 +166,15 @@ export function GameCanvas() {
   return (
     <div className="w-full h-full bg-slate-950" style={{ touchAction: 'none' }}>
       <Canvas 
+        dpr={[1, 1.25]}
         shadows 
         camera={{ position: [50, 4, 50], fov: 45 }}
-        gl={{ toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.1 }}
+        gl={{
+          antialias: true,
+          powerPreference: 'high-performance',
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.1
+        }}
       >
         <Suspense fallback={null}>
           <SkySystem />
@@ -114,13 +204,19 @@ export function GameCanvas() {
              </group>
           )}
 
-          <EffectComposer multisampling={4}>
+          <EffectComposer multisampling={0}>
              <Bloom luminanceThreshold={1.2} luminanceSmoothing={0.8} intensity={1.5} mipmapBlur />
              <HueSaturation saturation={0.3} hue={0} />
              <Vignette eskil={false} offset={0.15} darkness={0.8} />
           </EffectComposer>
         </Suspense>
         {!isTouch && <WASDControls controlsRef={orbitRef} />}
+        <SmoothZoomControls
+          controlsRef={orbitRef}
+          enabled={!isTouch}
+          minDistance={5}
+          maxDistance={120}
+        />
         <OrbitControls
           ref={orbitRef}
           enabled={enableOrbitControls}
@@ -134,12 +230,13 @@ export function GameCanvas() {
             ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
           }}
-          enableDamping={isTouch}
-          dampingFactor={0.08}
-          rotateSpeed={isTouch ? 0.5 : 1.0}
-          zoomSpeed={isTouch ? 0.8 : 1.2}
+          enableDamping={true}
+          dampingFactor={0.12}
+          rotateSpeed={isTouch ? 0.45 : 0.85}
+          enableZoom={isTouch}
+          zoomSpeed={isTouch ? 0.6 : 1.0}
           enablePan={true}
-          panSpeed={isTouch ? 0.6 : 1.0}
+          panSpeed={isTouch ? 0.55 : 0.85}
         />
       </Canvas>
     </div>

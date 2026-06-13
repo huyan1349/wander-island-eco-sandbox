@@ -104,8 +104,8 @@ export function SkySystem() {
                   intensity={sunIntensity} 
                   color={sunColor}
                   castShadow 
-                  shadow-mapSize-width={2048} 
-                  shadow-mapSize-height={2048}
+                  shadow-mapSize-width={1024} 
+                  shadow-mapSize-height={1024}
                   shadow-camera-far={150}
                   shadow-camera-left={-40}
                   shadow-camera-right={40}
@@ -180,7 +180,7 @@ export function FirefliesSystem() {
 
 export function RainSystem() {
     const weather = useGameStore(state => state.weather);
-    const rainCount = 5000;
+    const rainCount = 2800;
     const meshRef = useRef<THREE.InstancedMesh>(null);
     const dummy = useMemo(() => new THREE.Object3D(), []);
 
@@ -235,7 +235,7 @@ export function RainSystem() {
 
 export function SnowSystem() {
     const weather = useGameStore(state => state.weather);
-    const snowCount = 4000;
+    const snowCount = 1800;
     const meshRef = useRef<THREE.InstancedMesh>(null);
     const dummy = useMemo(() => new THREE.Object3D(), []);
 

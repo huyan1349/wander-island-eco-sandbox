@@ -67,15 +67,9 @@ import {
   User,
   Cloud,
   Maximize2,
-  Star,
-  Telescope,
-  Castle,
-  LifeBuoy,
   Flower2,
   Sprout,
-  Clover,
-  TreePine,
-  TreeDeciduous
+  Clover
 } from "lucide-react";
 
 import { PlayerPanel } from "./components/PlayerPanel";
@@ -94,6 +88,7 @@ export default function App() {
   const screen = useGameStore(state => state.screen);
   const timeOfDay = useGameStore(state => state.timeOfDay);
   const setTimeOfDay = useGameStore(state => state.setTimeOfDay);
+  const setIsTimeScrubbing = useGameStore(state => state.setIsTimeScrubbing);
   const weather = useGameStore(state => state.weather);
   const setWeather = useGameStore(state => state.setWeather);
   const season = useGameStore(state => state.season);
@@ -106,8 +101,9 @@ export default function App() {
   const setBalloonColor = useGameStore(state => state.setBalloonColor);
   const selectedTool = useGameStore(state => state.selectedTool);
   const setSelectedTool = useGameStore(state => state.setSelectedTool);
-  const assets = useGameStore(state => state.assets);
-
+  const selectedEntityId = useGameStore(state => state.selectedEntityId);
+  const setSelectedEntityId = useGameStore(state => state.setSelectedEntityId);
+  const removeAsset = useGameStore(state => state.removeAsset);
   const grassHealth = useGameStore(state => state.grassHealth);
   const deerCount = useGameStore(state => state.deerCount);
   const wolfCount = useGameStore(state => state.wolfCount);
@@ -120,8 +116,20 @@ export default function App() {
   const unlockedAssets = useGameStore(state => state.unlockedAssets);
   const unlockAsset = useGameStore(state => state.unlockAsset);
   const assetCount = useGameStore(state => state.assets.length);
-  const springCount = useGameStore(state => state.assets.filter(a => a.type === 'spring').length);
-  const windmillCount = useGameStore(state => state.assets.filter(a => a.type === 'windmill').length);
+  const springCount = useGameStore(state => {
+    let count = 0;
+    for (const asset of state.assets) {
+      if (asset.type === 'spring') count++;
+    }
+    return count;
+  });
+  const windmillCount = useGameStore(state => {
+    let count = 0;
+    for (const asset of state.assets) {
+      if (asset.type === 'windmill') count++;
+    }
+    return count;
+  });
 
   const authUser = useGameStore(state => state.authUser);
   const setAuthUser = useGameStore(state => state.setAuthUser);
@@ -348,6 +356,12 @@ export default function App() {
     }
   }, [selectedTool, activeCategory]);
 
+  useEffect(() => {
+    if (selectedTool !== 'eraser' && selectedEntityId) {
+      setSelectedEntityId(null);
+    }
+  }, [selectedTool, selectedEntityId, setSelectedEntityId]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -507,6 +521,28 @@ export default function App() {
       {screen === 'TITLE' && <TitleScreen />}
       {screen === 'LOGIN' && <LoginScreen />}
       {screen === 'SAVE_SELECT' && <SaveSelectScreen />}
+
+      {screen === 'PLAYING' && selectedTool === 'eraser' && (
+        <div className={`absolute left-1/2 -translate-x-1/2 z-50 ${isTouch ? 'bottom-28' : 'bottom-10'}`}>
+          {selectedEntityId ? (
+            <button
+              onClick={() => {
+                removeAsset(selectedEntityId);
+                setSelectedEntityId(null);
+                AudioSystem.playPop();
+              }}
+              className="hand-drawn-btn-active px-5 py-3 rounded-2xl text-sm font-bold tracking-widest text-red-700 bg-white/95 shadow-lg backdrop-blur flex items-center gap-2"
+            >
+              <Trash2 size={16} />
+              确认擦除当前物体
+            </button>
+          ) : (
+            <div className="px-4 py-2 rounded-2xl bg-white/90 shadow-md text-xs font-bold tracking-widest text-slate-700">
+              先点选一个物体，再确认擦除
+            </div>
+          )}
+        </div>
+      )}
 
       {screen === 'PLAYING' && (
         <>
@@ -788,6 +824,9 @@ export default function App() {
               <input
                 type="range" min="0" max="24" step="0.5"
                 value={timeOfDay} onChange={(e) => setTimeOfDay(parseFloat(e.target.value))}
+                onPointerDown={() => setIsTimeScrubbing(true)}
+                onPointerUp={() => setIsTimeScrubbing(false)}
+                onPointerCancel={() => setIsTimeScrubbing(false)}
                 className="w-full h-1 bg-slate-200 rounded-full appearance-none cursor-pointer mt-1"
               />
             </div>
