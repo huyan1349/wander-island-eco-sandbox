@@ -219,6 +219,13 @@ function usePopIn(targetScale: number = 1) {
 // Procedural generation of simple low poly trees, rocks, deer
 function TreeA({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
   const groupRef = usePopIn(scale);
+  const leavesRef = useRef<any>(null);
+  useFrame(({ clock }) => {
+    if (!useGameStore.getState().isSplashDone) return;
+    if (leavesRef.current) {
+      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.5 + position.x) * 0.05;
+    }
+  });
   const season = useGameStore(state => state.season);
   const biome = useGameStore(state => state.biome);
 
@@ -238,7 +245,7 @@ function TreeA({ position, rotation, scale = 1 }: { position: any, rotation?: an
         <cylinderGeometry args={[0.1, 0.2, 1, 5]} />
         <meshStandardMaterial color={trunkColor} flatShading />
       </mesh>
-      <mesh position={[0, 1.5, 0]} castShadow receiveShadow>
+      <mesh ref={leavesRef} position={[0, 1.5, 0]} castShadow receiveShadow>
         <coneGeometry args={[0.8, 2, 5]} />
         <meshStandardMaterial color={leafColor} flatShading />
       </mesh>
@@ -248,6 +255,13 @@ function TreeA({ position, rotation, scale = 1 }: { position: any, rotation?: an
 
 function TreeB({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
   const groupRef = usePopIn(scale);
+  const leavesRef = useRef<any>(null);
+  useFrame(({ clock }) => {
+    if (!useGameStore.getState().isSplashDone) return;
+    if (leavesRef.current) {
+      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.2 + position.z) * 0.05;
+    }
+  });
   const season = useGameStore(state => state.season);
   const biome = useGameStore(state => state.biome);
 
@@ -267,7 +281,7 @@ function TreeB({ position, rotation, scale = 1 }: { position: any, rotation?: an
         <cylinderGeometry args={[0.15, 0.25, 1, 6]} />
         <meshStandardMaterial color={trunkColor} flatShading />
       </mesh>
-      <mesh position={[0, 2, 0]} castShadow receiveShadow>
+      <mesh ref={leavesRef} position={[0, 2, 0]} castShadow receiveShadow>
         <dodecahedronGeometry args={[1, 0]} />
         <meshStandardMaterial color={leafColor} flatShading />
       </mesh>
