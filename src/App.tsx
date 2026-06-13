@@ -77,6 +77,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import { SocialPanel } from "./components/SocialPanel";
 import { Toast } from "./components/Toast";
 import { FlourishHUD } from "./components/FlourishHUD";
+import { PomodoroTimer } from "./components/PomodoroTimer";
 import { VisitOverlay } from "./components/VisitOverlay";
 import { TimeWeatherSystem } from "./components/systems/TimeWeatherSystem";
 import { SolarMeridian } from "./components/ui/SolarMeridian";
@@ -624,6 +625,11 @@ export default function App() {
                   <span className="font-mono text-[10px] tracking-[0.2em] uppercase opacity-0 group-hover:opacity-100 transition-opacity">Wake Up</span>
                   <EyeOff size={20} className="font-light" />
                </button>
+           </div>
+
+           {/* 专注番茄钟 */}
+           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+               <PomodoroTimer />
            </div>
 
            {/* Center Reticle / Viewfinder marks */}
