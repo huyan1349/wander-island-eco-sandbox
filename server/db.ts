@@ -115,6 +115,15 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_mailbox_from ON mailbox(from_id);
     CREATE INDEX IF NOT EXISTS idx_visitor_island ON visitor_log(island_id);
     CREATE INDEX IF NOT EXISTS idx_bottle_found ON messages_in_bottle(found_by);
+
+    CREATE TABLE IF NOT EXISTS gifts (
+      id TEXT PRIMARY KEY,
+      name TEXT DEFAULT '',
+      from_name TEXT DEFAULT '',
+      data TEXT NOT NULL,
+      created_at INTEGER DEFAULT (unixepoch()),
+      claimed_count INTEGER DEFAULT 0
+    );
   `);
 
   try {

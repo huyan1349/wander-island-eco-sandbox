@@ -39,3 +39,53 @@ export function exportIslandFile() {
   a.remove();
   URL.revokeObjectURL(url);
 }
+
+// 把一份岛屿数据写入本地存档并进入游戏（礼物领取 / 文件导入共用）
+export function applyIslandData(d: any, name: string) {
+  const store = useGameStore.getState();
+  const id = Date.now().toString();
+  const slots = store.getSavedSlots();
+  slots.push({ id, name, lastPlayed: Date.now(), ecoPoints: d.ecoPoints ?? 200, playtime: d.stats?.playtime ?? 0 });
+  localStorage.setItem('eco_saves_index', JSON.stringify(slots));
+  localStorage.setItem(`eco_save_${id}`, JSON.stringify({
+    timeOfDay: d.timeOfDay ?? 6,
+    weather: d.weather ?? 'sunny',
+    assets: d.assets ?? [],
+    grassHealth: d.grassHealth ?? 100,
+    deerCount: d.deerCount ?? 0,
+    wolfCount: d.wolfCount ?? 0,
+    playerName: store.playerName,
+    playerAvatar: store.playerAvatar,
+    playerXP: d.playerXP ?? 0,
+    playerLevel: d.playerLevel ?? 1,
+    ecoPoints: d.ecoPoints ?? 200,
+    unlockedAssets: d.unlockedAssets,
+    stats: d.stats ?? { playtime: 0, itemsPlaced: 0 },
+    terrainPositions: d.terrainPositions ?? null,
+    terrainTypes: d.terrainTypes ?? null,
+  }));
+  store.loadGame(id);
+}
+
+// 生成礼物分享链接（上传当前岛，返回独一无二的链接）
+export async function createGiftLink(fromName: string): Promise<string> {
+  const data = serializeIsland();
+  const res = await fetch('/api/gifts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: data.name, fromName, data }),
+  });
+  if (!res.ok) throw new Error('生成礼物失败');
+  const { id } = await res.json();
+  return `${location.origin}/?gift=${id}`;
+}
+
+// 领取礼物：按 ID 拉取并载入游戏，返回岛名
+export async function claimGift(id: string): Promise<string> {
+  const res = await fetch(`/api/gifts/${id}`);
+  if (!res.ok) throw new Error('礼物不存在或已失效');
+  const gift = await res.json();
+  const name = gift.fromName ? `${gift.name || '小岛'} (来自 ${gift.fromName})` : (gift.name || '收到的礼物');
+  applyIslandData(gift.data, name);
+  return name;
+}

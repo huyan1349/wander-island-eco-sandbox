@@ -10,7 +10,7 @@ import {
   Wifi, WifiOff, Camera, X, Users, MessageCircle, Globe, Search, Send,
   UserPlus, Check, ArrowLeft, Mail, BookOpen, Compass, Star, Waves, Download, Gift
 } from 'lucide-react';
-import { exportIslandFile } from '../utils/islandIO';
+import { exportIslandFile, createGiftLink } from '../utils/islandIO';
 
 type Tab = 'stats' | 'ecology' | 'unlocks' | 'social' | 'system';
 type SocialTab = 'friends' | 'chat' | 'mailbox' | 'visitors' | 'plaza';
@@ -564,6 +564,7 @@ export const PlayerPanel: React.FC = () => {
                     </div>
                     <button onClick={() => { saveGame(); alert("Game Saved Successfully!"); }} className="hand-drawn-btn px-8 py-4 text-xl font-bold w-full">保存进度</button>
                     <button onClick={() => exportIslandFile()} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Download size={18} /> 导出小岛文件</button>
+                    <button onClick={async () => { try { const link = await createGiftLink(useGameStore.getState().playerName || '匿名'); await navigator.clipboard.writeText(link).catch(() => {}); prompt('🎁 礼物链接已生成（已复制），发给好友即可让对方收到这座小岛：', link); } catch { alert('生成失败，请确认服务器已联网'); } }} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Gift size={18} /> 生成礼物链接</button>
                     {authUser && (
                       <button onClick={() => { api.setToken(null); disconnectSocket(); clearAuthUser(); setIsOpen(false); }} className="w-full flex items-center justify-center gap-3 hand-drawn-btn px-8 py-4 text-red-600 font-bold">
                         <LogOut size={18} /><span className="font-light tracking-[0.2em] uppercase text-sm">退出登录</span>

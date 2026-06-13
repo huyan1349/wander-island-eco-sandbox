@@ -127,36 +127,27 @@ export const TitleScreen: React.FC = () => {
                     >
                         {splashPhase === 'AUTHOR' && (
                             <>
+                                <img
+                                    src="/title/island-outline.svg"
+                                    alt=""
+                                    className="w-14 h-14 opacity-90 drop-shadow-xl"
+                                />
                                 <span className="text-slate-300 text-sm tracking-[0.4em] uppercase font-bold">A Game By</span>
                                 <h2 className="text-white text-4xl font-bold tracking-[0.3em] hand-drawn-title drop-shadow-lg">HUYAN</h2>
                             </>
                         )}
                         {splashPhase === 'TITLE' && (
                             <>
+                                <img
+                                    src="/title/island-outline.svg"
+                                    alt=""
+                                    className="w-20 h-20 opacity-95 drop-shadow-2xl"
+                                />
                                 <h1 className="text-white text-[6rem] font-bold tracking-[0.2em] hand-drawn-title drop-shadow-2xl">WANDER ISLAND</h1>
                                 <span className="text-slate-300 text-2xl tracking-[0.5em] hand-drawn-title">流 浪 岛</span>
                             </>
                         )}
                     </div>
-                    {/* Splash Overlay Logo */}
-                    {splashPhase === 'TITLE' && (
-                        <div 
-                            className="absolute bottom-12 left-0 w-full flex flex-col items-center justify-center gap-4 transition-all duration-[2000ms] ease-out pointer-events-none"
-                            style={{ 
-                                opacity: splashVisible ? 0.8 : 0,
-                                filter: splashVisible ? 'blur(0px)' : 'blur(12px)',
-                                transform: splashVisible ? 'scale(1)' : 'scale(1.05)'
-                            }}
-                        >
-                            <svg width="40" height="40" viewBox="0 0 100 100" fill="none" stroke="white" strokeWidth="5" strokeLinejoin="round" className="drop-shadow-lg">
-                                <path d="M15 90 L45 80 L45 10 L15 20 Z" />
-                                <path d="M45 10 L85 20 L85 90 L70 86.25 L70 36.25 L55 32.5 L55 82.5 L45 80 Z" />
-                            </svg>
-                            <span className="text-white/80 text-xs font-bold tracking-[0.3em] drop-shadow-md">
-                                启元开物
-                            </span>
-                        </div>
-                    )}
                 </div>
             )}
 
@@ -202,8 +193,12 @@ export const TitleScreen: React.FC = () => {
                     <h1 className={`${isTouch ? 'text-[3rem] leading-none' : 'text-[6rem] leading-none'} font-bold hand-drawn-title tracking-[0.2em] ` + (titleTheme === 'white' ? "text-white/70" : "text-slate-900/60")}>
                         ISLAND
                     </h1>
-                    <div className="flex items-center gap-6 mt-12 opacity-80 pl-2">
-                        <div className="h-px w-12" />
+                    <div className="flex items-center gap-3 mt-12 opacity-80">
+                        <img
+                            src="/title/island-outline.svg"
+                            alt=""
+                            className={`${isTouch ? 'w-8 h-8' : 'w-10 h-10'} opacity-90 drop-shadow-lg shrink-0`}
+                        />
                         <span className={`${isTouch ? 'text-xl' : 'text-2xl'} font-bold tracking-[0.2em] hand-drawn-title ` + (titleTheme === 'white' ? "text-white/80" : "text-slate-400")}>流浪岛</span>
                     </div>
                 </div>
@@ -327,9 +322,42 @@ export const TitleScreen: React.FC = () => {
                             <h2 className="text-5xl hand-drawn-title mb-4 -rotate-2">WANDER ISLAND</h2>
 
                             <div className="flex flex-col gap-8 w-full">
-                                <div className="flex flex-col gap-2 bg-[#ffeaa7] border-2 border-slate-800 p-4 -rotate-1 shadow-[4px_4px_0_#2d3436]">
-                                    <span className="text-sm font-bold text-slate-600">核心开发 & 策划</span>
-                                    <span className="text-2xl font-bold text-slate-800">huyan</span>
+                                <div className="flex flex-col gap-4 bg-[linear-gradient(135deg,#fff1b8_0%,#ffe08a_55%,#ffd66b_100%)] border-2 border-slate-800 p-5 -rotate-1 shadow-[6px_6px_0_#2d3436] relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-20 h-20 rounded-full bg-white/25 blur-2xl pointer-events-none" />
+                                    <div className="flex flex-col gap-1 relative">
+                                        <span className="text-[11px] font-black tracking-[0.28em] uppercase text-slate-500">Independent Creator</span>
+                                        <span className="text-sm font-bold text-slate-700">独立开发 / 游戏策划</span>
+                                    </div>
+                                    <div className="relative flex items-end justify-between gap-4 border-t-2 border-slate-800/20 pt-3">
+                                        <div className="flex flex-col">
+                                            <span className="text-3xl font-black tracking-wide text-slate-900 leading-none">huyan</span>
+                                            <span className="text-xs font-bold tracking-[0.22em] text-slate-600 mt-1">SOLO DEV</span>
+                                        </div>
+                                        <div className="w-11 h-11 rounded-full border-2 border-slate-800/60 bg-white/50 overflow-hidden shrink-0 shadow-sm">
+                                            <img
+                                                src="/title/huyan-avatar.png"
+                                                alt="huyan avatar"
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="relative flex flex-col gap-2 pt-1">
+                                        <span className="text-[10px] font-black tracking-[0.24em] uppercase text-slate-500">Links</span>
+                                    <a
+                                        href="https://github.com/huyan1349"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-sm font-bold text-slate-800 hover:text-emerald-700 transition-colors break-all underline decoration-slate-500/40 underline-offset-4"
+                                    >
+                                        GitHub: github.com/huyan1349
+                                    </a>
+                                    <a
+                                        href="mailto:huyanxius@gmail.com"
+                                        className="text-sm font-bold text-slate-800 hover:text-emerald-700 transition-colors break-all underline decoration-slate-500/40 underline-offset-4"
+                                    >
+                                        Contact: huyanxius@gmail.com
+                                    </a>
+                                    </div>
                                 </div>
                                 <div className="flex flex-col gap-2 bg-[#74b9ff] border-2 border-slate-800 p-4 rotate-1 shadow-[4px_4px_0_#2d3436]">
                                     <span className="text-sm font-bold text-slate-800">特别鸣谢</span>

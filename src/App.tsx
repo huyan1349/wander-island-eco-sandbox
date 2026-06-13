@@ -192,6 +192,17 @@ export default function App() {
     }
   }, []);
 
+  // 礼物链接：检测 ?gift= 自动领取并进入
+  useEffect(() => {
+    const giftId = new URLSearchParams(location.search).get('gift');
+    if (!giftId) return;
+    import('./utils/islandIO').then(({ claimGift }) => {
+      claimGift(giftId)
+        .then((name) => { alert(`🎁 收到礼物小岛：${name}`); history.replaceState({}, '', location.pathname); })
+        .catch(() => alert('礼物不存在或已失效'));
+    });
+  }, []);
+
   // Auto-login from saved token
   useEffect(() => {
     const token = api.getToken();
