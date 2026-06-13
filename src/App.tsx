@@ -479,17 +479,17 @@ export default function App() {
         <>
           {/* Top Left Header & HUD */}
       {!isImmersive && (
-        <div className={`absolute top-6 left-6 z-50 flex flex-col items-start gap-4 transition-opacity duration-300 ${isTouch ? 'touch-safe-top touch-safe-left' : ''}`}>
+        <div className={`absolute z-50 flex flex-col items-start gap-2 transition-opacity duration-300 ${isTouch ? 'top-3 left-3 touch-safe-top touch-safe-left' : 'top-6 left-6 gap-4'}`}>
            {/* Profile / Avatar (Top Left) */}
            <PlayerPanel />
 
            {/* Tool Column (Below Avatar) */}
-           <div className="flex flex-col gap-4">
+           <div className={`flex ${isTouch ? 'flex-row gap-2' : 'flex-col gap-4'}`}>
              <button
                 onClick={() => { setIsImmersive(!isImmersive); showTouchTooltip(isImmersive ? '退出沉浸模式' : '沉浸模式'); }}
-                className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 ${isTouch ? 'w-14 h-14' : 'w-12 h-12'}`}
+                className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 ${isTouch ? 'w-11 h-11' : 'w-12 h-12'}`}
              >
-                {isImmersive ? <EyeOff size={isTouch ? 28 : 24} className="text-slate-800" /> : <Eye size={isTouch ? 28 : 24} className="text-slate-800" />}
+                {isImmersive ? <EyeOff size={isTouch ? 20 : 24} className="text-slate-800" /> : <Eye size={isTouch ? 20 : 24} className="text-slate-800" />}
                 {!isTouch && (
                 <span className="absolute -right-24 top-1/2 -translate-y-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                     {isImmersive ? "退出沉浸模式" : "沉浸模式"}
@@ -499,9 +499,9 @@ export default function App() {
 
              <button
                 onClick={() => { setEnvMenuOpen(!envMenuOpen); showTouchTooltip('生态面板'); }}
-                className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 ${isTouch ? 'w-14 h-14' : 'w-12 h-12'} ${envMenuOpen ? 'hand-drawn-btn-active' : ''}`}
+                className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 ${isTouch ? 'w-11 h-11' : 'w-12 h-12'} ${envMenuOpen ? 'hand-drawn-btn-active' : ''}`}
              >
-                <Globe size={isTouch ? 28 : 24} className={envMenuOpen ? 'text-amber-700' : 'text-slate-800'} />
+                <Globe size={isTouch ? 20 : 24} className={envMenuOpen ? 'text-amber-700' : 'text-slate-800'} />
                 {!isTouch && (
                 <span className="absolute -right-20 top-1/2 -translate-y-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                     生态面板
@@ -515,9 +515,9 @@ export default function App() {
              {isTouch && (
                <button
                   onClick={() => { handleFullscreen(); showTouchTooltip('全屏'); }}
-                  className="group relative flex items-center justify-center hand-drawn-btn shrink-0 w-14 h-14"
+                  className="group relative flex items-center justify-center hand-drawn-btn shrink-0 w-11 h-11"
                >
-                  <Maximize2 size={28} className="text-slate-800" />
+                  <Maximize2 size={20} className="text-slate-800" />
                </button>
              )}
            </div>
@@ -602,7 +602,7 @@ export default function App() {
 
       {/* Liquid Glass Bottom Dock - Tools & Categories */}
       {!isImmersive && (
-        <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-4 pointer-events-none ${isTouch ? 'touch-safe-bottom' : ''}`}>
+        <div className={`absolute left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-3 pointer-events-none ${isTouch ? 'bottom-3 touch-safe-bottom' : 'bottom-8 gap-4'}`}>
           
           {/* Touch tooltip banner */}
           {touchTooltip && isTouch && (
@@ -611,7 +611,7 @@ export default function App() {
             </div>
           )}
 
-          {/* Balloon color picker (shown while a balloon tool is selected) */}
+          {/* Balloon color picker */}
           {String(selectedTool).startsWith('balloon') && (
             <div className="hand-drawn-panel px-3 py-2 flex gap-2 items-center pointer-events-auto animate-in slide-in-from-bottom-2 fade-in duration-300">
               <span className="text-xs text-slate-700 font-bold mr-1">气球颜色</span>
@@ -619,14 +619,14 @@ export default function App() {
                 <button
                   key={c}
                   onClick={() => setBalloonColor(c)}
-                  className={`w-8 h-8 rounded-full border-2 transition-transform ${balloonColor === c ? 'border-slate-800 scale-125' : 'border-white/60'}`}
+                  className={`rounded-full border-2 transition-transform ${balloonColor === c ? 'border-slate-800 scale-125' : 'border-white/60'} ${isTouch ? 'w-10 h-10' : 'w-8 h-8'}`}
                   style={{ backgroundColor: c }}
                 />
               ))}
             </div>
           )}
 
-          {/* Active Category Tools (Floats above the dock) */}
+          {/* Active Category Tools */}
           {activeCategory && activeCatObj && (
             <div className={`hand-drawn-panel px-2 py-2 pointer-events-auto animate-in slide-in-from-bottom-2 fade-in duration-300 ${isTouch ? 'touch-tools-scroll' : 'flex gap-2'}`}>
               {activeCatObj.tools.map((t) => {
@@ -653,14 +653,13 @@ export default function App() {
                       showTouchTooltip(t.label);
                     }}
                     className={`hand-drawn-btn relative flex items-center justify-center group shrink-0
-                      ${isTouch ? 'w-14 h-14' : 'w-12 h-12'}
+                      ${isTouch ? 'w-12 h-12' : 'w-12 h-12'}
                       ${!isUnlocked ? "opacity-50" : (isActive ? "hand-drawn-btn-active" : "")}
                     `}
                   >
-                    <Icon size={isActive ? (isTouch ? 26 : 22) : (isTouch ? 24 : 20)} className={isActive ? "text-amber-700" : "text-slate-800"} />
+                    <Icon size={isActive ? (isTouch ? 22 : 22) : (isTouch ? 20 : 20)} className={isActive ? "text-amber-700" : "text-slate-800"} />
                     {!isUnlocked && <Lock size={10} className="absolute bottom-1 right-1 text-amber-400 drop-shadow-md" />}
                     
-                    {/* Desktop: hover tooltip / Touch: hidden (use banner) */}
                     {!isTouch && (
                       <span className="absolute -top-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-[12px] font-bold py-1 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
                         {t.label}
@@ -672,8 +671,8 @@ export default function App() {
             </div>
           )}
 
-          {/* Main Category Dock */}
-          <div className={`hand-drawn-panel px-4 py-3 flex gap-4 pointer-events-auto ${isTouch ? 'touch-dock' : ''}`}>
+          {/* Main Category Dock — 手机端可横向滚动 */}
+          <div className={`hand-drawn-panel px-2 py-2 flex gap-2 pointer-events-auto ${isTouch ? 'touch-tools-scroll max-w-[95vw]' : 'px-4 py-3 gap-4'}`}>
             {categories.map((c) => {
               const CategoryIcon = c.icon;
               const isActive = activeCategory === c.name;
@@ -685,22 +684,20 @@ export default function App() {
                     setActiveCategory(isActive ? null : c.name);
                     showTouchTooltip(c.name);
                   }}
-                  className={`hand-drawn-btn relative group
-                    ${isTouch ? 'p-4' : 'p-3'}
+                  className={`hand-drawn-btn relative group shrink-0
+                    ${isTouch ? 'w-12 h-12' : 'p-3'}
                     ${isActive ? "hand-drawn-btn-active" : ""}
                   `}
                 >
-                  <CategoryIcon size={isTouch ? 28 : 24} className={isActive ? "text-amber-700" : "text-slate-800"} />
+                  <CategoryIcon size={isTouch ? 22 : 24} className={isActive ? "text-amber-700" : "text-slate-800"} />
                   
-                  {/* Desktop: hover tooltip */}
                   {!isTouch && (
                     <span className="absolute -top-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-[12px] font-bold py-1 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
                       {c.name}
                     </span>
                   )}
                   
-                  {/* Active Indicator dot */}
-                  {isActive && <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-2 h-2 bg-amber-700 rounded-full" />}
+                  {isActive && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-amber-700 rounded-full" />}
                 </button>
               );
             })}
@@ -710,10 +707,20 @@ export default function App() {
 
       {/* Right Panel - Ecology Menu Content */}
       {!isImmersive && (
-        <div className={`absolute right-6 top-6 bottom-6 flex flex-col items-end z-50 pointer-events-none w-80 ${isTouch ? 'touch-panel-full touch-safe-bottom touch-safe-right' : ''}`}>
+        <div className={`absolute flex flex-col items-end z-50 pointer-events-none ${isTouch ? 'touch-panel-full touch-safe-bottom touch-safe-right inset-0' : 'right-6 top-6 bottom-6 w-80'}`}>
           {/* Collapsible Ecology Menu */}
           {envMenuOpen && (
-            <div className="hand-drawn-panel p-5 pointer-events-auto flex flex-col gap-5 w-72 max-h-[70vh] overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-200">
+            <div className={`hand-drawn-panel p-5 pointer-events-auto flex flex-col gap-5 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-200 ${isTouch ? 'w-full h-full max-h-full rounded-none' : 'w-72 max-h-[70vh]'}`}>
+
+            {/* 手机端关闭按钮 */}
+            {isTouch && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-bold text-slate-800 tracking-wider">生态面板</span>
+                <button onClick={() => setEnvMenuOpen(false)} className="hand-drawn-btn w-10 h-10 flex items-center justify-center">
+                  <EyeOff size={18} className="text-slate-800" />
+                </button>
+              </div>
+            )}
             
             {/* Environment Stats */}
             <div className="flex flex-col gap-2">
@@ -757,13 +764,10 @@ export default function App() {
             {/* Weather */}
             <div className="flex flex-col gap-2">
               <span className="text-xs text-slate-700 font-bold">天气</span>
-              <div className="grid grid-cols-3 gap-2">
-                <button onClick={() => setWeather("sunny")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'sunny' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>晴天</button>
-                <button onClick={() => setWeather("rainy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'rainy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>雨天</button>
-                <button onClick={() => setWeather("snowy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'snowy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>雪天</button>
-                <button onClick={() => setWeather("cloudy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'cloudy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>多云</button>
-                <button onClick={() => setWeather("foggy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'foggy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>浓雾</button>
-                <button onClick={() => setWeather("stormy")} className={`py-1.5 rounded text-xs transition-colors ${weather === 'stormy' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>雷暴</button>
+              <div className={`grid grid-cols-3 gap-2 ${isTouch ? 'gap-3' : ''}`}>
+                {(["sunny","晴天"], ["rainy","雨天"], ["snowy","雪天"], ["cloudy","多云"], ["foggy","浓雾"], ["stormy","雷暴"] as const).map(([w, label]) => (
+                  <button key={w} onClick={() => setWeather(w)} className={`rounded text-xs transition-colors ${isTouch ? 'py-3' : 'py-1.5'} ${weather === w ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>{label}</button>
+                ))}
               </div>
             </div>
             {/* Wave Intensity */}
@@ -782,23 +786,20 @@ export default function App() {
             {/* Season */}
             <div className="flex flex-col gap-2">
               <span className="text-xs text-slate-700 font-bold">季节</span>
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => setSeason("spring")} className={`py-1.5 rounded text-xs transition-colors ${season === 'spring' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>春季</button>
-                <button onClick={() => setSeason("summer")} className={`py-1.5 rounded text-xs transition-colors ${season === 'summer' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>夏季</button>
-                <button onClick={() => setSeason("autumn")} className={`py-1.5 rounded text-xs transition-colors ${season === 'autumn' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>秋季</button>
-                <button onClick={() => setSeason("winter")} className={`py-1.5 rounded text-xs transition-colors ${season === 'winter' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>冬季</button>
+              <div className={`grid grid-cols-2 gap-2 ${isTouch ? 'gap-3' : ''}`}>
+                {(["spring","春季"], ["summer","夏季"], ["autumn","秋季"], ["winter","冬季"] as const).map(([s, label]) => (
+                  <button key={s} onClick={() => setSeason(s)} className={`rounded text-xs transition-colors ${isTouch ? 'py-3' : 'py-1.5'} ${season === s ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>{label}</button>
+                ))}
               </div>
             </div>
 
             {/* Biome */}
             <div className="flex flex-col gap-2">
               <span className="text-xs text-slate-700 font-bold">地貌</span>
-              <div className="grid grid-cols-3 gap-2">
-                <button onClick={() => setBiome("default")} className={`py-1.5 rounded text-xs font-medium transition-colors ${biome === 'default' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>经典</button>
-                <button onClick={() => setBiome("forest")} className={`py-1.5 rounded text-xs font-medium transition-colors ${biome === 'forest' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>森林</button>
-                <button onClick={() => setBiome("desert")} className={`py-1.5 rounded text-xs font-medium transition-colors ${biome === 'desert' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>沙漠</button>
-                <button onClick={() => setBiome("tundra")} className={`py-1.5 rounded text-xs font-medium transition-colors ${biome === 'tundra' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>冰封</button>
-                <button onClick={() => setBiome("volcanic")} className={`py-1.5 rounded text-xs font-medium transition-colors ${biome === 'volcanic' ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>火山</button>
+              <div className={`grid grid-cols-3 gap-2 ${isTouch ? 'gap-3' : ''}`}>
+                {(["default","经典"], ["forest","森林"], ["desert","沙漠"], ["tundra","冰封"], ["volcanic","火山"] as const).map(([b, label]) => (
+                  <button key={b} onClick={() => setBiome(b)} className={`rounded text-xs font-medium transition-colors ${isTouch ? 'py-3' : 'py-1.5'} ${biome === b ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>{label}</button>
+                ))}
               </div>
             </div>
 

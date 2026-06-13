@@ -159,10 +159,10 @@ export const SocialPanel: React.FC = () => {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 ${isTouch ? 'w-14 h-14' : 'w-12 h-12'}`}
+        className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 ${isTouch ? 'w-11 h-11' : 'w-12 h-12'}`}
         title="社交"
       >
-        <Users size={isTouch ? 28 : 24} className="text-slate-800" />
+        <Users size={isTouch ? 20 : 24} className="text-slate-800" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-slate-950">
             {unreadCount > 9 ? '9+' : unreadCount}
