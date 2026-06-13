@@ -4,6 +4,7 @@
   "version": "2.0.0",
   "type": "module",
   "scripts": {
+    "start": "tsx server/index.ts",
     "dev": "vite --port=3002 --host=0.0.0.0",
     "server": "tsx server/index.ts",
     "server:old": "node server.js",
