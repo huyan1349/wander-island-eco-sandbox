@@ -3162,18 +3162,20 @@ export function CherryTree({ position, rotation, scale = 1 }: { position: any, r
         <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
       <group ref={leavesRef} position={[0, 1.8, 0]}>
+        {/* Main canopy: Sakura pink */}
         <mesh castShadow receiveShadow>
           <dodecahedronGeometry args={[1, 0]} />
           <meshStandardMaterial color="#fbcfe8" flatShading />
         </mesh>
-        {/* Slightly richer: one offset smaller bump to break perfect symmetry */}
-        <mesh position={[0.5, -0.2, 0.4]} castShadow receiveShadow>
+        {/* Side canopy: The "white" touch the user wanted, very clean */}
+        <mesh position={[0.5, 0.1, 0.3]} castShadow receiveShadow>
           <dodecahedronGeometry args={[0.6, 0]} />
-          <meshStandardMaterial color="#f9a8d4" flatShading />
+          <meshStandardMaterial color="#fdf2f8" flatShading />
         </mesh>
+        {/* Small bottom filler: standard pink to blend */}
         <mesh position={[-0.4, -0.3, -0.3]} castShadow receiveShadow>
           <dodecahedronGeometry args={[0.5, 0]} />
-          <meshStandardMaterial color="#fbcfe8" flatShading />
+          <meshStandardMaterial color="#f9a8d4" flatShading />
         </mesh>
       </group>
     </group>
@@ -3236,36 +3238,68 @@ export function PineTree({ position, rotation, scale = 1 }: { position: any, rot
 export function WillowTree({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
   const groupRef = usePopIn(scale);
   const leavesRef = useRef<any>(null);
+  
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
     if (leavesRef.current) {
-      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.2) * 0.05;
+      // Gentle core sway
+      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 0.8) * 0.03;
+      
+      // Cascading wave effect on the hanging strands
+      leavesRef.current.children.forEach((child: any, i: number) => {
+        if (child.name === 'strand') {
+           child.rotation.x = Math.sin(clock.elapsedTime * 1.2 + i * 0.5) * 0.06;
+           child.rotation.z = Math.cos(clock.elapsedTime * 1.0 + i * 0.5) * 0.06;
+        }
+      });
     }
   });
+
   return (
     <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0)} scale={0} ref={groupRef}>
-      <mesh position={[0, 0.8, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.15, 0.2, 1.6, 5]} />
-        <meshStandardMaterial color="#5c4033" flatShading />
+      {/* Curved, elegant trunk */}
+      <mesh position={[0, 0.6, 0]} rotation={[0, 0, 0.08]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.15, 0.25, 1.2, 6]} />
+        <meshStandardMaterial color="#4a3022" roughness={0.9} flatShading />
       </mesh>
-      <group ref={leavesRef} position={[0, 1.8, 0]}>
-        <mesh position={[0, 0, 0]} castShadow receiveShadow>
-          <cylinderGeometry args={[0.8, 0.8, 0.4, 6]} />
-          <meshStandardMaterial color="#65a30d" flatShading />
+      <mesh position={[0.05, 1.6, 0]} rotation={[0, 0, 0.15]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.08, 0.15, 1.0, 6]} />
+        <meshStandardMaterial color="#4a3022" roughness={0.9} flatShading />
+      </mesh>
+
+      <group ref={leavesRef} position={[0.15, 2.2, 0]}>
+        {/* Core leaf clump */}
+        <mesh castShadow receiveShadow>
+          <icosahedronGeometry args={[0.7, 1]} />
+          <meshStandardMaterial color="#65a30d" roughness={0.8} flatShading />
         </mesh>
         
-        {/* Simple straight hanging cylinders, slightly richer with 6 of them */}
+        {/* Anime-style cascading leaf strands (chains of diminishing spheres) */}
         {[...Array(6)].map((_, i) => {
           const angle = (i / 6) * Math.PI * 2;
-          const r = 0.6;
+          const r = 0.5;
           const x = Math.cos(angle) * r;
           const z = Math.sin(angle) * r;
-          const length = 1.0 + (i % 3) * 0.3; // Varying lengths
+          
           return (
-            <mesh key={i} position={[x, -0.2 - length/2, z]} castShadow receiveShadow>
-              <cylinderGeometry args={[0.05, 0.05, length, 4]} />
-              <meshStandardMaterial color="#4d7c0f" flatShading />
-            </mesh>
+            <group key={i} name="strand" position={[x, -0.2, z]}>
+              <mesh position={[0, -0.3, 0]} castShadow receiveShadow>
+                <icosahedronGeometry args={[0.25, 0]} />
+                <meshStandardMaterial color="#84cc16" flatShading />
+              </mesh>
+              <mesh position={[0.05, -0.7, 0.05]} castShadow receiveShadow>
+                <icosahedronGeometry args={[0.2, 0]} />
+                <meshStandardMaterial color="#65a30d" flatShading />
+              </mesh>
+              <mesh position={[0.02, -1.0, 0.02]} castShadow receiveShadow>
+                <icosahedronGeometry args={[0.15, 0]} />
+                <meshStandardMaterial color="#4d7c0f" flatShading />
+              </mesh>
+              <mesh position={[0, -1.25, 0]} castShadow receiveShadow>
+                <icosahedronGeometry args={[0.1, 0]} />
+                <meshStandardMaterial color="#3f6212" flatShading />
+              </mesh>
+            </group>
           );
         })}
       </group>
