@@ -27,41 +27,53 @@ git commit -m "<commit message>"
 git push origin main
 ```
 
-### 步骤 2: 临时设仓库为公开
+### 步骤 2: 创建 GitHub Release 并临时设仓库为公开
 
 ```bash
+# 打包代码
+tar czf /tmp/wander-island-deploy-latest.tar.gz --exclude=node_modules --exclude=.git --exclude=dist package.json package-lock.json tsconfig.json vite.config.ts index.html server/ src/ public/
+
+# 删除旧 release
+gh release delete deploy-latest --yes 2>/dev/null
+
+# 创建新 release
+gh release create deploy-latest /tmp/wander-island-deploy-latest.tar.gz --title "Deploy Latest" --notes "Latest code"
+
+# 临时设仓库为公开
 gh repo edit huyan1349/wander-island-eco-sandbox --visibility public --accept-visibility-change-consequences
 ```
 
 ### 步骤 3: 通过阿里云云助手执行部署命令
+
+**重要**: 服务器在国内，直接访问 GitHub 超时。必须使用 ghproxy 镜像加速下载 Release 文件。
 
 使用 `aliyun ecs RunCommand` 执行以下脚本（Base64 编码）：
 
 ```bash
 #!/bin/bash
 cd /root/wander-island
+rm -f deploy-latest.tar.gz
 
-# 拉取最新代码
-if [ -d /tmp/wi-clone ]; then
-  cd /tmp/wi-clone && git pull 2>&1
-else
-  git clone --depth 1 https://github.com/huyan1349/wander-island-eco-sandbox.git /tmp/wi-clone 2>&1
+# 使用 ghproxy 镜像加速下载（国内服务器无法直连 GitHub）
+curl -L --connect-timeout 30 -o deploy-latest.tar.gz "https://ghfast.top/https://github.com/huyan1349/wander-island-eco-sandbox/releases/download/deploy-latest/wander-island-deploy-latest.tar.gz" 2>&1 | tail -2
+SIZE=$(stat -c%s deploy-latest.tar.gz 2>/dev/null || echo 0)
+
+if [ "$SIZE" -lt 1000 ]; then
+  rm -f deploy-latest.tar.gz
+  curl -L --connect-timeout 30 -o deploy-latest.tar.gz "https://gh-proxy.com/https://github.com/huyan1349/wander-island-eco-sandbox/releases/download/deploy-latest/wander-island-deploy-latest.tar.gz" 2>&1 | tail -2
+  SIZE=$(stat -c%s deploy-latest.tar.gz 2>/dev/null || echo 0)
 fi
 
-# 复制文件到项目目录
-cp -r /tmp/wi-clone/* /root/wander-island/
-cp -r /tmp/wi-clone/.* /root/wander-island/ 2>/dev/null || true
-
-# 构建
-cd /root/wander-island
-npm run build 2>&1 | tail -3
-
-# 重启 PM2
-pm2 restart wander-island
-
-# 验证
-wc -c public/admin.html
-echo "DEPLOY_DONE"
+if [ "$SIZE" -gt 1000 ]; then
+  tar xzf deploy-latest.tar.gz
+  rm deploy-latest.tar.gz
+  npm run build 2>&1 | tail -3
+  pm2 restart wander-island
+  wc -c public/admin.html
+  echo "DEPLOY_DONE"
+else
+  echo "DOWNLOAD_FAILED"
+fi
 ```
 
 云助手命令模板：
@@ -80,7 +92,7 @@ aliyun ecs RunCommand \
 ### 步骤 4: 检查部署结果
 
 ```bash
-sleep 120
+sleep 90
 aliyun ecs DescribeInvocationResults \
   --RegionId cn-hangzhou \
   --InvokeId <返回的InvokeId> | \
@@ -109,9 +121,9 @@ curl -s -o /dev/null -w "%{http_code}" http://121.41.239.12/admin.html
 
 ## 注意事项
 
-- GitHub 在国内下载慢，git clone/pull 可能需要 1-2 分钟
+- **GitHub 在国内无法直连**，必须使用 ghproxy 镜像（ghfast.top / gh-proxy.com）下载 Release
+- 使用 GitHub Release 方式部署（而非 git clone），因为 Release 文件可通过镜像加速
 - SSH 可能被 fail2ban 封禁，优先使用阿里云云助手
 - 每次部署后必须将仓库设回 private
-- 如果 git pull 失败，删除 /tmp/wi-clone 重新 clone
 - npm run build 通常需要 5-10 秒
-- 部署总耗时约 2-3 分钟
+- 部署总耗时约 1-2 分钟（使用镜像加速后）

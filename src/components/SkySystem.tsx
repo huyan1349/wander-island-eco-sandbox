@@ -69,7 +69,7 @@ export function SkySystem() {
     }, [timeOfDay]);
 
     const weather = useGameStore(state => state.weather);
-    let sceneFogColor = fogColor;
+    let sceneFogColor: string = fogColor.getStyle();
     let finalCloudColor = cloudColor.getStyle();
     let fogDensity = 0.012;
 
