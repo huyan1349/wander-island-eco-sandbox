@@ -66,11 +66,7 @@ import {
   SunMedium,
   User,
   Cloud,
-  Maximize2,
-  Star,
-  Telescope,
-  Castle,
-  LifeBuoy
+  Maximize2
 } from "lucide-react";
 
 import { PlayerPanel } from "./components/PlayerPanel";
