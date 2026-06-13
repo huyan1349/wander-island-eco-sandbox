@@ -85,75 +85,6 @@ function WASDControls({ controlsRef }: { controlsRef: React.RefObject<any> }) {
   return null;
 }
 
-function SmoothZoomControls({
-  controlsRef,
-  enabled,
-  minDistance,
-  maxDistance
-}: {
-  controlsRef: React.RefObject<any>;
-  enabled: boolean;
-  minDistance: number;
-  maxDistance: number;
-}) {
-  const targetDistance = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!enabled) {
-      targetDistance.current = null;
-      return;
-    }
-
-    const controls = controlsRef.current;
-    const dom = controls?.domElement as HTMLElement | undefined;
-    if (!controls || !dom) return;
-
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const camera = controls.object as THREE.Camera;
-      const currentDistance = camera.position.distanceTo(controls.target);
-      const baseDistance = targetDistance.current ?? currentDistance;
-      const zoomFactor = Math.exp(e.deltaY * 0.0012);
-      targetDistance.current = THREE.MathUtils.clamp(
-        baseDistance * zoomFactor,
-        minDistance,
-        maxDistance
-      );
-    };
-
-    dom.addEventListener('wheel', onWheel, { passive: false });
-    return () => dom.removeEventListener('wheel', onWheel);
-  }, [controlsRef, enabled, minDistance, maxDistance]);
-
-  useFrame((_, delta) => {
-    if (!enabled) return;
-    const controls = controlsRef.current;
-    if (!controls) return;
-
-    const camera = controls.object as THREE.PerspectiveCamera;
-    const currentDistance = camera.position.distanceTo(controls.target);
-    if (targetDistance.current === null) {
-      targetDistance.current = currentDistance;
-      return;
-    }
-
-    const nextDistance = THREE.MathUtils.damp(
-      currentDistance,
-      targetDistance.current,
-      10,
-      delta
-    );
-
-    const offset = camera.position.clone().sub(controls.target);
-    if (offset.lengthSq() === 0) return;
-    offset.setLength(nextDistance);
-    camera.position.copy(controls.target).add(offset);
-    camera.updateProjectionMatrix();
-  });
-
-  return null;
-}
-
 export function GameCanvas() {
   const isDrawing = useGameStore(state => state.isDrawing);
   const screen = useGameStore(state => state.screen);
@@ -211,12 +142,6 @@ export function GameCanvas() {
           </EffectComposer>
         </Suspense>
         {!isTouch && <WASDControls controlsRef={orbitRef} />}
-        <SmoothZoomControls
-          controlsRef={orbitRef}
-          enabled={!isTouch}
-          minDistance={5}
-          maxDistance={120}
-        />
         <OrbitControls
           ref={orbitRef}
           enabled={enableOrbitControls}
@@ -233,8 +158,8 @@ export function GameCanvas() {
           enableDamping={true}
           dampingFactor={0.12}
           rotateSpeed={isTouch ? 0.45 : 0.85}
-          enableZoom={isTouch}
-          zoomSpeed={isTouch ? 0.6 : 1.0}
+          enableZoom={true}
+          zoomSpeed={isTouch ? 0.55 : 0.75}
           enablePan={true}
           panSpeed={isTouch ? 0.55 : 0.85}
         />
