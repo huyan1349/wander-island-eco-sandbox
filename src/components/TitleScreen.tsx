@@ -139,18 +139,24 @@ export const TitleScreen: React.FC = () => {
                         )}
                     </div>
                     {/* Splash Overlay Logo */}
-                    <div 
-                        className="absolute bottom-12 left-0 w-full flex flex-col items-center justify-center gap-4 transition-opacity duration-1000"
-                        style={{ opacity: splashVisible && splashPhase !== 'AUTHOR' ? 0.8 : 0 }}
-                    >
-                        <svg width="40" height="40" viewBox="0 0 100 100" fill="none" stroke="white" strokeWidth="5" strokeLinejoin="round" className="drop-shadow-lg">
-                            <path d="M15 90 L45 80 L45 10 L15 20 Z" />
-                            <path d="M45 10 L85 20 L85 90 L70 86.25 L70 36.25 L55 32.5 L55 82.5 L45 80 Z" />
-                        </svg>
-                        <span className="text-white/80 text-xs font-bold tracking-[0.3em] drop-shadow-md">
-                            启元开物
-                        </span>
-                    </div>
+                    {splashPhase === 'TITLE' && (
+                        <div 
+                            className="absolute bottom-12 left-0 w-full flex flex-col items-center justify-center gap-4 transition-all duration-[2000ms] ease-out pointer-events-none"
+                            style={{ 
+                                opacity: splashVisible ? 0.8 : 0,
+                                filter: splashVisible ? 'blur(0px)' : 'blur(12px)',
+                                transform: splashVisible ? 'scale(1)' : 'scale(1.05)'
+                            }}
+                        >
+                            <svg width="40" height="40" viewBox="0 0 100 100" fill="none" stroke="white" strokeWidth="5" strokeLinejoin="round" className="drop-shadow-lg">
+                                <path d="M15 90 L45 80 L45 10 L15 20 Z" />
+                                <path d="M45 10 L85 20 L85 90 L70 86.25 L70 36.25 L55 32.5 L55 82.5 L45 80 Z" />
+                            </svg>
+                            <span className="text-white/80 text-xs font-bold tracking-[0.3em] drop-shadow-md">
+                                启元开物
+                            </span>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -326,12 +332,12 @@ export const TitleScreen: React.FC = () => {
                                     <span className="text-2xl font-bold text-slate-800">huyan</span>
                                 </div>
                                 <div className="flex flex-col gap-2 bg-[#74b9ff] border-2 border-slate-800 p-4 rotate-1 shadow-[4px_4px_0_#2d3436]">
-                                    <span className="text-sm font-bold text-slate-800">AI 协力 & 视觉工程</span>
-                                    <span className="text-2xl font-bold text-slate-900">Antigravity</span>
+                                    <span className="text-sm font-bold text-slate-800">特别鸣谢</span>
+                                    <span className="text-2xl font-bold text-slate-900">xyh</span>
                                 </div>
-                                <div className="flex flex-col gap-2 p-4">
-                                    <span className="text-sm font-bold text-slate-500">特别鸣谢</span>
-                                    <span className="text-lg font-bold text-slate-700">Open Source Community</span>
+                                <div className="flex flex-col gap-2 bg-emerald-100 border-2 border-slate-800 p-4 -rotate-1 shadow-[4px_4px_0_#2d3436]">
+                                    <span className="text-sm font-bold text-slate-600">启元开物</span>
+                                    <a href="https://qiyuankaiwu.com" target="_blank" rel="noreferrer" className="text-lg font-bold text-slate-800 hover:text-emerald-600 transition-colors">qiyuankaiwu.com</a>
                                 </div>
                             </div>
 
