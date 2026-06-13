@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store';
@@ -91,6 +91,78 @@ export function Water() {
   const linePreviewRef = useRef<any>(null);
   const oceanTarget = useRef({ color: new THREE.Color('#f4f9fd'), emissive: new THREE.Color('#dbeafe'), intensity: 0.3 });
 
+  // GPU 波浪：原本每帧由 CPU 循环 4.8 万顶点算位移+顶点色，现迁移到顶点着色器并行计算。
+  // uniforms 用稳定 ref，useFrame 只更新 3 个标量；GLSL 与 JS sampleOceanWave 逐字一致，
+  // 保证用 getWaterHeight 采样的漂浮物与海面完全同步。视觉不变。
+  const waveUniforms = useRef({ uTime: { value: 0 }, uFlowSpeed: { value: 3.0 }, uBaseAmp: { value: 0 } });
+
+  useEffect(() => {
+    const mat = oceanMeshRef.current?.material as THREE.MeshPhysicalMaterial | undefined;
+    if (!mat) return;
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uTime = waveUniforms.current.uTime;
+      shader.uniforms.uFlowSpeed = waveUniforms.current.uFlowSpeed;
+      shader.uniforms.uBaseAmp = waveUniforms.current.uBaseAmp;
+
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', `#include <common>
+uniform float uTime; uniform float uFlowSpeed; uniform float uBaseAmp;
+varying vec3 vWaveCol;`)
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+{
+  float x = position.x;
+  float y = position.y;
+  float dist = sqrt(x*x + y*y);
+  float flowTime = uTime * uFlowSpeed;
+  float islandFade = 1.0;
+  if (dist < 18.0) { float t = max(0.0, (dist - 12.0) / 6.0); islandFade = t*t*(3.0 - 2.0*t); }
+  float p1 = x*0.2 + y*0.1 + flowTime;
+  float wave1 = (sin(p1) + 0.35*sin(2.0*p1 + 0.6)) * uBaseAmp * 0.28 * islandFade;
+  float p2 = x*0.1 - y*0.2 + flowTime*0.8;
+  float wave2 = (sin(p2) + 0.35*sin(2.0*p2 + 0.6)) * uBaseAmp * 0.22 * islandFade;
+  float puffL = abs(sin(x*0.13 - y*0.08 + flowTime*0.30) * sin(x*0.06 + y*0.15 + flowTime*0.25)) * uBaseAmp * 0.55;
+  float puffM = abs(sin(x*0.33 + y*0.21 + flowTime*0.45) * sin(y*0.36 - x*0.24 - flowTime*0.35)) * uBaseAmp * 0.30;
+  float puffS = abs(sin(x*0.68 + y*0.55 + flowTime*0.6) * sin(x*0.52 - y*0.74 - flowTime*0.5)) * uBaseAmp * 0.14;
+  float wave3 = (puffL + puffM + puffS - 0.405*0.99*uBaseAmp) * islandFade;
+  float crashWave = 0.0;
+  if (dist < 30.0 && dist > 14.0) {
+    float angle = atan(y, x);
+    float phase = dist*0.8 - uTime*2.0 + sin(angle*3.0 + uTime*0.4)*1.6;
+    float sectorAmp = 0.65 + 0.35*sin(angle*2.0 - uTime*0.3);
+    crashWave = pow(sin(phase)*0.5 + 0.5, 3.0) * uBaseAmp*1.3*sectorAmp;
+    float fade = min(1.0, (dist - 14.0)/4.0) * min(1.0, (30.0 - dist)/5.0);
+    crashWave *= fade * islandFade;
+  }
+  float h = wave1 + wave2 + wave3 + crashWave;
+  transformed.z = h;
+
+  float crest = uBaseAmp > 0.01 ? clamp((h - uBaseAmp*0.55)/(uBaseAmp*0.6), 0.0, 1.0) : 0.0;
+  crest *= crest;
+  if (dist > 60.0) crest *= max(0.0, 1.0 - (dist - 60.0)/40.0);
+  float foam = 0.0;
+  if (dist > 16.0 && dist < 21.5 && uBaseAmp > 0.01) {
+    float angle = atan(y, x);
+    float phase = dist*0.8 - uTime*2.0 + sin(angle*3.0 + uTime*0.4)*1.6;
+    float sp = sin(phase)*0.5 + 0.5;
+    float crash = sp*sp*sp * (0.65 + 0.35*sin(angle*2.0 - uTime*0.3));
+    float band = min(1.0, (dist - 16.0)/1.2) * min(1.0, (21.5 - dist)/2.5);
+    foam = crash*band;
+  }
+  float kc = uBaseAmp > 0.01 ? clamp(h/(uBaseAmp*1.3)*0.5 + 0.55, 0.0, 1.0) : 0.5;
+  float kk = kc*kc;
+  float white = min(1.0, crest*0.5 + foam*1.2);
+  vWaveCol = vec3(0.74 + 0.30*kk + white*0.35, 0.78 + 0.26*kk + white*0.32, 0.88 + 0.16*kk + white*0.25);
+}`);
+
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', `#include <common>
+varying vec3 vWaveCol;`)
+        .replace('#include <color_fragment>', `#include <color_fragment>
+diffuseColor.rgb *= vWaveCol;`);
+    };
+    mat.needsUpdate = true;
+  }, []);
+
   useFrame((state, delta) => {
     const isFrozen = useGameStore.getState().biome === 'tundra' || useGameStore.getState().season === 'winter';
 
@@ -106,74 +178,18 @@ export function Water() {
         mat.emissiveIntensity += (oceanTarget.current.intensity - mat.emissiveIntensity) * f;
     }
 
-    // 1. Global Ocean Animation
-    if (oceanGeomRef.current && oceanMeshRef.current && freezeScale > 0.005) {
-        const time = state.clock.elapsedTime;
-        const oPos = oceanGeomRef.current.attributes.position;
+    // 1. GPU 波浪：顶点位移与着色已在着色器内并行完成，这里只更新标量 uniforms
+    {
         let flowSpeed = 3.0;
         if (weather === 'rainy') flowSpeed = 4.5;
         if (weather === 'stormy') flowSpeed = 6.0;
-        const baseAmp = getWaveAmplitude(weather);
+        waveUniforms.current.uTime.value = state.clock.elapsedTime;
+        waveUniforms.current.uFlowSpeed.value = flowSpeed;
+        waveUniforms.current.uBaseAmp.value = getWaveAmplitude(weather); // 含 freezeScale，冻结时→0 自动变平
 
-        // Vertex colors for whitecaps on wave crests
-        let colAttr = oceanGeomRef.current.getAttribute('color') as THREE.BufferAttribute;
-        if (!colAttr) {
-            colAttr = new THREE.BufferAttribute(new Float32Array(oPos.count * 3).fill(1), 3);
-            oceanGeomRef.current.setAttribute('color', colAttr);
-        }
-
-        // Direct typed-array access: ~2-3x faster than attribute accessors,
-        // which is what allows the denser grid
-        const pArr = oPos.array as Float32Array;
-        const cArr = colAttr.array as Float32Array;
-
-        for (let i = 0; i < oPos.count; i++) {
-             const ix = i * 3;
-             const x = pArr[ix];
-             const y = pArr[ix + 1];
-             const dist = Math.sqrt(x*x + y*y);
-
-             const h = sampleOceanWave(x, y, time, flowSpeed, baseAmp);
-             pArr[ix + 2] = h;
-
-             // Subtle open-sea whitecaps on the highest crests
-             let crest = baseAmp > 0.01 ? Math.min(1, Math.max(0, (h - baseAmp * 0.55) / (baseAmp * 0.6))) : 0;
-             crest *= crest;
-             if (dist > 60) crest *= Math.max(0, 1 - (dist - 60) / 40);
-
-             // Shore surf spray: white where breaking waves hit the island.
-             // Mirrors the crashWave phase math in sampleOceanWave so the
-             // foam surges and retreats with each breaking wave
-             let foam = 0;
-             if (dist > 16 && dist < 21.5 && baseAmp > 0.01) {
-                 const angle = Math.atan2(y, x);
-                 const phase = dist * 0.8 - time * 2.0 + Math.sin(angle * 3.0 + time * 0.4) * 1.6;
-                 const sectorAmp = 0.65 + 0.35 * Math.sin(angle * 2.0 - time * 0.3);
-                 const sp = Math.sin(phase) * 0.5 + 0.5;
-                 const crash = sp * sp * sp * sectorAmp;
-                 const band = Math.min(1, (dist - 16) / 1.2) * Math.min(1, (21.5 - dist) / 2.5);
-                 foam = crash * band;
-             }
-
-             // Cloud volume shading: deep blue-grey shadow in the crevices,
-             // bright white on the billowing tops (plus surf mist at shore)
-             const k = baseAmp > 0.01 ? Math.max(0, Math.min(1, h / (baseAmp * 1.3) * 0.5 + 0.55)) : 0.5;
-             const kk = k * k; // sharpen: shadows stay in crevices only
-             const white = Math.min(1.0, crest * 0.5 + foam * 1.2);
-             cArr[ix] = 0.74 + 0.30 * kk + white * 0.35;
-             cArr[ix + 1] = 0.78 + 0.26 * kk + white * 0.32;
-             cArr[ix + 2] = 0.88 + 0.16 * kk + white * 0.25;
-        }
-        oPos.needsUpdate = true;
-        colAttr.needsUpdate = true;
-        // No computeVertexNormals: with flatShading the face normals are
-        // derived in the fragment shader, the normal attribute is never read
-
-        const material = oceanMeshRef.current.material as THREE.MeshStandardMaterial;
-        if (weather === 'rainy') {
-            material.opacity = 0.9;
-        } else {
-            material.opacity = 0.8;
+        if (oceanMeshRef.current) {
+            const material = oceanMeshRef.current.material as THREE.MeshStandardMaterial;
+            material.opacity = weather === 'rainy' ? 0.9 : 0.8;
         }
     }
   });
@@ -242,7 +258,6 @@ export function Water() {
             metalness={metal}
             clearcoat={0}
             clearcoatRoughness={1}
-            vertexColors
             flatShading
           />
         </mesh>
