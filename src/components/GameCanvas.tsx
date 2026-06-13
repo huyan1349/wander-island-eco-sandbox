@@ -1,5 +1,5 @@
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Text, Html } from '@react-three/drei';
+import { OrbitControls, Text, Html, PivotControls } from '@react-three/drei';
 import { PomodoroTimer } from './PomodoroTimer';
 import { Suspense, useRef, useEffect, useState } from 'react';
 import { Terrain } from './Terrain';
@@ -214,9 +214,11 @@ export function GameCanvas({ immersive = false, timer3D = false }: { immersive?:
           panSpeed={isTouch ? 0.55 : 0.85}
         />
         {timer3D && immersive && (
-          <Html transform position={[0, 3, 0]} distanceFactor={10} className="pointer-events-none">
-            <PomodoroTimer />
-          </Html>
+          <PivotControls anchor={[0, 0, 0]} scale={2.5} depthTest={false} lineWidth={2} disableRotations>
+            <Html transform occlude position={[0, 3, 0]} distanceFactor={10}>
+              <PomodoroTimer />
+            </Html>
+          </PivotControls>
         )}
       </Canvas>
     </div>
