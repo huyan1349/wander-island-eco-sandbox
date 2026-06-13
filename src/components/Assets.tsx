@@ -257,8 +257,8 @@ function TreeB({ position, rotation, scale = 1 }: { position: any, rotation?: an
     if (biome === 'volcanic') { leafColor = '#7f1d1d'; trunkColor = '#1c1917'; }
     else if (biome === 'desert') leafColor = '#facc15';
     else if (biome === 'tundra' || season === 'winter') leafColor = '#e2e8f0';
-    else if (biome === 'autumn') leafColor = '#b45309';
-    else if (biome === 'spring') leafColor = '#fbbf24';
+    else if (season === 'autumn') leafColor = '#b45309';
+    else if (season === 'spring') leafColor = '#fbbf24';
   }
 
   return (
@@ -2939,7 +2939,7 @@ export function SpiritTree(props: any) {
   });
 
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
       {/* Massive Trunk */}
       <mesh position={[0, 1.5, 0]} castShadow>
         <cylinderGeometry args={[0.5, 0.8, 3, 7]} />
@@ -2991,7 +2991,7 @@ export function Observatory(props: any) {
   });
 
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
       {/* Main Wooden Base Tower */}
       <mesh position={[0, 1.5, 0]} castShadow>
         <cylinderGeometry args={[0.8, 1.2, 3, 6]} />
@@ -3043,46 +3043,42 @@ export function Observatory(props: any) {
 export function RuinsArch(props: any) {
   const ref = usePopIn(props.scale || 1.3);
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
-      {/* Left Pillar */}
-      {[...Array(4)].map((_, i) => (
-        <mesh key={`L-${i}`} position={[-1.5, 0.5 + i * 1.0, 0]} rotation={[Math.random()*0.1, Math.random()*0.1, Math.random()*0.1]} castShadow receiveShadow>
-          <boxGeometry args={[1.0, 1.0, 1.0]} />
-          <meshStandardMaterial color="#94a3b8" roughness={0.9} flatShading />
-        </mesh>
-      ))}
-      
-      {/* Right Pillar */}
-      {[...Array(4)].map((_, i) => (
-        <mesh key={`R-${i}`} position={[1.5, 0.5 + i * 1.0, 0]} rotation={[Math.random()*0.1, Math.random()*0.1, Math.random()*0.1]} castShadow receiveShadow>
-          <boxGeometry args={[1.0, 1.0, 1.0]} />
-          <meshStandardMaterial color="#94a3b8" roughness={0.9} flatShading />
-        </mesh>
-      ))}
-
-      {/* Arch Bridge */}
-      {[...Array(5)].map((_, i) => (
-        <mesh key={`A-${i}`} position={[-1.2 + i * 0.6, 4.0, 0]} rotation={[0, 0, Math.random()*0.1]} castShadow receiveShadow>
-          <boxGeometry args={[0.8, 0.8, 1.0]} />
-          <meshStandardMaterial color="#94a3b8" roughness={0.9} flatShading />
-        </mesh>
-      ))}
-
-      {/* Hanging Vines */}
-      {[...Array(3)].map((_, i) => (
-        <mesh key={`V-${i}`} position={[-0.8 + i * 0.8, 3.2 - Math.random() * 0.5, 0.55]} rotation={[0, 0, 0]} castShadow>
-          <boxGeometry args={[0.1, 1.5 + Math.random(), 0.1]} />
-          <meshStandardMaterial color="#4ade80" roughness={1} flatShading />
-        </mesh>
-      ))}
-      
-      {/* Rubble at base */}
-      <mesh position={[-1.0, 0.2, 0.8]} rotation={[0.2, 0.5, 0.1]} castShadow>
-         <boxGeometry args={[0.6, 0.6, 0.6]} />
-         <meshStandardMaterial color="#64748b" roughness={1} flatShading />
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
+      {/* Massive Left Pillar */}
+      <mesh position={[-1.2, 1.5, 0]} rotation={[0, 0.1, 0.05]} castShadow receiveShadow>
+        <boxGeometry args={[0.8, 3.0, 0.8]} />
+        <meshStandardMaterial color="#64748b" roughness={1} flatShading />
       </mesh>
-      <mesh position={[1.2, 0.3, -0.6]} rotation={[0.4, 0.1, 0.5]} castShadow>
-         <boxGeometry args={[0.7, 0.7, 0.7]} />
+      
+      {/* Massive Right Pillar */}
+      <mesh position={[1.2, 1.4, 0]} rotation={[0, -0.1, -0.03]} castShadow receiveShadow>
+        <boxGeometry args={[0.8, 2.8, 0.8]} />
+        <meshStandardMaterial color="#64748b" roughness={1} flatShading />
+      </mesh>
+
+      {/* Top Cross Beam */}
+      <mesh position={[0, 3.1, 0]} rotation={[0.02, 0, 0.02]} castShadow receiveShadow>
+        <boxGeometry args={[3.8, 0.7, 0.9]} />
+        <meshStandardMaterial color="#475569" roughness={1} flatShading />
+      </mesh>
+
+      {/* Stylized Vines */}
+      <mesh position={[-0.8, 2.0, 0.46]} rotation={[0, 0, 0.05]} castShadow>
+        <planeGeometry args={[0.3, 2.0]} />
+        <meshStandardMaterial color="#166534" roughness={1} side={THREE.DoubleSide} flatShading />
+      </mesh>
+      <mesh position={[0.5, 2.5, -0.46]} rotation={[0, 0, -0.05]} castShadow>
+        <planeGeometry args={[0.4, 1.2]} />
+        <meshStandardMaterial color="#166534" roughness={1} side={THREE.DoubleSide} flatShading />
+      </mesh>
+      
+      {/* Large Base Rubble */}
+      <mesh position={[-1.4, 0.3, 0.6]} rotation={[0.2, 0.8, 0]} castShadow>
+         <dodecahedronGeometry args={[0.4, 0]} />
+         <meshStandardMaterial color="#475569" roughness={1} flatShading />
+      </mesh>
+      <mesh position={[1.5, 0.4, -0.5]} rotation={[0, 0.5, 0.5]} castShadow>
+         <dodecahedronGeometry args={[0.5, 0]} />
          <meshStandardMaterial color="#64748b" roughness={1} flatShading />
       </mesh>
     </group>
@@ -3101,7 +3097,7 @@ export function Waterwheel(props: any) {
   });
 
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
       {/* Wooden Supports */}
       <mesh position={[-0.4, 1.5, 0]} rotation={[0, 0, 0.1]} castShadow>
         <boxGeometry args={[0.2, 3.0, 0.2]} />
