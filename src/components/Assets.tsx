@@ -219,11 +219,11 @@ function usePopIn(targetScale: number = 1) {
 // Procedural generation of simple low poly trees, rocks, deer
 function TreeA({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
   const groupRef = usePopIn(scale);
-  const leavesRef = useRef<any>(null);
+  const swayRef = useRef<any>(null);
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
-    if (leavesRef.current) {
-      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.5 + position.x) * 0.12;
+    if (swayRef.current) {
+      swayRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.5 + position.x) * 0.08;
     }
   });
   const season = useGameStore(state => state.season);
@@ -241,25 +241,27 @@ function TreeA({ position, rotation, scale = 1 }: { position: any, rotation?: an
 
   return (
     <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0)} scale={0} ref={groupRef}>
-      <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.1, 0.2, 1, 5]} />
-        <meshStandardMaterial color={trunkColor} flatShading />
-      </mesh>
-      <mesh ref={leavesRef} position={[0, 1.5, 0]} castShadow receiveShadow>
-        <coneGeometry args={[0.8, 2, 5]} />
-        <meshStandardMaterial color={leafColor} flatShading />
-      </mesh>
+      <group ref={swayRef}>
+        <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.1, 0.2, 1, 5]} />
+          <meshStandardMaterial color={trunkColor} flatShading />
+        </mesh>
+        <mesh position={[0, 1.5, 0]} castShadow receiveShadow>
+          <coneGeometry args={[0.8, 2, 5]} />
+          <meshStandardMaterial color={leafColor} flatShading />
+        </mesh>
+      </group>
     </group>
   );
 }
 
 function TreeB({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
   const groupRef = usePopIn(scale);
-  const leavesRef = useRef<any>(null);
+  const swayRef = useRef<any>(null);
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
-    if (leavesRef.current) {
-      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.2 + position.z) * 0.12;
+    if (swayRef.current) {
+      swayRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.2 + position.z) * 0.08;
     }
   });
   const season = useGameStore(state => state.season);
@@ -277,14 +279,16 @@ function TreeB({ position, rotation, scale = 1 }: { position: any, rotation?: an
 
   return (
     <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0)} scale={0} ref={groupRef}>
-      <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.15, 0.25, 1, 6]} />
-        <meshStandardMaterial color={trunkColor} flatShading />
-      </mesh>
-      <mesh ref={leavesRef} position={[0, 2, 0]} castShadow receiveShadow>
-        <dodecahedronGeometry args={[1, 0]} />
-        <meshStandardMaterial color={leafColor} flatShading />
-      </mesh>
+      <group ref={swayRef}>
+        <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.15, 0.25, 1, 6]} />
+          <meshStandardMaterial color={trunkColor} flatShading />
+        </mesh>
+        <mesh position={[0, 2, 0]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[1, 0]} />
+          <meshStandardMaterial color={leafColor} flatShading />
+        </mesh>
+      </group>
     </group>
   );
 }
@@ -3162,35 +3166,37 @@ export function Waterwheel(props: any) {
 
 export function CherryTree({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
   const groupRef = usePopIn(scale);
-  const leavesRef = useRef<any>(null);
+  const swayRef = useRef<any>(null);
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
-    if (leavesRef.current) {
-      leavesRef.current.position.y = 1.8 + Math.sin(clock.elapsedTime * 1.5) * 0.05;
+    if (swayRef.current) {
+      swayRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.5 + position.x) * 0.08;
     }
   });
   return (
     <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0)} scale={0} ref={groupRef}>
-      <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.1, 0.2, 1, 5]} />
-        <meshStandardMaterial color="#5c4033" flatShading />
-      </mesh>
-      <group ref={leavesRef} position={[0, 1.8, 0]}>
-        {/* Main canopy: Sakura pink */}
-        <mesh castShadow receiveShadow>
-          <dodecahedronGeometry args={[1, 0]} />
-          <meshStandardMaterial color="#fbcfe8" flatShading />
+      <group ref={swayRef}>
+        <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.1, 0.2, 1, 5]} />
+          <meshStandardMaterial color="#5c4033" flatShading />
         </mesh>
-        {/* Side canopy: The "white" touch the user wanted, very clean */}
-        <mesh position={[0.5, 0.1, 0.3]} castShadow receiveShadow>
-          <dodecahedronGeometry args={[0.6, 0]} />
-          <meshStandardMaterial color="#fdf2f8" flatShading />
-        </mesh>
-        {/* Small bottom filler: standard pink to blend */}
-        <mesh position={[-0.4, -0.3, -0.3]} castShadow receiveShadow>
-          <dodecahedronGeometry args={[0.5, 0]} />
-          <meshStandardMaterial color="#f9a8d4" flatShading />
-        </mesh>
+        <group position={[0, 1.8, 0]}>
+          {/* Main canopy: Sakura pink */}
+          <mesh castShadow receiveShadow>
+            <dodecahedronGeometry args={[1, 0]} />
+            <meshStandardMaterial color="#fbcfe8" flatShading />
+          </mesh>
+          {/* Side canopy: The "white" touch the user wanted, very clean */}
+          <mesh position={[0.5, 0.1, 0.3]} castShadow receiveShadow>
+            <dodecahedronGeometry args={[0.6, 0]} />
+            <meshStandardMaterial color="#fdf2f8" flatShading />
+          </mesh>
+          {/* Small bottom filler: standard pink to blend */}
+          <mesh position={[-0.4, -0.3, -0.3]} castShadow receiveShadow>
+            <dodecahedronGeometry args={[0.5, 0]} />
+            <meshStandardMaterial color="#f9a8d4" flatShading />
+          </mesh>
+        </group>
       </group>
     </group>
   );
