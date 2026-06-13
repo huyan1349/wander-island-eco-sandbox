@@ -70,6 +70,44 @@ export function WeatherForecast() {
     }
   };
 
+  // 针对每首歌曲风绘制的高级纹理（叠在渐变之上）
+  const renderTexture = (idx: number) => {
+    if (idx === 0) {
+      // 潮汐红木：层叠水波纹
+      return (
+        <svg viewBox="0 0 100 120" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+          {[24, 42, 60, 78, 96].map((y, i) => (
+            <path key={i} d={`M-5,${y} Q12,${y - 7} 30,${y} T65,${y} T100,${y} T135,${y}`} fill="none" stroke="#9a3412" strokeWidth="1.1" strokeLinecap="round" opacity={0.45 - i * 0.05} />
+          ))}
+        </svg>
+      );
+    }
+    if (idx === 1) {
+      // 钟琴阳光：顶部放射光线 + 光点
+      return (
+        <svg viewBox="0 0 100 120" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+          {Array.from({ length: 9 }).map((_, i) => {
+            const ang = (-64 + i * 16) * Math.PI / 180;
+            return <line key={i} x1="50" y1="16" x2={50 + Math.sin(ang) * 95} y2={16 + Math.cos(ang) * 125} stroke="#d97706" strokeWidth="0.7" opacity="0.32" />;
+          })}
+          <circle cx="50" cy="16" r="3" fill="#f59e0b" opacity="0.5" />
+        </svg>
+      );
+    }
+    // 叶之建筑：对称叶脉
+    return (
+      <svg viewBox="0 0 100 120" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+        <path d="M50,8 L50,116" stroke="#3f6212" strokeWidth="1" fill="none" opacity="0.4" />
+        {[20, 35, 50, 65, 80, 98].map((y, i) => (
+          <g key={i} opacity={0.34}>
+            <path d={`M50,${y} L${50 - 28},${y + 14}`} stroke="#4d7c0f" strokeWidth="0.8" fill="none" />
+            <path d={`M50,${y} L${50 + 28},${y + 14}`} stroke="#4d7c0f" strokeWidth="0.8" fill="none" />
+          </g>
+        ))}
+      </svg>
+    );
+  };
+
   const cards: any[] = mode === 'weather'
     ? [{ label: 'TODAY', w: weather }, ...forecast.slice(0, 3).map((w, i) => ({ label: `DAY ${i + 1}`, w }))]
     : TRACKS.map((t, i) => ({ label: `TRACK ${i + 1}`, title: t.title, url: t.url, bg: t.bg }));
@@ -206,9 +244,12 @@ export function WeatherForecast() {
                 opacity: 1 - offset * 0.2,
               }}
             >
-              {/* 曲风叠底背景 */}
+              {/* 曲风叠底背景 + 针对性纹理 */}
               {mode === 'music' && (
-                <div className="absolute inset-0 pointer-events-none" style={{ background: card.bg }} />
+                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                  <div className="absolute inset-0" style={{ background: card.bg }} />
+                  {renderTexture(idx)}
+                </div>
               )}
 
               <span className="relative text-slate-500 text-[10px] font-bold tracking-widest uppercase mb-1">{card.label}</span>
