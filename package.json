@@ -42,6 +42,9 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@fontsource/nunito": "^5.2.7",
+    "@fontsource/raleway": "^5.2.8",
+    "@fontsource/zcool-kuaile": "^5.2.8",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
     "@types/cookie-parser": "^1.4.10",
