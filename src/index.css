@@ -339,3 +339,57 @@
 .is-touch .touch-hide {
   display: none !important;
 }
+
+/* ===== Mobile Phone Specific (max-width: 768px) ===== */
+@media (max-width: 768px) {
+  /* Ensure all interactive elements are at least 44px */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Larger input fields for mobile */
+  input, textarea, select {
+    font-size: 16px !important; /* Prevent iOS zoom on focus */
+    min-height: 48px;
+  }
+
+  /* Prevent scroll chaining on modals */
+  .hand-drawn-panel {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Smaller HUD text on small screens */
+  .hand-drawn-panel.text-sm {
+    font-size: 12px;
+  }
+
+  /* Bottom dock: even bigger on phone */
+  .touch-dock {
+    gap: 4px !important;
+    padding: 6px 8px !important;
+  }
+
+  .touch-dock button {
+    padding: 8px !important;
+  }
+}
+
+/* ===== Landscape Phone ===== */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Compact HUD for landscape phones */
+  .hand-drawn-panel {
+    padding: 4px 8px !important;
+  }
+
+  /* Smaller bottom dock */
+  .touch-dock {
+    gap: 2px !important;
+    padding: 4px !important;
+  }
+
+  .touch-dock button {
+    padding: 4px !important;
+  }
+}

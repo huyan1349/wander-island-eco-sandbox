@@ -12,6 +12,14 @@ export const SaveSelectScreen: React.FC = () => {
     const [deployingId, setDeployingId] = useState<string | null>(null);
     const [deployedIds, setDeployedIds] = useState<Set<string>>(new Set());
 
+    // 触屏检测
+    const [isTouch, setIsTouch] = useState(false);
+    useEffect(() => {
+        const hasCoarse = window.matchMedia('(pointer: coarse)').matches;
+        const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        setIsTouch(hasCoarse || hasTouch);
+    }, []);
+
     useEffect(() => {
         const indexStr = localStorage.getItem('eco_saves_index');
         if (indexStr) {
@@ -100,7 +108,7 @@ export const SaveSelectScreen: React.FC = () => {
 
             {/* Cards Grid */}
             <div className="w-full max-w-6xl px-8 flex-1 overflow-y-auto no-scrollbar pb-24">
-                <div className="grid grid-cols-3 gap-8">
+                <div className={`grid gap-8 ${isTouch ? 'grid-cols-1 max-w-md mx-auto' : 'grid-cols-3'}`}>
                     
                     {/* Create New Card */}
                     <button 

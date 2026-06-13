@@ -1,4 +1,4 @@
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text } from '@react-three/drei';
 import { Suspense, useRef, useEffect, useState } from 'react';
 import { Terrain } from './Terrain';
@@ -15,8 +15,9 @@ function useIsTouchDevice() {
   useEffect(() => {
     const hasCoarse = window.matchMedia('(pointer: coarse)').matches;
     const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    setIsTouch(hasCoarse || hasTouch);
-    if (hasCoarse || hasTouch) {
+    const result = hasCoarse || hasTouch;
+    setIsTouch(result);
+    if (result) {
       document.documentElement.classList.add('is-touch');
     }
   }, []);
@@ -75,8 +76,6 @@ export function GameCanvas() {
   const assetCount = useGameStore(state => state.assets.length);
   const isTouch = useIsTouchDevice();
   
-  // Disable orbit controls if we are using brush, or if we have a tool selected maybe?
-  // Let's only disable it while actively drawing, so user can still rotate if they drag outside terrain.
   const enableOrbitControls = !isDrawing;
   const orbitRef = useRef<any>(null);
 
@@ -96,7 +95,6 @@ export function GameCanvas() {
           <Water />
           <Assets />
 
-          {/* Little Bit ISLAND Rock */}
           {assetCount === 0 && (
              <group position={[15, -0.1, 15]}>
                 <mesh castShadow receiveShadow>
@@ -116,7 +114,6 @@ export function GameCanvas() {
              </group>
           )}
 
-          {/* Post-processing for cinematic aesthetic */}
           <EffectComposer multisampling={4}>
              <Bloom luminanceThreshold={1.2} luminanceSmoothing={0.8} intensity={1.5} mipmapBlur />
              <HueSaturation saturation={0.3} hue={0} />
@@ -133,19 +130,14 @@ export function GameCanvas() {
           minDistance={5}
           maxDistance={120}
           target={[0, 0, 0]}
-          // 触屏优化：双指旋转/缩放/平移
           touches={{
             ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
           }}
-          // 触屏优化：更平滑的阻尼
           enableDamping={isTouch}
           dampingFactor={0.08}
-          // 触屏优化：旋转速度
           rotateSpeed={isTouch ? 0.5 : 1.0}
-          // 触屏优化：缩放速度
           zoomSpeed={isTouch ? 0.8 : 1.2}
-          // 触屏优化：平移
           enablePan={true}
           panSpeed={isTouch ? 0.6 : 1.0}
         />

@@ -23,6 +23,14 @@ export const SocialPanel: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('friends');
 
+  // 触屏检测
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    const hasCoarse = window.matchMedia('(pointer: coarse)').matches;
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    setIsTouch(hasCoarse || hasTouch);
+  }, []);
+
   // Friends state
   const [friends, setFriends] = useState<any[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
@@ -151,10 +159,10 @@ export const SocialPanel: React.FC = () => {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="group relative w-12 h-12 flex items-center justify-center hand-drawn-btn shrink-0"
+        className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 ${isTouch ? 'w-14 h-14' : 'w-12 h-12'}`}
         title="社交"
       >
-        <Users size={24} className="text-slate-800" />
+        <Users size={isTouch ? 28 : 24} className="text-slate-800" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-slate-950">
             {unreadCount > 9 ? '9+' : unreadCount}
@@ -166,11 +174,11 @@ export const SocialPanel: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-500">
-      <div className="hand-drawn-panel w-[900px] h-[640px] flex overflow-hidden shadow-2xl animate-slide-up">
+      <div className={`hand-drawn-panel flex overflow-hidden shadow-2xl animate-slide-up ${isTouch ? 'touch-modal-full touch-safe-bottom flex-col' : 'w-[900px] h-[640px]'}`}>
 
-        {/* Sidebar */}
+        {/* Sidebar - Desktop: left / Touch: bottom tab */}
+        {!isTouch ? (
         <div className="w-56 border-r-2 border-slate-800 p-6 flex flex-col gap-2">
-          {/* User Info */}
           <div className="flex items-center gap-3 mb-8">
             <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-800">
               {authUser?.avatar ? (
@@ -190,34 +198,38 @@ export const SocialPanel: React.FC = () => {
             </div>
           </div>
 
-          {/* Tabs */}
-          <button
-            onClick={() => setActiveTab('friends')}
-            className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest transition-all ${activeTab === 'friends' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}
-          >
+          <button onClick={() => setActiveTab('friends')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest transition-all ${activeTab === 'friends' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
             <Users size={16} /> 好友
           </button>
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest transition-all ${activeTab === 'chat' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}
-          >
+          <button onClick={() => setActiveTab('chat')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest transition-all ${activeTab === 'chat' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
             <MessageCircle size={16} /> 聊天
           </button>
-          <button
-            onClick={() => setActiveTab('islands')}
-            className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest transition-all ${activeTab === 'islands' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}
-          >
+          <button onClick={() => setActiveTab('islands')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest transition-all ${activeTab === 'islands' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
             <Globe size={16} /> 岛屿
           </button>
 
-          {/* Logout */}
-          <button
-            onClick={handleLogout}
-            className="mt-auto flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest text-red-400 hover:text-red-600 transition-all"
-          >
+          <button onClick={handleLogout} className="mt-auto flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest text-red-400 hover:text-red-600 transition-all">
             <LogOut size={16} /> 退出
           </button>
         </div>
+        ) : (
+          /* 触屏：底部 Tab 导航 */
+          <div className="flex-shrink-0 border-t-2 border-slate-800 flex items-center justify-around px-2 py-2 touch-safe-bottom bg-[#fcf8ec]">
+            <button onClick={() => setActiveTab('friends')} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'friends' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+              <Users size={20} /><span className="text-[10px] font-bold">好友</span>
+            </button>
+            <button onClick={() => setActiveTab('chat')} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl relative ${activeTab === 'chat' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+              <MessageCircle size={20} /><span className="text-[10px] font-bold">聊天</span>
+              {unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold min-w-[14px] h-[14px] flex items-center justify-center rounded-full">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+            </button>
+            <button onClick={() => setActiveTab('islands')} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'islands' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+              <Globe size={20} /><span className="text-[10px] font-bold">岛屿</span>
+            </button>
+            <button onClick={handleLogout} className="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl text-red-400">
+              <LogOut size={20} /><span className="text-[10px] font-bold">退出</span>
+            </button>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 flex flex-col relative">

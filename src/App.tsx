@@ -61,7 +61,8 @@ import {
   Leaf,
   SunMedium,
   User,
-  Cloud
+  Cloud,
+  Maximize2
 } from "lucide-react";
 
 import { PlayerPanel } from "./components/PlayerPanel";
@@ -453,13 +454,18 @@ export default function App() {
   const activeCatObj = categories.find(c => c.name === activeCategory);
 
   const handleFullscreen = () => {
-    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => {});
+    const el = document.documentElement;
+    if (!document.fullscreenElement) {
+      if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+      else if ((el as any).webkitRequestFullscreen) (el as any).webkitRequestFullscreen();
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
     }
   };
 
   return (
-    <div className="w-full h-screen relative bg-slate-950 overflow-hidden font-sans text-slate-100 flex" onClick={handleFullscreen}>
+    <div className="w-full h-screen relative bg-slate-950 overflow-hidden font-sans text-slate-100 flex">
       {/* Center Canvas */}
       <div className={`absolute inset-0 z-0 transition-all duration-1000 ${screen !== 'PLAYING' ? 'blur-none brightness-100' : 'blur-none brightness-100'}`}>
         <GameCanvas />
@@ -504,6 +510,16 @@ export default function App() {
              </button>
 
              <SocialPanel />
+
+             {/* 全屏按钮 - 仅触屏显示 */}
+             {isTouch && (
+               <button
+                  onClick={() => { handleFullscreen(); showTouchTooltip('全屏'); }}
+                  className="group relative flex items-center justify-center hand-drawn-btn shrink-0 w-14 h-14"
+               >
+                  <Maximize2 size={28} className="text-slate-800" />
+               </button>
+             )}
            </div>
         </div>
       )}
