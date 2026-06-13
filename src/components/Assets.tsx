@@ -3146,238 +3146,138 @@ export function Waterwheel(props: any) {
   );
 }
 
-export function CherryTree(props: any) {
-  const ref = usePopIn(props.scale || 1.1);
+export function CherryTree({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
+  const groupRef = usePopIn(scale);
   const leavesRef = useRef<any>(null);
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
     if (leavesRef.current) {
-      // Gentle, complex sway
-      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 0.5) * 0.04;
-      leavesRef.current.rotation.x = Math.cos(clock.elapsedTime * 0.6) * 0.04;
+      leavesRef.current.position.y = 1.8 + Math.sin(clock.elapsedTime * 1.5) * 0.05;
     }
   });
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
-      {/* Crooked, organic trunk */}
-      <mesh position={[0, 0.4, 0]} rotation={[0, 0, 0.1]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.15, 0.2, 0.8, 6]} />
-        <meshStandardMaterial color="#3f2e20" roughness={0.9} flatShading />
-      </mesh>
-      <mesh position={[0.08, 1.0, 0]} rotation={[0, 0, 0.2]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.1, 0.15, 0.8, 6]} />
-        <meshStandardMaterial color="#3f2e20" roughness={0.9} flatShading />
-      </mesh>
-      
-      {/* Voluminous, layered canopy */}
-      <group ref={leavesRef} position={[0.15, 1.6, 0]}>
-        <mesh position={[0, 0, 0]} castShadow receiveShadow>
-          <dodecahedronGeometry args={[1.2, 1]} />
-          <meshStandardMaterial color="#fbcfe8" roughness={0.8} flatShading />
-        </mesh>
-        <mesh position={[0.6, -0.2, 0.4]} rotation={[0.2, 0.5, 0]} castShadow receiveShadow>
-          <dodecahedronGeometry args={[0.9, 1]} />
-          <meshStandardMaterial color="#f9a8d4" roughness={0.8} flatShading />
-        </mesh>
-        <mesh position={[-0.5, 0.3, 0.5]} rotation={[0.5, 0.2, 0]} castShadow receiveShadow>
-          <dodecahedronGeometry args={[0.8, 1]} />
-          <meshStandardMaterial color="#fdf2f8" roughness={0.8} flatShading />
-        </mesh>
-        <mesh position={[-0.4, -0.1, -0.6]} rotation={[-0.2, 0.1, 0]} castShadow receiveShadow>
-          <dodecahedronGeometry args={[1.0, 1]} />
-          <meshStandardMaterial color="#f472b6" roughness={0.8} flatShading />
-        </mesh>
-        <mesh position={[0.4, 0.4, -0.4]} rotation={[0.1, -0.2, 0]} castShadow receiveShadow>
-          <dodecahedronGeometry args={[0.7, 1]} />
-          <meshStandardMaterial color="#f9a8d4" roughness={0.8} flatShading />
-        </mesh>
-      </group>
-    </group>
-  );
-}
-
-export function Bamboo(props: any) {
-  const ref = usePopIn(props.scale || 1.2);
-  const groupRef = useRef<any>(null);
-  useFrame(({ clock }) => {
-    if (!useGameStore.getState().isSplashDone) return;
-    if (groupRef.current) {
-      // Elegant, sweeping bamboo sway
-      groupRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.2 + props.position.x) * 0.12;
-      groupRef.current.rotation.x = Math.sin(clock.elapsedTime * 0.8 + props.position.z) * 0.08;
-    }
-  });
-
-  const BambooStalk = ({ x, z, h, rotZ }: any) => (
-    <group position={[x, 0, z]} rotation={[0, 0, rotZ]}>
-      {[...Array(5)].map((_, i) => (
-        <group key={i} position={[0, i * (h / 5) + (h / 10), 0]}>
-          <mesh castShadow receiveShadow>
-            <cylinderGeometry args={[0.04, 0.04, (h / 5) - 0.02, 5]} />
-            <meshStandardMaterial color="#22c55e" roughness={0.7} flatShading />
-          </mesh>
-          <mesh position={[0, (h / 10) - 0.01, 0]}>
-            <cylinderGeometry args={[0.045, 0.045, 0.02, 5]} />
-            <meshStandardMaterial color="#166534" roughness={0.9} flatShading />
-          </mesh>
-          {/* Leaves at joints */}
-          {i > 2 && (
-            <mesh position={[0.08, 0, 0]} rotation={[0, 0, -1]}>
-              <planeGeometry args={[0.2, 0.06]} />
-              <meshStandardMaterial color="#15803d" side={THREE.DoubleSide} flatShading />
-            </mesh>
-          )}
-        </group>
-      ))}
-    </group>
-  );
-
-  return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
-      <group ref={groupRef}>
-        <BambooStalk x={-0.15} z={0.1} h={2.8} rotZ={-0.08} />
-        <BambooStalk x={0.2} z={-0.1} h={3.2} rotZ={0.05} />
-        <BambooStalk x={-0.05} z={-0.2} h={2.4} rotZ={0.02} />
-        <BambooStalk x={0.15} z={0.2} h={2.6} rotZ={-0.03} />
-      </group>
-    </group>
-  );
-}
-
-export function PineTree(props: any) {
-  const ref = usePopIn(props.scale || 1.3);
-  const leavesRef = useRef<any>(null);
-  useFrame(({ clock }) => {
-    if (!useGameStore.getState().isSplashDone) return;
-    if (leavesRef.current) {
-      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 0.7) * 0.03;
-    }
-  });
-  return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
+    <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0)} scale={0} ref={groupRef}>
       <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.15, 0.25, 1, 6]} />
-        <meshStandardMaterial color="#292524" roughness={1} flatShading />
+        <cylinderGeometry args={[0.1, 0.2, 1, 5]} />
+        <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
+      <mesh ref={leavesRef} position={[0, 1.8, 0]} castShadow receiveShadow>
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshStandardMaterial color="#fbcfe8" flatShading />
+      </mesh>
+    </group>
+  );
+}
+
+export function Bamboo({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
+  const groupRef = usePopIn(scale);
+  const leavesRef = useRef<any>(null);
+  useFrame(({ clock }) => {
+    if (!useGameStore.getState().isSplashDone) return;
+    if (leavesRef.current) {
+      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 2) * 0.05;
+    }
+  });
+  return (
+    <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0)} scale={0} ref={groupRef}>
       <group ref={leavesRef}>
-        {/* Asymmetrical, whimsical layered cones */}
-        <mesh position={[0, 1.2, 0]} rotation={[0.05, 0, -0.02]} castShadow receiveShadow>
-          <coneGeometry args={[1.1, 1.6, 7]} />
-          <meshStandardMaterial color="#064e3b" roughness={0.9} flatShading />
+        <mesh position={[-0.15, 1.2, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.05, 0.05, 2.4, 5]} />
+          <meshStandardMaterial color="#22c55e" flatShading />
         </mesh>
-        <mesh position={[-0.05, 2.1, 0.05]} rotation={[-0.05, 0.5, 0.05]} castShadow receiveShadow>
-          <coneGeometry args={[0.9, 1.4, 7]} />
-          <meshStandardMaterial color="#065f46" roughness={0.9} flatShading />
+        <mesh position={[0.15, 1.5, 0.1]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.04, 0.04, 3.0, 5]} />
+          <meshStandardMaterial color="#16a34a" flatShading />
         </mesh>
-        <mesh position={[0.05, 2.9, -0.05]} rotation={[0.02, 1.0, -0.05]} castShadow receiveShadow>
-          <coneGeometry args={[0.7, 1.2, 7]} />
-          <meshStandardMaterial color="#047857" roughness={0.9} flatShading />
-        </mesh>
-        <mesh position={[0, 3.6, 0]} rotation={[0, 1.5, 0]} castShadow receiveShadow>
-          <coneGeometry args={[0.4, 0.8, 7]} />
-          <meshStandardMaterial color="#059669" roughness={0.9} flatShading />
+        <mesh position={[0, 1.8, -0.1]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.06, 0.06, 3.6, 5]} />
+          <meshStandardMaterial color="#15803d" flatShading />
         </mesh>
       </group>
     </group>
   );
 }
 
-export function WillowTree(props: any) {
-  const ref = usePopIn(props.scale || 1.1);
+export function PineTree({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
+  const groupRef = usePopIn(scale);
+  return (
+    <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0)} scale={0} ref={groupRef}>
+      <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.15, 0.25, 1, 5]} />
+        <meshStandardMaterial color="#451a03" flatShading />
+      </mesh>
+      <mesh position={[0, 1.2, 0]} castShadow receiveShadow>
+        <coneGeometry args={[1.0, 1.2, 5]} />
+        <meshStandardMaterial color="#064e3b" flatShading />
+      </mesh>
+      <mesh position={[0, 2.0, 0]} castShadow receiveShadow>
+        <coneGeometry args={[0.8, 1.0, 5]} />
+        <meshStandardMaterial color="#065f46" flatShading />
+      </mesh>
+      <mesh position={[0, 2.6, 0]} castShadow receiveShadow>
+        <coneGeometry args={[0.6, 0.8, 5]} />
+        <meshStandardMaterial color="#047857" flatShading />
+      </mesh>
+    </group>
+  );
+}
+
+export function WillowTree({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
+  const groupRef = usePopIn(scale);
   const leavesRef = useRef<any>(null);
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
     if (leavesRef.current) {
-      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 0.8) * 0.05;
-      // Also sway the hanging vines individually
-      leavesRef.current.children.forEach((child: any, i: number) => {
-        if (i > 0) { // skip the core mesh
-           child.rotation.x = Math.sin(clock.elapsedTime * 1.5 + i) * 0.1;
-           child.rotation.z = Math.cos(clock.elapsedTime * 1.2 + i) * 0.1;
-        }
-      });
+      leavesRef.current.rotation.z = Math.sin(clock.elapsedTime * 1.2) * 0.05;
     }
   });
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
-      {/* Thick, gnarled leaning trunk */}
-      <mesh position={[0, 0.8, 0]} rotation={[0, 0, 0.15]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.2, 0.35, 1.8, 6]} />
-        <meshStandardMaterial color="#3f2e20" roughness={1} flatShading />
+    <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0)} scale={0} ref={groupRef}>
+      <mesh position={[0, 0.8, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.15, 0.2, 1.6, 5]} />
+        <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
-      <mesh position={[0.2, 1.8, 0]} rotation={[0, 0, 0.3]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.15, 0.2, 1.2, 6]} />
-        <meshStandardMaterial color="#3f2e20" roughness={1} flatShading />
-      </mesh>
-      
-      <group ref={leavesRef} position={[0.4, 2.3, 0]}>
-        {/* Core canopy */}
-        <mesh castShadow receiveShadow>
-          <dodecahedronGeometry args={[0.8, 1]} />
-          <meshStandardMaterial color="#65a30d" roughness={0.8} flatShading />
+      <group ref={leavesRef} position={[0, 1.8, 0]}>
+        <mesh position={[0, 0, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.8, 0.8, 0.4, 6]} />
+          <meshStandardMaterial color="#65a30d" flatShading />
         </mesh>
-        
-        {/* Drooping vine clusters */}
-        {[...Array(8)].map((_, i) => {
-          const angle = (i / 8) * Math.PI * 2;
-          const r = 0.6;
-          const x = Math.cos(angle) * r;
-          const z = Math.sin(angle) * r;
-          const length = 1.2 + (i % 3) * 0.5;
-          return (
-            <group key={i} position={[x, 0, z]}>
-              <mesh position={[0, -length/2, 0]} castShadow receiveShadow>
-                <cylinderGeometry args={[0.04, 0.01, length, 4]} />
-                <meshStandardMaterial color="#84cc16" roughness={0.8} flatShading />
-              </mesh>
-              <mesh position={[0, -length + 0.2, 0]} castShadow receiveShadow>
-                <dodecahedronGeometry args={[0.15, 0]} />
-                <meshStandardMaterial color="#4d7c0f" roughness={0.8} flatShading />
-              </mesh>
-            </group>
-          );
-        })}
+        <mesh position={[-0.6, -0.6, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.05, 0.05, 1.2, 4]} />
+          <meshStandardMaterial color="#4d7c0f" flatShading />
+        </mesh>
+        <mesh position={[0.6, -0.7, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.05, 0.05, 1.4, 4]} />
+          <meshStandardMaterial color="#4d7c0f" flatShading />
+        </mesh>
+        <mesh position={[0, -0.8, 0.6]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.05, 0.05, 1.6, 4]} />
+          <meshStandardMaterial color="#4d7c0f" flatShading />
+        </mesh>
+        <mesh position={[0, -0.6, -0.6]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.05, 0.05, 1.2, 4]} />
+          <meshStandardMaterial color="#4d7c0f" flatShading />
+        </mesh>
       </group>
     </group>
   );
 }
 
-export function Bush(props: any) {
-  const ref = usePopIn(props.scale || 1.2);
+export function Bush({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
+  const groupRef = usePopIn(scale);
   const leavesRef = useRef<any>(null);
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
     if (leavesRef.current) {
-      // Subtle breathing/rustling effect
-      leavesRef.current.scale.y = 1 + Math.sin(clock.elapsedTime * 2 + props.position.x) * 0.03;
-      leavesRef.current.scale.x = 1 + Math.cos(clock.elapsedTime * 2.5 + props.position.z) * 0.02;
+      leavesRef.current.scale.y = 1 + Math.sin(clock.elapsedTime * 2 + position.x) * 0.05;
     }
   });
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
-      <group ref={leavesRef} position={[0, 0, 0]}>
-        {/* Soft, plump intersecting spheres mimicking dense leaves */}
-        <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
-          <icosahedronGeometry args={[0.5, 1]} />
-          <meshStandardMaterial color="#22c55e" roughness={0.9} flatShading />
-        </mesh>
-        <mesh position={[0.3, 0.3, 0.3]} castShadow receiveShadow>
-          <icosahedronGeometry args={[0.4, 1]} />
-          <meshStandardMaterial color="#16a34a" roughness={0.9} flatShading />
-        </mesh>
-        <mesh position={[-0.3, 0.25, 0.2]} castShadow receiveShadow>
-          <icosahedronGeometry args={[0.35, 1]} />
-          <meshStandardMaterial color="#15803d" roughness={0.9} flatShading />
-        </mesh>
-        <mesh position={[0.1, 0.3, -0.3]} castShadow receiveShadow>
-          <icosahedronGeometry args={[0.45, 1]} />
-          <meshStandardMaterial color="#4ade80" roughness={0.9} flatShading />
-        </mesh>
-        <mesh position={[-0.2, 0.2, -0.2]} castShadow receiveShadow>
-          <icosahedronGeometry args={[0.3, 1]} />
-          <meshStandardMaterial color="#166534" roughness={0.9} flatShading />
-        </mesh>
-      </group>
+    <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0)} scale={0} ref={groupRef}>
+      <mesh ref={leavesRef} position={[0, 0.3, 0]} castShadow receiveShadow>
+        <dodecahedronGeometry args={[0.6, 0]} />
+        <meshStandardMaterial color="#22c55e" flatShading />
+      </mesh>
     </group>
   );
 }
