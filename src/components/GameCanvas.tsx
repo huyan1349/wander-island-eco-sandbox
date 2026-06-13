@@ -215,7 +215,7 @@ export function GameCanvas({ immersive = false, timer3D = false }: { immersive?:
         />
         {timer3D && immersive && (
           <PivotControls anchor={[0, 0, 0]} scale={2.5} depthTest={false} lineWidth={2} disableRotations>
-            <Html transform occlude position={[0, 3, 0]} distanceFactor={10}>
+            <Html transform position={[0, 3, 0]} distanceFactor={10}>
               <PomodoroTimer />
             </Html>
           </PivotControls>
