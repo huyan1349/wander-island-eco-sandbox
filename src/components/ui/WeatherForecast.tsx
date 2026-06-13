@@ -1,17 +1,50 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useGameStore, WeatherType } from '../../store';
-import { Sun, CloudRain, Snowflake, Cloud, CloudFog, CloudLightning } from 'lucide-react';
+import { Sun, CloudRain, Snowflake, Cloud, CloudFog, CloudLightning, Music, CloudSun } from 'lucide-react';
+import { AudioSystem } from '../../lib/audio';
+
+// 曲目列表：以后拖更多歌进来，只需往 public 放 mp3 并在此加一行。
+// bg = 结合曲风的高级叠底背景（多层渐变）。
+const TRACKS = [
+  {
+    title: 'Tides of Mahogany',
+    url: '/Tides_of_Mahogany.mp3',
+    bg: 'radial-gradient(ellipse at 30% 120%, rgba(180,83,9,0.45), transparent 60%), linear-gradient(160deg, rgba(217,119,6,0.18), rgba(120,53,15,0.05))',
+  },
+  {
+    title: 'Glockenspiel Sunprint',
+    url: '/Glockenspiel_Sunprint.mp3',
+    bg: 'radial-gradient(circle at 50% 22%, rgba(251,191,36,0.5), transparent 65%), linear-gradient(180deg, rgba(254,243,199,0.22), transparent)',
+  },
+  {
+    title: 'The Architecture of Leaves',
+    url: '/The_Architecture_of_Leaves.mp3',
+    bg: 'radial-gradient(ellipse at 72% 8%, rgba(132,204,22,0.42), transparent 60%), linear-gradient(160deg, rgba(22,101,52,0.16), rgba(20,83,45,0.05))',
+  },
+];
 
 export function WeatherForecast() {
   const weather = useGameStore(state => state.weather);
   const forecast = useGameStore(state => state.forecast);
-  const advanceDay = useGameStore(state => state.advanceDay);
-  const setTimeOfDay = useGameStore(state => state.setTimeOfDay);
+
+  const [mode, setMode] = useState<'weather' | 'music'>('weather');
   const [activeIndex, setActiveIndex] = useState(0);
-  
+
   const [isDragging, setIsDragging] = useState(false);
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
   const dragStartRef = useRef({ x: 0, y: 0 });
+
+  // 播放进度（仅音乐模式轮询）
+  const [progress, setProgress] = useState(0);
+  const [playingUrl, setPlayingUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (mode !== 'music') return;
+    const id = setInterval(() => {
+      setProgress(AudioSystem.getBGMProgress());
+      setPlayingUrl(AudioSystem.getCurrentBGMUrl());
+    }, 250);
+    return () => clearInterval(id);
+  }, [mode]);
 
   const getWeatherIcon = (w: WeatherType, size = 20) => {
     switch (w) {
@@ -37,13 +70,18 @@ export function WeatherForecast() {
     }
   };
 
-  const cards = [
-    { label: 'TODAY', w: weather },
-    ...forecast.slice(0, 3).map((w, i) => ({ label: `DAY ${i + 1}`, w }))
-  ];
+  const cards: any[] = mode === 'weather'
+    ? [{ label: 'TODAY', w: weather }, ...forecast.slice(0, 3).map((w, i) => ({ label: `DAY ${i + 1}`, w }))]
+    : TRACKS.map((t, i) => ({ label: `TRACK ${i + 1}`, title: t.title, url: t.url, bg: t.bg }));
 
   const handleNext = () => {
     setActiveIndex(prev => (prev + 1) % cards.length);
+  };
+
+  const switchMode = (m: 'weather' | 'music') => {
+    setMode(m);
+    setActiveIndex(0);
+    setDragPos({ x: 0, y: 0 });
   };
 
   const handlePointerDown = (e: React.PointerEvent, isTop: boolean) => {
@@ -65,76 +103,90 @@ export function WeatherForecast() {
     if (!isTop) return;
     setIsDragging(false);
     e.currentTarget.releasePointerCapture(e.pointerId);
-    
-    // If it was just a click (dragPos is small), trigger handleNext
+
+    // 轻点：天气=翻卡预览，音乐=切到下一首并播放
     if (Math.abs(dragPos.x) < 15 && Math.abs(dragPos.y) < 15) {
-      handleNext();
+      if (mode === 'music') {
+        const next = (activeIndex + 1) % cards.length;
+        AudioSystem.switchBGM(TRACKS[next].url);
+        setActiveIndex(next);
+      } else {
+        handleNext();
+      }
       setDragPos({ x: 0, y: 0 });
       return;
     }
-    
-    // If dragged to the left more than 200px (towards center screen)
-    if (dragPos.x < -200 && activeIndex > 0) {
+
+    // 天气模式：向左拖到屏幕中央 → 时间快进到目标日
+    if (mode === 'weather' && dragPos.x < -200 && activeIndex > 0) {
       const daysToAdvance = activeIndex;
       const currentT = useGameStore.getState().timeOfDay;
-      // Target time is exactly 08:00 AM on the target day
-      const targetTotalTime = currentT + (24 - currentT) + (daysToAdvance - 1) * 24 + 8; 
-      
+      const targetTotalTime = currentT + (24 - currentT) + (daysToAdvance - 1) * 24 + 8;
+
       let scrubbedTime = currentT;
-      const durationMs = 1500; // 1.5 seconds smooth transition
+      const durationMs = 1500;
       const startMs = performance.now();
-      
-      setActiveIndex(0); // Reset UI immediately
+
+      setActiveIndex(0);
 
       const animate = (time: number) => {
         const elapsed = time - startMs;
-        const progress = Math.min(1, elapsed / durationMs);
-        
-        // easeInOutQuad
-        const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-        
+        const progress2 = Math.min(1, elapsed / durationMs);
+        const ease = progress2 < 0.5 ? 2 * progress2 * progress2 : 1 - Math.pow(-2 * progress2 + 2, 2) / 2;
         const newTotalTime = currentT + (targetTotalTime - currentT) * ease;
-        
-        // If we cross a midnight boundary, advance the game day
         const dayCrossings = Math.floor(newTotalTime / 24) - Math.floor(scrubbedTime / 24);
         for (let i = 0; i < dayCrossings; i++) {
-            useGameStore.getState().advanceDay();
+          useGameStore.getState().advanceDay();
         }
-        
         scrubbedTime = newTotalTime;
         useGameStore.getState().setTimeOfDay(scrubbedTime % 24);
-        
-        if (progress < 1) {
+        if (progress2 < 1) {
           requestAnimationFrame(animate);
         } else {
-          useGameStore.getState().setTimeOfDay(8); // Ensure exact final time
+          useGameStore.getState().setTimeOfDay(8);
         }
       };
-      
       requestAnimationFrame(animate);
     }
-    
+
     setDragPos({ x: 0, y: 0 });
   };
 
   return (
     <div className="absolute bottom-6 left-10 z-40 pointer-events-auto flex flex-col items-center group">
-      {/* The Stacked Card Deck */}
+      {/* 模式切换：天气 / 音乐（沿用 hand-drawn 风格） */}
+      <div className="flex gap-1 mb-3 hand-drawn-panel p-1 rounded-full">
+        <button
+          onClick={() => switchMode('weather')}
+          className={`p-2 rounded-full transition-all ${mode === 'weather' ? 'bg-slate-800 text-white shadow-[0_2px_0_rgba(30,41,59,1)]' : 'text-slate-400 hover:text-slate-700'}`}
+        >
+          <CloudSun size={16} />
+        </button>
+        <button
+          onClick={() => switchMode('music')}
+          className={`p-2 rounded-full transition-all ${mode === 'music' ? 'bg-slate-800 text-white shadow-[0_2px_0_rgba(30,41,59,1)]' : 'text-slate-400 hover:text-slate-700'}`}
+        >
+          <Music size={16} />
+        </button>
+      </div>
+
+      {/* 堆叠卡片牌组 */}
       <div className="relative w-32 h-40">
-        {cards.map((card, idx) => {
+        {cards.map((card: any, idx) => {
           let offset = idx - activeIndex;
           if (offset < 0) offset += cards.length;
 
           const isTop = offset === 0;
-          
+          const isPlaying = mode === 'music' && card.url === playingUrl;
+
           let transformStyle = `translateY(${offset * 12}px) translateX(${offset * 6}px) rotate(${offset * 5}deg) scale(${1 - offset * 0.05})`;
           if (isTop && isDragging) {
             transformStyle = `translate(${dragPos.x}px, ${dragPos.y}px) rotate(${dragPos.x * 0.05}deg) scale(1.1)`;
           }
 
           return (
-            <div 
-              key={idx} 
+            <div
+              key={idx}
               onPointerDown={(e) => {
                 if (isTop) handlePointerDown(e, isTop);
                 else {
@@ -144,7 +196,7 @@ export function WeatherForecast() {
               }}
               onPointerMove={handlePointerMove}
               onPointerUp={(e) => handlePointerUp(e, isTop)}
-              className={`absolute inset-0 flex flex-col items-center justify-center p-5 hand-drawn-panel ease-[cubic-bezier(0.34,1.56,0.64,1)]
+              className={`absolute inset-0 flex flex-col items-center justify-center p-5 hand-drawn-panel overflow-hidden ease-[cubic-bezier(0.34,1.56,0.64,1)]
                 ${isTop ? 'cursor-grab active:cursor-grabbing hover:-translate-y-2 hover:shadow-xl' : 'cursor-pointer'}
                 ${(!isDragging && isTop) || !isTop ? 'transition-all duration-500' : ''}
               `}
@@ -154,19 +206,42 @@ export function WeatherForecast() {
                 opacity: 1 - offset * 0.2,
               }}
             >
-              <span className="text-slate-500 text-[10px] font-bold tracking-widest uppercase mb-1">{card.label}</span>
-              
-              <div className="p-3 my-2 bg-slate-100 rounded-full border-2 border-slate-800 shadow-[0_4px_0_rgba(30,41,59,1)]">
-                {getWeatherIcon(card.w, 28)}
+              {/* 曲风叠底背景 */}
+              {mode === 'music' && (
+                <div className="absolute inset-0 pointer-events-none" style={{ background: card.bg }} />
+              )}
+
+              <span className="relative text-slate-500 text-[10px] font-bold tracking-widest uppercase mb-1">{card.label}</span>
+
+              <div className="relative p-3 my-2 bg-slate-100 rounded-full border-2 border-slate-800 shadow-[0_4px_0_rgba(30,41,59,1)]">
+                {mode === 'weather'
+                  ? getWeatherIcon(card.w, 28)
+                  : <Music size={28} className={`drop-shadow-md ${isPlaying ? 'text-slate-900' : 'text-slate-600'}`} />}
               </div>
-              
-              <span className="text-slate-800 font-bold text-sm tracking-widest mt-1">{getLabel(card.w)}</span>
+
+              {mode === 'weather' ? (
+                <span className="relative text-slate-800 font-bold text-sm tracking-widest mt-1">{getLabel(card.w)}</span>
+              ) : (
+                <span className="relative text-slate-800 font-bold text-[11px] tracking-wide mt-1 text-center leading-tight px-1">{card.title}</span>
+              )}
+
+              {/* 高级进度条：仅正在播放的卡走条 */}
+              {mode === 'music' && (
+                <div className="relative w-full mt-2 h-1.5 bg-slate-200/80 rounded-full border border-slate-800/60 overflow-hidden">
+                  <div
+                    className="h-full bg-slate-800 rounded-full transition-[width] duration-300 ease-linear"
+                    style={{ width: `${isPlaying ? progress * 100 : 0}%` }}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
       </div>
-      
-      <span className="text-slate-400 font-bold text-[10px] tracking-widest mt-8 opacity-0 group-hover:opacity-100 transition-opacity">拖拽卡片至屏幕中央应用</span>
+
+      <span className="text-slate-400 font-bold text-[10px] tracking-widest mt-8 opacity-0 group-hover:opacity-100 transition-opacity">
+        {mode === 'weather' ? '拖拽卡片至屏幕中央应用' : '点击卡片切换音乐'}
+      </span>
     </div>
   );
 }

@@ -26,6 +26,8 @@ export class AudioSystem {
     private static bgmVolumeTarget = 0.5;
     private static bgmCache = new Map<string, AudioBuffer>();
     private static bgmSwitchToken = 0;
+    private static bgmStartTime = 0;
+    private static bgmDuration = 0;
 
     static init() {
         if (!this.ctx) {
@@ -94,6 +96,8 @@ export class AudioSystem {
         this.bgmSource.start();
         this.isBgmPlaying = true;
         this.currentBgmUrl = this.bgmLoadedUrl;
+        this.bgmStartTime = this.ctx.currentTime;
+        this.bgmDuration = this.bgmBuffer.duration;
         
         // Fade in
         const t = this.ctx.currentTime;
@@ -155,6 +159,8 @@ export class AudioSystem {
         this.bgmSource = nextSource;
         this.isBgmPlaying = true;
         this.currentBgmUrl = url;
+        this.bgmStartTime = this.ctx.currentTime;
+        this.bgmDuration = this.bgmBuffer.duration;
 
         if (prevSource) {
             window.setTimeout(() => {
@@ -163,6 +169,15 @@ export class AudioSystem {
                 try { prevGain?.disconnect(); } catch {}
             }, 2400);
         }
+    }
+
+    static getBGMProgress(): number {
+        if (!this.ctx || !this.isBgmPlaying || !this.bgmDuration) return 0;
+        return ((this.ctx.currentTime - this.bgmStartTime) % this.bgmDuration) / this.bgmDuration;
+    }
+
+    static getCurrentBGMUrl(): string | null {
+        return this.currentBgmUrl;
     }
 
     private static setupEffectsChain() {
