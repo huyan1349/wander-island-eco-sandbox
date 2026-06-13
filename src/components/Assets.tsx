@@ -1893,12 +1893,12 @@ export function SubIsland(props: any) {
 
   const applyBrush = (worldPoint: THREE.Vector3, isDragEvent: boolean, event?: any) => {
     if (!meshRef.current) return;
-    if (isDragEvent && !['terrainUp', 'terrainDown', 'eraser', 'pave', 'treeA', 'treeB', 'rock'].includes(selectedTool)) {
+    if (isDragEvent && !['terrainUp', 'terrainDown', 'eraser', 'pave', 'treeA', 'treeB', 'rock', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot'].includes(selectedTool)) {
       return;
     }
 
     if (isDragEvent) {
-      const isObjectPlacement = ['treeA', 'treeB', 'rock'].includes(selectedTool);
+      const isObjectPlacement = ['treeA', 'treeB', 'rock', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot'].includes(selectedTool);
       const minDistance = isObjectPlacement ? 1.5 : 0.2;
       if (worldPoint.distanceTo(lastBrushPoint.current) < minDistance) return;
       lastBrushPoint.current.copy(worldPoint);
@@ -1914,7 +1914,7 @@ export function SubIsland(props: any) {
 
     if (!isDragEvent || Math.random() < 0.2) {
       let color = "#ffffff";
-      if (['treeA', 'treeB'].includes(selectedTool)) color = "#4ade80";
+      if (['treeA', 'treeB', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot'].includes(selectedTool)) color = "#4ade80";
       if (['terrainUp', 'terrainDown', 'rock', 'pave'].includes(selectedTool)) color = "#d1d5db";
       if (selectedTool === 'spring') color = "#3b82f6";
       if (['deer', 'wolf'].includes(selectedTool)) color = "#fbbf24";
@@ -1978,13 +1978,13 @@ export function SubIsland(props: any) {
       return;
     }
 
-    const landPlaceableTools = ['treeA', 'treeB', 'rock', 'deer', 'wolf', 'spring', 'streetlamp', 'house', 'windmill', 'lighthouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar'];
+    const landPlaceableTools = ['treeA', 'treeB', 'rock', 'deer', 'wolf', 'spring', 'streetlamp', 'house', 'windmill', 'lighthouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot'];
     if (!isDragEvent && landPlaceableTools.includes(selectedTool)) {
       if (placementY <= -0.5) return;
 
       let rx = 0;
       let rz = 0;
-      const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island', 'treeA', 'treeB', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar'];
+      const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island', 'treeA', 'treeB', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot'];
       if (event && event.face && event.face.normal && !verticalTools.includes(selectedTool)) {
         const normal = event.face.normal.clone();
         const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
@@ -2522,53 +2522,85 @@ export function Birdhouse(props: any) {
 }
 
 function Farmland({ position, scale = 1, id }: any) {
+  const ref = usePopIn(scale);
   return (
-    <group position={[position.x, position.y, position.z]} scale={scale}>
+    <group position={[position.x, position.y, position.z]} scale={scale} ref={ref}>
+      {/* Base soil mound */}
       <mesh receiveShadow position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[2.5, 2.5]} />
-        <meshStandardMaterial color="#4a3018" roughness={1} />
+        <meshStandardMaterial color="#3f2716" roughness={1} flatShading />
       </mesh>
+      
+      {/* Hand-drawn stylized soil mounds */}
+      <mesh receiveShadow position={[0, 0.08, 0]} rotation={[-Math.PI / 2 + 0.05, 0, 0]}>
+        <planeGeometry args={[2.3, 2.3]} />
+        <meshStandardMaterial color="#4a3018" roughness={1} flatShading />
+      </mesh>
+
+      {/* Dirt rows */}
       {[...Array(4)].map((_, i) => (
-        <mesh key={i} position={[0, 0.08, -0.9 + i * 0.6]} rotation={[-Math.PI / 2, 0, 0]}>
-           <planeGeometry args={[2.3, 0.1]} />
-           <meshStandardMaterial color="#2a1b0f" roughness={1} />
-        </mesh>
+        <group key={i} position={[0, 0.12, -0.9 + i * 0.6]}>
+          <mesh rotation={[-Math.PI / 2, Math.random() * 0.05, 0]} receiveShadow>
+             <planeGeometry args={[2.3, 0.15]} />
+             <meshStandardMaterial color="#2a1b0f" roughness={1} flatShading />
+          </mesh>
+          <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, Math.random() * 0.05, 0]}>
+             <cylinderGeometry args={[0.08, 0.08, 2.2, 4]} />
+             <meshStandardMaterial color="#352112" roughness={1} flatShading />
+          </mesh>
+        </group>
       ))}
     </group>
   );
 }
 
-function Crop({ position, scale = 1, type, growthProgress = 1, id }: any) {
+function Crop({ position, scale = 1, type, growthProgress = 0, id }: any) {
   const isWheat = type === 'crop_wheat';
-  // If growthProgress isn't strictly maintained, we can just render it fully grown for now
-  // or use a local timer. Let's assume it's fully grown if undefined.
-  const progress = growthProgress || 1;
+  const [localProgress, setLocalProgress] = useState(growthProgress || 0);
+  
+  useFrame((_, delta) => {
+    if (useGameStore.getState().isSplashDone && localProgress < 1) {
+      setLocalProgress((p: number) => Math.min(1, p + delta * 0.025)); // 40 seconds to fully grow
+    }
+  });
   
   const h = isWheat ? 1.5 : 0.6;
-  const currentHeight = Math.max(0.2, h * progress);
-  const color = isWheat ? (progress > 0.8 ? '#fcd34d' : '#84cc16') : (progress > 0.8 ? '#f97316' : '#4ade80');
+  const currentHeight = Math.max(0.1, h * localProgress);
+  const isGrown = localProgress > 0.8;
+  const color = isWheat ? (isGrown ? '#fcd34d' : '#84cc16') : (isGrown ? '#f97316' : '#4ade80');
   
   return (
     <group position={[position.x, position.y, position.z]} scale={scale}>
        <group position={[0, currentHeight / 2, 0]}>
+         {/* Plants using cross-planes for hand-drawn/paper feel */}
          {[...Array(3)].map((_, i) => (
-           <mesh key={i} position={[(i-1)*0.3, 0, (i%2 === 0 ? 0.2 : -0.2)]}>
-             <cylinderGeometry args={[0.05, 0.05, currentHeight, 4]} />
-             <meshStandardMaterial color={color} roughness={0.8} />
-           </mesh>
+           <group key={i} position={[(i-1)*0.4, 0, (i%2 === 0 ? 0.2 : -0.2)]}>
+             <mesh rotation={[0, Math.PI / 4 + Math.random()*0.2, 0]} castShadow>
+               <planeGeometry args={[0.3, currentHeight]} />
+               <meshStandardMaterial color={color} roughness={0.8} side={THREE.DoubleSide} transparent opacity={0.9} flatShading />
+             </mesh>
+             <mesh rotation={[0, -Math.PI / 4 + Math.random()*0.2, 0]} castShadow>
+               <planeGeometry args={[0.3, currentHeight]} />
+               <meshStandardMaterial color={color} roughness={0.8} side={THREE.DoubleSide} transparent opacity={0.9} flatShading />
+             </mesh>
+             
+             {/* Carrot orange top */}
+             {!isWheat && isGrown && (
+               <mesh position={[0, -currentHeight/2 + 0.15, 0]} castShadow>
+                 <coneGeometry args={[0.15, 0.4, 4]} />
+                 <meshStandardMaterial color="#f97316" roughness={0.7} flatShading />
+               </mesh>
+             )}
+             
+             {/* Wheat gold top */}
+             {isWheat && isGrown && (
+               <mesh position={[0, currentHeight/2 - 0.1, 0]} castShadow>
+                 <octahedronGeometry args={[0.18, 0]} />
+                 <meshStandardMaterial color="#fbbf24" roughness={0.6} flatShading />
+               </mesh>
+             )}
+           </group>
          ))}
-         {!isWheat && progress > 0.8 && (
-           <mesh position={[0, -currentHeight/2 + 0.15, 0]}>
-             <coneGeometry args={[0.2, 0.4, 4]} />
-             <meshStandardMaterial color="#f97316" roughness={0.7} />
-           </mesh>
-         )}
-         {isWheat && progress > 0.8 && (
-           <mesh position={[0, currentHeight/2, 0]}>
-             <capsuleGeometry args={[0.15, 0.4, 4, 8]} />
-             <meshStandardMaterial color="#fbbf24" roughness={0.6} />
-           </mesh>
-         )}
        </group>
     </group>
   );
@@ -2588,48 +2620,76 @@ export function Tent(props: any) {
         <boxGeometry args={[0.1, 2.4, 0.1]} />
         <meshStandardMaterial color="#5c4033" flatShading />
       </mesh>
-      <mesh position={[0, 0.8, 0.9]} rotation={[0, 0, Math.PI / 4]} castShadow>
-        <boxGeometry args={[0.1, 2.4, 0.1]} />
-        <meshStandardMaterial color="#5c4033" flatShading />
+      {/* Tent Poles - Slightly tilted for hand-drawn feel */}
+      <mesh position={[0, 1.05, 0.9]} rotation={[Math.PI / 2 + 0.1, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.05, 0.06, 2.3, 5]} />
+        <meshStandardMaterial color="#78350f" roughness={0.8} flatShading />
       </mesh>
-      <mesh position={[0, 0.8, 0.9]} rotation={[0, 0, -Math.PI / 4]} castShadow>
-        <boxGeometry args={[0.1, 2.4, 0.1]} />
-        <meshStandardMaterial color="#5c4033" flatShading />
+      <mesh position={[0, 1.05, -0.9]} rotation={[Math.PI / 2 - 0.1, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.05, 0.06, 2.3, 5]} />
+        <meshStandardMaterial color="#78350f" roughness={0.8} flatShading />
       </mesh>
-      <mesh position={[0, 1.6, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.06, 0.06, 2.2, 6]} />
-        <meshStandardMaterial color="#5c4033" flatShading />
+      {/* Crossbar */}
+      <mesh position={[0, 1.05, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.05, 0.05, 2.0, 5]} />
+        <meshStandardMaterial color="#451a03" roughness={0.8} flatShading />
       </mesh>
       
-      {/* Canvas */}
-      {/* Left side */}
-      <mesh position={[-0.45, 0.8, 0]} rotation={[0, 0, Math.PI / 4]} castShadow receiveShadow>
-        <boxGeometry args={[0.05, 2.2, 2.0]} />
-        <meshStandardMaterial color="#fcd34d" roughness={0.9} flatShading />
+      {/* Canvas Main */}
+      <mesh position={[-0.5, 0.75, 0]} rotation={[0, 0, Math.PI / 5]} castShadow receiveShadow>
+        <boxGeometry args={[0.08, 2.3, 2.1]} />
+        <meshStandardMaterial color="#fef3c7" roughness={1} flatShading />
       </mesh>
-      {/* Right side */}
-      <mesh position={[0.45, 0.8, 0]} rotation={[0, 0, -Math.PI / 4]} castShadow receiveShadow>
-        <boxGeometry args={[0.05, 2.2, 2.0]} />
-        <meshStandardMaterial color="#fcd34d" roughness={0.9} flatShading />
+      <mesh position={[0.5, 0.75, 0]} rotation={[0, 0, -Math.PI / 5]} castShadow receiveShadow>
+        <boxGeometry args={[0.08, 2.3, 2.1]} />
+        <meshStandardMaterial color="#fef3c7" roughness={1} flatShading />
       </mesh>
+
+      {/* Ropes and Pegs */}
+      {[-1, 1].map((sideX) => 
+        [-1, 1].map((sideZ) => (
+           <group key={`${sideX}-${sideZ}`}>
+             <mesh position={[sideX * 0.9, 0.4, sideZ * 1.0]} rotation={[0, 0, sideX * -Math.PI / 4]} castShadow>
+               <cylinderGeometry args={[0.015, 0.015, 1.2, 4]} />
+               <meshStandardMaterial color="#e5e5e5" roughness={1} flatShading />
+             </mesh>
+             <mesh position={[sideX * 1.3, 0.05, sideZ * 1.0]} rotation={[sideZ * 0.2, 0, sideX * -Math.PI / 6]} castShadow>
+               <cylinderGeometry args={[0.03, 0.01, 0.2, 4]} />
+               <meshStandardMaterial color="#52525b" roughness={0.7} flatShading />
+             </mesh>
+           </group>
+        ))
+      )}
+
       {/* Back flap */}
-      <mesh position={[0, 0.8, -0.95]} rotation={[Math.PI / 12, 0, 0]} castShadow>
-        <planeGeometry args={[1.6, 1.8]} />
-        <meshStandardMaterial color="#fbbf24" roughness={0.9} side={THREE.DoubleSide} flatShading />
+      <mesh position={[0, 0.7, -0.95]} rotation={[Math.PI / 10, 0, 0]} castShadow>
+        <planeGeometry args={[1.5, 1.7]} />
+        <meshStandardMaterial color="#fde68a" roughness={1} side={THREE.DoubleSide} flatShading />
       </mesh>
+      
       {/* Floor blanket */}
       <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[1.6, 1.8]} />
-        <meshStandardMaterial color="#78350f" roughness={1} flatShading />
+        <planeGeometry args={[1.7, 2.0]} />
+        <meshStandardMaterial color="#92400e" roughness={1} flatShading />
       </mesh>
-      {/* Pillows/Bags inside */}
-      <mesh position={[-0.3, 0.15, -0.5]} rotation={[0, Math.PI/6, 0]} castShadow>
-        <boxGeometry args={[0.5, 0.2, 0.3]} />
+
+      {/* Lantern */}
+      <group position={[0, 0.8, 0.8]}>
+         <mesh position={[0, 0.1, 0]} castShadow>
+           <cylinderGeometry args={[0.01, 0.01, 0.2, 4]} />
+           <meshStandardMaterial color="#1c1917" />
+         </mesh>
+         <mesh castShadow>
+           <cylinderGeometry args={[0.06, 0.08, 0.15, 6]} />
+           <meshStandardMaterial color="#fbbf24" emissive="#fbbf24" emissiveIntensity={0.5} flatShading />
+         </mesh>
+         <pointLight color="#fde047" distance={3} intensity={0.8} />
+      </group>
+
+      {/* Inside Details */}
+      <mesh position={[-0.3, 0.15, -0.4]} rotation={[0, Math.PI/8, 0]} castShadow>
+        <boxGeometry args={[0.6, 0.25, 0.4]} />
         <meshStandardMaterial color="#e2e8f0" flatShading />
-      </mesh>
-      <mesh position={[0.4, 0.15, -0.4]} rotation={[0, -Math.PI/4, 0]} castShadow>
-        <boxGeometry args={[0.4, 0.3, 0.4]} />
-        <meshStandardMaterial color="#3b82f6" flatShading />
       </mesh>
     </group>
   );
@@ -2637,55 +2697,89 @@ export function Tent(props: any) {
 
 export function Campfire(props: any) {
   const ref = usePopIn(props.scale || 1);
-  const fireRef = useRef<any>(null);
+  const fireGroupRef = useRef<any>(null);
+  const fireInnerRef = useRef<any>(null);
   const lightRef = useRef<any>(null);
   
   useFrame(({ clock }) => {
      if (!useGameStore.getState().isSplashDone) return;
-     if (fireRef.current) {
-         const t = clock.elapsedTime * 5;
-         fireRef.current.scale.set(1 + Math.sin(t) * 0.1, 1 + Math.cos(t * 1.3) * 0.2, 1 + Math.sin(t * 0.8) * 0.1);
+     const t = clock.elapsedTime;
+     if (fireGroupRef.current) {
+         // Add flicker and stylized rotation
+         fireGroupRef.current.scale.set(
+             1 + Math.sin(t * 8) * 0.1, 
+             1 + Math.cos(t * 12) * 0.15, 
+             1 + Math.sin(t * 7) * 0.1
+         );
+         fireGroupRef.current.rotation.y = Math.sin(t * 2) * 0.1;
+     }
+     if (fireInnerRef.current) {
+         fireInnerRef.current.position.y = 0.25 + Math.sin(t * 10) * 0.05;
      }
      if (lightRef.current) {
-         lightRef.current.intensity = 2 + Math.sin(clock.elapsedTime * 10) * 0.5;
+         lightRef.current.intensity = 2.5 + Math.sin(t * 15) * 0.3 + Math.sin(t * 23) * 0.2;
      }
   });
 
   return (
     <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
-      {/* Stone Ring */}
-      {[...Array(8)].map((_, i) => {
-          const angle = (i / 8) * Math.PI * 2;
-          const r = 0.6;
+      {/* Hand-drawn style Stone Ring */}
+      {[...Array(10)].map((_, i) => {
+          const angle = (i / 10) * Math.PI * 2;
+          const r = 0.55 + Math.random() * 0.1;
+          const s = 0.8 + Math.random() * 0.5;
           return (
-             <mesh key={i} position={[Math.cos(angle)*r, 0.1, Math.sin(angle)*r]} rotation={[Math.random(), Math.random(), Math.random()]} castShadow>
+             <mesh key={i} position={[Math.cos(angle)*r, 0.08 * s, Math.sin(angle)*r]} rotation={[Math.random(), Math.random(), Math.random()]} scale={[s, s * 0.8, s * 1.1]} castShadow>
                <dodecahedronGeometry args={[0.15, 0]} />
-               <meshStandardMaterial color="#94a3b8" roughness={0.9} flatShading />
+               <meshStandardMaterial color="#64748b" roughness={1} flatShading />
              </mesh>
           );
       })}
       
       {/* Ash base */}
-      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-         <circleGeometry args={[0.5, 16]} />
-         <meshStandardMaterial color="#1c1917" flatShading />
+      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+         <circleGeometry args={[0.6, 8]} />
+         <meshStandardMaterial color="#292524" flatShading />
       </mesh>
 
-      {/* Logs */}
-      {[...Array(4)].map((_, i) => (
-          <mesh key={i} position={[0, 0.15, 0]} rotation={[0, (i * Math.PI / 4) + 0.2, Math.PI / 6]} castShadow>
-             <cylinderGeometry args={[0.06, 0.06, 0.8, 6]} />
-             <meshStandardMaterial color="#451a03" roughness={1} flatShading />
-          </mesh>
+      {/* Logs - More random and stylized */}
+      {[...Array(5)].map((_, i) => (
+          <group key={i} position={[0, 0.1, 0]} rotation={[0, (i * Math.PI * 2 / 5) + (Math.random() * 0.2), 0]}>
+            <mesh position={[0.3, 0.1, 0]} rotation={[0, 0, Math.PI / 5 + Math.random() * 0.1]} castShadow>
+               <cylinderGeometry args={[0.04, 0.06, 0.8, 5]} />
+               <meshStandardMaterial color="#451a03" roughness={1} flatShading />
+            </mesh>
+            {/* Log highlight/bark detail */}
+            <mesh position={[0.3, 0.12, 0]} rotation={[0, 0, Math.PI / 5 + Math.random() * 0.1]}>
+               <cylinderGeometry args={[0.02, 0.02, 0.75, 4]} />
+               <meshStandardMaterial color="#78350f" roughness={1} flatShading />
+            </mesh>
+          </group>
       ))}
 
-      {/* Fire */}
-      <mesh position={[0, 0.4, 0]} ref={fireRef}>
-        <coneGeometry args={[0.25, 0.8, 5]} />
-        <meshStandardMaterial color="#f97316" emissive="#ea580c" emissiveIntensity={2} transparent opacity={0.9} flatShading />
-      </mesh>
-      
-      <pointLight ref={lightRef} color="#fbbf24" distance={8} position={[0, 0.5, 0]} castShadow />
+      {/* Stylized Low-Poly Fire */}
+      <group ref={fireGroupRef} position={[0, 0.35, 0]}>
+        {/* Outer Flame */}
+        <mesh castShadow>
+            <coneGeometry args={[0.35, 0.7, 4]} />
+            <meshStandardMaterial color="#ea580c" emissive="#ea580c" emissiveIntensity={0.8} transparent opacity={0.9} flatShading />
+        </mesh>
+        <mesh rotation={[0, Math.PI / 4, 0]}>
+            <coneGeometry args={[0.3, 0.65, 4]} />
+            <meshStandardMaterial color="#f97316" emissive="#f97316" emissiveIntensity={1} flatShading />
+        </mesh>
+        {/* Inner Flame */}
+        <mesh ref={fireInnerRef} position={[0, -0.1, 0]}>
+            <octahedronGeometry args={[0.2, 0]} />
+            <meshStandardMaterial color="#fde047" emissive="#fde047" emissiveIntensity={2} flatShading />
+        </mesh>
+      </group>
+
+      {/* Fire Particles */}
+      <ParticleBurst position={new THREE.Vector3(0, 0.5, 0)} color="#fcd34d" />
+
+      {/* Light Source */}
+      <pointLight ref={lightRef} color="#fbbf24" distance={8} decay={2} castShadow intensity={2.5} position={[0, 0.8, 0]} />
     </group>
   );
 }

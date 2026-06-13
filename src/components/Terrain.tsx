@@ -520,7 +520,7 @@ export function Terrain() {
     }
 
     if (isDragEvent) {
-        const isObjectPlacement = ['treeA', 'treeB', 'rock'].includes(selectedTool);
+        const isObjectPlacement = ['treeA', 'treeB', 'rock', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot'].includes(selectedTool);
         const minDistance = isObjectPlacement ? 1.5 : 0.2;
         
         // Ensure distance before applying brush again
@@ -533,7 +533,7 @@ export function Terrain() {
     // Add interaction burst, less often if dragging
     if (!isDragEvent || Math.random() < 0.2) {
       let color = "#ffffff";
-      if (['treeA', 'treeB'].includes(selectedTool)) color = "#4ade80";
+      if (['treeA', 'treeB', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot'].includes(selectedTool)) color = "#4ade80";
       if (['terrainUp', 'terrainDown', 'rock', 'pave'].includes(selectedTool)) color = "#d1d5db";
       if (selectedTool === 'spring') color = "#3b82f6";
       if (['deer', 'wolf'].includes(selectedTool)) color = "#fbbf24";
