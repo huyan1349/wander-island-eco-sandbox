@@ -1,6 +1,7 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Html, PivotControls } from '@react-three/drei';
 import { PomodoroTimer } from './PomodoroTimer';
+import { IslandClock } from './IslandClock';
 import { Suspense, useRef, useEffect, useState } from 'react';
 import { Terrain } from './Terrain';
 import { Water } from './Water';
@@ -213,13 +214,7 @@ export function GameCanvas({ immersive = false, timer3D = false }: { immersive?:
           enablePan={true}
           panSpeed={isTouch ? 0.55 : 0.85}
         />
-        {timer3D && immersive && (
-          <PivotControls anchor={[0, 0, 0]} scale={2.5} depthTest={false} lineWidth={2} disableRotations>
-            <Html transform position={[0, 3, 0]} distanceFactor={10}>
-              <PomodoroTimer />
-            </Html>
-          </PivotControls>
-        )}
+        {timer3D && immersive && <IslandClock />}
       </Canvas>
     </div>
   );
