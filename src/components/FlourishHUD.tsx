@@ -18,10 +18,9 @@ export function FlourishHUD() {
   const advanceSeason = useGameStore((s) => s.advanceSeason);
   const setMode = useGameStore((s) => s.setMode);
 
-  if (screen !== 'PLAYING') return null;
-
-  // —— 创造模式：仅显示进入按钮 ——
+  // —— 入口按钮：放在存档选择界面（开始旅程）右上角 ——
   if (mode !== 'flourish') {
+    if (screen !== 'SAVE_SELECT') return null;
     return (
       <button
         onClick={startFlourish}
@@ -37,6 +36,9 @@ export function FlourishHUD() {
       </button>
     );
   }
+
+  // flourish 玩法 HUD 仅在游戏内显示（界面之后单独开发）
+  if (screen !== 'PLAYING') return null;
 
   const seasonLabel = SEASON_NAMES[(seasonTurn - 1) % 4];
   const year = Math.floor((seasonTurn - 1) / 4) + 1;
