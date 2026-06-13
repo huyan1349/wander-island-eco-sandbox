@@ -161,6 +161,8 @@ export default function App() {
     // Load and play BGM immediately
     const initAudio = async () => {
       AudioSystem.init();
+      await AudioSystem.loadBGM('/Tides_of_Mahogany.mp3');
+      AudioSystem.playBGM();
     };
     initAudio();
 
