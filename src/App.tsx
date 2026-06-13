@@ -18,6 +18,10 @@ import {
   ArrowDown,
   Eraser,
   MousePointer2,
+  Star,
+  Castle,
+  Telescope,
+  LifeBuoy,
   Sun,
   CloudRain,
   Snowflake,
@@ -392,6 +396,7 @@ export default function App() {
         { id: "seagull", icon: Bird, label: "海鸥", cost: 100 },
         { id: "dolphin", icon: Waves, label: "海豚", cost: 500 },
         { id: "fish", icon: Fish, label: "荧光鱼群", cost: 150 },
+        { id: "spirit_tree", icon: Star, label: "远古神树", cost: 1000 },
       ]
     },
     {
@@ -406,6 +411,9 @@ export default function App() {
         { id: "fence", icon: Fence, label: "木栅栏", cost: 20 },
         { id: "well", icon: Droplet, label: "水井", cost: 150 },
         { id: "bench", icon: Armchair, label: "长椅", cost: 40 },
+        { id: "observatory", icon: Telescope, label: "观星台", cost: 1500 },
+        { id: "ruins_arch", icon: Castle, label: "遗迹石门", cost: 2000 },
+        { id: "waterwheel", icon: LifeBuoy, label: "巨型水车", cost: 1800 },
       ]
     },
     {

@@ -1898,7 +1898,7 @@ export function SubIsland(props: any) {
     }
 
     if (isDragEvent) {
-      const isObjectPlacement = ['treeA', 'treeB', 'rock', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot'].includes(selectedTool);
+      const isObjectPlacement = ['treeA', 'treeB', 'rock', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'].includes(selectedTool);
       const minDistance = isObjectPlacement ? 1.5 : 0.2;
       if (worldPoint.distanceTo(lastBrushPoint.current) < minDistance) return;
       lastBrushPoint.current.copy(worldPoint);
@@ -1914,7 +1914,7 @@ export function SubIsland(props: any) {
 
     if (!isDragEvent || Math.random() < 0.2) {
       let color = "#ffffff";
-      if (['treeA', 'treeB', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot'].includes(selectedTool)) color = "#4ade80";
+      if (['treeA', 'treeB', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'].includes(selectedTool)) color = "#4ade80";
       if (['terrainUp', 'terrainDown', 'rock', 'pave'].includes(selectedTool)) color = "#d1d5db";
       if (selectedTool === 'spring') color = "#3b82f6";
       if (['deer', 'wolf'].includes(selectedTool)) color = "#fbbf24";
@@ -1978,13 +1978,13 @@ export function SubIsland(props: any) {
       return;
     }
 
-    const landPlaceableTools = ['treeA', 'treeB', 'rock', 'deer', 'wolf', 'spring', 'streetlamp', 'house', 'windmill', 'lighthouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot'];
+    const landPlaceableTools = ['treeA', 'treeB', 'rock', 'deer', 'wolf', 'spring', 'streetlamp', 'house', 'windmill', 'lighthouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
     if (!isDragEvent && landPlaceableTools.includes(selectedTool)) {
       if (placementY <= -0.5) return;
 
       let rx = 0;
       let rz = 0;
-      const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island', 'treeA', 'treeB', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot'];
+      const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island', 'treeA', 'treeB', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
       if (event && event.face && event.face.normal && !verticalTools.includes(selectedTool)) {
         const normal = event.face.normal.clone();
         const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
@@ -2926,6 +2926,231 @@ export function Bench(props: any) {
     </group>
   );
 }
+export function SpiritTree(props: any) {
+  const ref = usePopIn(props.scale || 1.5);
+  const leavesRef = useRef<any>(null);
+  
+  useFrame(({ clock }) => {
+    if (!useGameStore.getState().isSplashDone) return;
+    if (leavesRef.current) {
+      leavesRef.current.position.y = Math.sin(clock.elapsedTime * 2) * 0.1;
+      leavesRef.current.rotation.y = Math.sin(clock.elapsedTime * 0.5) * 0.05;
+    }
+  });
+
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+      {/* Massive Trunk */}
+      <mesh position={[0, 1.5, 0]} castShadow>
+        <cylinderGeometry args={[0.5, 0.8, 3, 7]} />
+        <meshStandardMaterial color="#292524" roughness={1} flatShading />
+      </mesh>
+      {/* Twisted roots */}
+      {[...Array(5)].map((_, i) => (
+        <mesh key={i} position={[Math.cos(i*Math.PI*2/5)*0.6, 0.3, Math.sin(i*Math.PI*2/5)*0.6]} rotation={[0, -i*Math.PI*2/5, Math.PI/6]} castShadow>
+          <cylinderGeometry args={[0.1, 0.4, 1.5, 5]} />
+          <meshStandardMaterial color="#292524" roughness={1} flatShading />
+        </mesh>
+      ))}
+
+      {/* Glowing Leaf Layers */}
+      <group ref={leavesRef} position={[0, 3.5, 0]}>
+        {[...Array(6)].map((_, i) => {
+          const s = 1.8 - i * 0.2;
+          return (
+            <mesh key={i} position={[0, i * 0.6, 0]} rotation={[0, i * Math.PI / 3, 0]} castShadow>
+              <dodecahedronGeometry args={[s, 0]} />
+              <meshStandardMaterial color="#10b981" emissive="#059669" emissiveIntensity={0.2} transparent opacity={0.9} flatShading />
+            </mesh>
+          );
+        })}
+        {/* Magic Light Source inside */}
+        <pointLight color="#6ee7b7" intensity={2} distance={10} position={[0, 1, 0]} castShadow />
+        <mesh position={[0, 1, 0]}>
+           <sphereGeometry args={[0.5, 8, 8]} />
+           <meshStandardMaterial color="#a7f3d0" emissive="#34d399" emissiveIntensity={2} flatShading />
+        </mesh>
+      </group>
+      
+      {/* Floating Particles */}
+      <ParticleBurst position={new THREE.Vector3(0, 4, 0)} color="#6ee7b7" />
+    </group>
+  );
+}
+
+export function Observatory(props: any) {
+  const ref = usePopIn(props.scale || 1.2);
+  const telescopeRef = useRef<any>(null);
+  
+  useFrame(({ clock }) => {
+    if (!useGameStore.getState().isSplashDone) return;
+    if (telescopeRef.current) {
+      telescopeRef.current.rotation.y = Math.sin(clock.elapsedTime * 0.2) * 0.3;
+      telescopeRef.current.rotation.x = Math.sin(clock.elapsedTime * 0.5) * 0.1;
+    }
+  });
+
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+      {/* Main Wooden Base Tower */}
+      <mesh position={[0, 1.5, 0]} castShadow>
+        <cylinderGeometry args={[0.8, 1.2, 3, 6]} />
+        <meshStandardMaterial color="#451a03" roughness={0.9} flatShading />
+      </mesh>
+      
+      {/* Balcony */}
+      <mesh position={[0, 3, 0]} castShadow>
+        <cylinderGeometry args={[1.2, 1.0, 0.2, 8]} />
+        <meshStandardMaterial color="#78350f" roughness={1} flatShading />
+      </mesh>
+      
+      {/* Pillars for Dome */}
+      {[...Array(6)].map((_, i) => (
+        <mesh key={i} position={[Math.cos(i*Math.PI/3)*0.9, 3.6, Math.sin(i*Math.PI/3)*0.9]} castShadow>
+          <boxGeometry args={[0.1, 1.2, 0.1]} />
+          <meshStandardMaterial color="#5c4033" flatShading />
+        </mesh>
+      ))}
+
+      {/* Dome */}
+      <mesh position={[0, 4.2, 0]} castShadow>
+        <sphereGeometry args={[1.1, 8, 8, 0, Math.PI * 2, 0, Math.PI/2]} />
+        <meshStandardMaterial color="#1e293b" roughness={0.7} flatShading />
+      </mesh>
+      {/* Warm glow from inside */}
+      <pointLight color="#fef08a" intensity={1.5} distance={8} position={[0, 3.5, 0]} castShadow />
+      <mesh position={[0, 3.5, 0]}>
+        <sphereGeometry args={[0.3, 8, 8]} />
+        <meshStandardMaterial color="#fef08a" emissive="#facc15" emissiveIntensity={1} flatShading />
+      </mesh>
+
+      {/* Giant Telescope */}
+      <group position={[0, 3.6, 0.6]} ref={telescopeRef}>
+        <mesh position={[0, 0, 0.6]} rotation={[Math.PI/2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.15, 0.25, 1.5, 6]} />
+          <meshStandardMaterial color="#b45309" roughness={0.4} flatShading />
+        </mesh>
+        <mesh position={[0, 0, 1.4]} rotation={[Math.PI/2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.3, 0.15, 0.3, 6]} />
+          <meshStandardMaterial color="#1c1917" flatShading />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+
+export function RuinsArch(props: any) {
+  const ref = usePopIn(props.scale || 1.3);
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+      {/* Left Pillar */}
+      {[...Array(4)].map((_, i) => (
+        <mesh key={`L-${i}`} position={[-1.5, 0.5 + i * 1.0, 0]} rotation={[Math.random()*0.1, Math.random()*0.1, Math.random()*0.1]} castShadow receiveShadow>
+          <boxGeometry args={[1.0, 1.0, 1.0]} />
+          <meshStandardMaterial color="#94a3b8" roughness={0.9} flatShading />
+        </mesh>
+      ))}
+      
+      {/* Right Pillar */}
+      {[...Array(4)].map((_, i) => (
+        <mesh key={`R-${i}`} position={[1.5, 0.5 + i * 1.0, 0]} rotation={[Math.random()*0.1, Math.random()*0.1, Math.random()*0.1]} castShadow receiveShadow>
+          <boxGeometry args={[1.0, 1.0, 1.0]} />
+          <meshStandardMaterial color="#94a3b8" roughness={0.9} flatShading />
+        </mesh>
+      ))}
+
+      {/* Arch Bridge */}
+      {[...Array(5)].map((_, i) => (
+        <mesh key={`A-${i}`} position={[-1.2 + i * 0.6, 4.0, 0]} rotation={[0, 0, Math.random()*0.1]} castShadow receiveShadow>
+          <boxGeometry args={[0.8, 0.8, 1.0]} />
+          <meshStandardMaterial color="#94a3b8" roughness={0.9} flatShading />
+        </mesh>
+      ))}
+
+      {/* Hanging Vines */}
+      {[...Array(3)].map((_, i) => (
+        <mesh key={`V-${i}`} position={[-0.8 + i * 0.8, 3.2 - Math.random() * 0.5, 0.55]} rotation={[0, 0, 0]} castShadow>
+          <boxGeometry args={[0.1, 1.5 + Math.random(), 0.1]} />
+          <meshStandardMaterial color="#4ade80" roughness={1} flatShading />
+        </mesh>
+      ))}
+      
+      {/* Rubble at base */}
+      <mesh position={[-1.0, 0.2, 0.8]} rotation={[0.2, 0.5, 0.1]} castShadow>
+         <boxGeometry args={[0.6, 0.6, 0.6]} />
+         <meshStandardMaterial color="#64748b" roughness={1} flatShading />
+      </mesh>
+      <mesh position={[1.2, 0.3, -0.6]} rotation={[0.4, 0.1, 0.5]} castShadow>
+         <boxGeometry args={[0.7, 0.7, 0.7]} />
+         <meshStandardMaterial color="#64748b" roughness={1} flatShading />
+      </mesh>
+    </group>
+  );
+}
+
+export function Waterwheel(props: any) {
+  const ref = usePopIn(props.scale || 1.4);
+  const wheelRef = useRef<any>(null);
+  
+  useFrame(({ clock }) => {
+    if (!useGameStore.getState().isSplashDone) return;
+    if (wheelRef.current) {
+      wheelRef.current.rotation.x = clock.elapsedTime * 0.5; // Slowly rotating
+    }
+  });
+
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+      {/* Wooden Supports */}
+      <mesh position={[-0.4, 1.5, 0]} rotation={[0, 0, 0.1]} castShadow>
+        <boxGeometry args={[0.2, 3.0, 0.2]} />
+        <meshStandardMaterial color="#451a03" flatShading />
+      </mesh>
+      <mesh position={[0.4, 1.5, 0]} rotation={[0, 0, -0.1]} castShadow>
+        <boxGeometry args={[0.2, 3.0, 0.2]} />
+        <meshStandardMaterial color="#451a03" flatShading />
+      </mesh>
+      
+      {/* Crossbeam Axis */}
+      <mesh position={[0, 2.0, 0]} rotation={[0, 0, Math.PI/2]} castShadow>
+        <cylinderGeometry args={[0.15, 0.15, 1.2, 6]} />
+        <meshStandardMaterial color="#292524" flatShading />
+      </mesh>
+
+      {/* The Rotating Wheel */}
+      <group position={[0, 2.0, 0]} ref={wheelRef}>
+        {/* Outer Rings */}
+        <mesh rotation={[0, 0, Math.PI/2]} castShadow>
+          <torusGeometry args={[1.5, 0.08, 6, 12]} />
+          <meshStandardMaterial color="#78350f" flatShading />
+        </mesh>
+        
+        {/* Spokes and Paddles */}
+        {[...Array(8)].map((_, i) => {
+          const angle = (i / 8) * Math.PI * 2;
+          return (
+            <group key={i} rotation={[angle, 0, 0]}>
+              {/* Spoke */}
+              <mesh position={[0, 0.75, 0]} castShadow>
+                <boxGeometry args={[0.1, 1.5, 0.1]} />
+                <meshStandardMaterial color="#5c4033" flatShading />
+              </mesh>
+              {/* Paddle */}
+              <mesh position={[0, 1.5, 0]} castShadow>
+                <boxGeometry args={[0.8, 0.1, 0.4]} />
+                <meshStandardMaterial color="#92400e" flatShading />
+              </mesh>
+            </group>
+          );
+        })}
+      </group>
+
+      {/* Splashing Particles at water level */}
+      <ParticleBurst position={new THREE.Vector3(0, 0.2, 1.5)} color="#bae6fd" />
+    </group>
+  );
+}
 
 export function Assets() {
   const assets = useGameStore(state => state.assets);
@@ -2968,6 +3193,10 @@ export function Assets() {
           case 'fence': return <Fence key={asset.id} {...asset} />;
           case 'well': return <Well key={asset.id} {...asset} />;
           case 'bench': return <Bench key={asset.id} {...asset} />;
+          case 'spirit_tree': return <SpiritTree key={asset.id} {...asset} />;
+          case 'observatory': return <Observatory key={asset.id} {...asset} />;
+          case 'ruins_arch': return <RuinsArch key={asset.id} {...asset} />;
+          case 'waterwheel': return <Waterwheel key={asset.id} {...asset} />;
           default: return null;
         }
       })}
