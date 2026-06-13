@@ -1,5 +1,6 @@
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Text } from '@react-three/drei';
+import { OrbitControls, Text, Html } from '@react-three/drei';
+import { PomodoroTimer } from './PomodoroTimer';
 import { Suspense, useRef, useEffect, useState } from 'react';
 import { Terrain } from './Terrain';
 import { Water } from './Water';
@@ -133,7 +134,7 @@ function SmoothZoom({ controlsRef, minDistance, maxDistance }: {
   return null;
 }
 
-export function GameCanvas({ immersive = false }: { immersive?: boolean }) {
+export function GameCanvas({ immersive = false, timer3D = false }: { immersive?: boolean; timer3D?: boolean }) {
   const isDrawing = useGameStore(state => state.isDrawing);
   const screen = useGameStore(state => state.screen);
   const assetCount = useGameStore(state => state.assets.length);
@@ -212,6 +213,11 @@ export function GameCanvas({ immersive = false }: { immersive?: boolean }) {
           enablePan={true}
           panSpeed={isTouch ? 0.55 : 0.85}
         />
+        {timer3D && immersive && (
+          <Html transform occlude="blending" position={[0, 3, 0]} distanceFactor={10} className="pointer-events-none">
+            <PomodoroTimer />
+          </Html>
+        )}
       </Canvas>
     </div>
   );

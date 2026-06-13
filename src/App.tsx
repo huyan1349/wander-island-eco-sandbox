@@ -301,6 +301,7 @@ export default function App() {
 
   const [isImmersive, setIsImmersive] = useState(false);
   const [isFloating, setIsFloating] = useState(false);
+  const [timer3D, setTimer3D] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [envMenuOpen, setEnvMenuOpen] = useState(false);
   const lastToolRef = useRef<ToolType>('none');
@@ -521,7 +522,7 @@ export default function App() {
     >
       {/* Center Canvas */}
       <div className={`absolute inset-0 z-0 transition-all duration-1000 ${screen !== 'PLAYING' ? 'blur-none brightness-100' : 'blur-none brightness-100'}`}>
-        <GameCanvas immersive={isImmersive} />
+        <GameCanvas immersive={isImmersive} timer3D={timer3D} />
       </div>
 
       {screen === 'TITLE' && <TitleScreen />}
@@ -624,6 +625,12 @@ export default function App() {
                
                <div className="flex items-center gap-6">
                  <button
+                    onClick={() => setTimer3D((v) => !v)}
+                    className="pointer-events-auto flex items-center gap-2 text-white/40 hover:text-white transition-colors"
+                 >
+                    <span className="font-mono text-[10px] tracking-[0.2em] uppercase">{timer3D ? 'Center Clock' : 'Clock On Island'}</span>
+                 </button>
+                 <button
                     onClick={() => setIsFloating((f) => !f)}
                     className="pointer-events-auto flex items-center gap-2 text-white/40 hover:text-white transition-colors"
                  >
@@ -640,10 +647,12 @@ export default function App() {
                </div>
            </div>
 
-           {/* 专注番茄钟 */}
+           {/* 专注番茄钟（中央显示；切到 3D 时改由岛上 Html 渲染）*/}
+           {!timer3D && (
            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                <PomodoroTimer />
            </div>
+           )}
 
            {/* Center Reticle / Viewfinder marks */}
            <div className="absolute inset-0 flex items-center justify-center opacity-20">
