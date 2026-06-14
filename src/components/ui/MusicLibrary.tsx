@@ -8,6 +8,8 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
   const [progress, setProgress] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [closing, setClosing] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { const r = requestAnimationFrame(() => setMounted(true)); return () => cancelAnimationFrame(r); }, []);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -32,10 +34,11 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[210] flex flex-col items-center justify-center bg-slate-950/85 backdrop-blur-lg animate-in fade-in duration-300" onClick={onClose}>
-      <style>{`@keyframes libEnter{from{opacity:0;transform:translateY(50px) scale(0.85)}to{opacity:1}}`}</style>
+      {/* 背景光晕 */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 55%, rgba(125,211,252,0.12), transparent 55%)' }} />
 
-      <p className="hand-drawn-title text-4xl text-white mb-2 -rotate-1">音乐收藏库</p>
-      <p className="text-white/40 text-[11px] font-mono tracking-[0.3em] uppercase mb-12">{n} TRACKS · 点击卡片查看</p>
+      <p className="hand-drawn-title text-4xl text-white mb-2 -rotate-1 animate-in fade-in slide-in-from-top-4 duration-500">音乐收藏库</p>
+      <p className="text-white/40 text-[11px] font-mono tracking-[0.3em] uppercase mb-12 animate-in fade-in duration-700 delay-200">{n} TRACKS · 点击卡片查看</p>
 
       <div className="relative flex items-end justify-center" style={{ height: 320, width: '92vw', maxWidth: 880 }} onClick={(e) => e.stopPropagation()}>
         {TRACKS.map((t, i) => {
@@ -46,10 +49,13 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
               key={i}
               className="absolute w-44 h-64"
               style={{
-                transform: `translateX(${off * 148}px) translateY(${Math.abs(off) * 16}px) rotate(${off * 7}deg)`,
+                transform: mounted
+                  ? `translateX(${off * 148}px) translateY(${Math.abs(off) * 16}px) rotate(${off * 7}deg)`
+                  : 'translateX(0px) translateY(130px) rotate(0deg) scale(0.7)',
+                opacity: mounted ? 1 : 0,
                 zIndex: 30 - Math.abs(off),
-                willChange: 'transform',
-                animation: `libEnter 0.45s ease-out ${i * 0.07}s both`,
+                willChange: 'transform, opacity',
+                transition: `transform 0.65s cubic-bezier(0.34,1.45,0.64,1) ${i * 0.07}s, opacity 0.45s ease ${i * 0.07}s`,
               }}
             >
               {/* 内层：纯 CSS hover，不与外层定位冲突 */}

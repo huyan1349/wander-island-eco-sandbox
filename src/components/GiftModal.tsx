@@ -70,7 +70,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       ctx.fillText(line, x, yy);
     };
 
-    const render = (img?: HTMLImageElement, qr?: HTMLImageElement) => {
+    const render = (img?: HTMLImageElement, qr?: HTMLImageElement, logo?: HTMLImageElement) => {
       // 顶部图片（cover 裁切）
       if (img) {
         const tar = W / imgH, ar = img.width / img.height;
@@ -106,16 +106,10 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       ctx.fillStyle = '#94a3b8'; ctx.font = '11px monospace';
       ctx.fillText(link.length > 40 ? link.slice(0, 40) + '…' : link, 44, H - 98);
 
-      // 游戏 LOGO（沿用标题界面航海图标）+ 游戏字体水印
-      ctx.save();
-      ctx.translate(44, H - 66);
-      ctx.scale(0.34, 0.34);
-      ctx.strokeStyle = '#15803d'; ctx.lineWidth = 6; ctx.lineJoin = 'round';
-      ctx.stroke(new Path2D('M15 90 L45 80 L45 10 L15 20 Z'));
-      ctx.stroke(new Path2D('M45 10 L85 20 L85 90 L70 86.25 L70 36.25 L55 32.5 L55 82.5 L45 80 Z'));
-      ctx.restore();
+      // 游戏 LOGO（splash 的小岛图标）+ 游戏字体水印
+      if (logo) ctx.drawImage(logo, 40, H - 74, 46, 46);
       ctx.fillStyle = '#15803d'; ctx.font = "900 28px 'ZCOOL KuaiLe', sans-serif";
-      ctx.fillText('Wander Island', 90, H - 34);
+      ctx.fillText('Wander Island', 96, H - 38);
       ctx.fillStyle = '#cbd5e1'; ctx.font = '11px monospace'; ctx.textAlign = 'right';
       ctx.fillText('漫游岛 · 生态沙盒', W - 44, H - 42); ctx.textAlign = 'left';
 
@@ -134,11 +128,12 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       im.onerror = () => res(null);
       im.src = src;
     });
-    const [bgImg, qrImg] = await Promise.all([
+    const [bgImg, qrImg, logoImg] = await Promise.all([
       shot ? loadImg(shot) : Promise.resolve(null),
       qrUrl ? loadImg(qrUrl) : Promise.resolve(null),
+      loadImg('/title/island-outline.svg'),
     ]);
-    render(bgImg || undefined, qrImg || undefined);
+    render(bgImg || undefined, qrImg || undefined, logoImg || undefined);
   };
   const enter = () => {
     if (!gift) return;
