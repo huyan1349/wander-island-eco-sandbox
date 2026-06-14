@@ -244,7 +244,7 @@ export function WeatherForecast() {
   };
 
   return (
-    <div className="absolute bottom-6 left-10 z-40 pointer-events-auto flex flex-col items-center group">
+    <div id="guide-music" className="absolute bottom-6 left-10 z-40 pointer-events-auto flex flex-col items-center group">
       {/* 模式切换：天气 / 音乐（沿用 hand-drawn 风格） */}
       <div className="flex gap-1 mb-3 hand-drawn-panel p-1 rounded-full">
         <button

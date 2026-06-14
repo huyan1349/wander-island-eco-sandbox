@@ -599,6 +599,7 @@ export default function App() {
            {/* Tool Column (Below Avatar) */}
            <div className={`flex ${isTouch ? 'flex-row gap-2' : 'flex-col gap-4'}`}>
              <button
+                id="guide-immersive"
                 onClick={() => { setIsImmersive(!isImmersive); showTouchTooltip(isImmersive ? '退出沉浸模式' : '沉浸模式'); }}
                 className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 ${isTouch ? 'w-11 h-11' : 'w-12 h-12'}`}
              >
@@ -812,11 +813,11 @@ export default function App() {
             </div>
           )}
 
-          {/* Bottom Dock：常驻模式区 + 分类区 */}
-          <div className="flex items-end gap-3 pointer-events-auto max-w-[97vw]">
+          {/* Bottom Dock：常驻模式区 + 分类区（合并为单一面板，避免错位） */}
+          <div className="hand-drawn-panel flex items-center gap-2 pointer-events-auto max-w-[97vw] px-3 py-2">
 
           {/* 常驻模式：选择 / 橡皮擦（始终显示） */}
-          <div className={`hand-drawn-panel px-2 py-2 flex gap-2 shrink-0 ${isTouch ? '' : 'py-3'}`}>
+          <div id="guide-modes" className="flex gap-2 shrink-0">
             {modeTools.map((m) => {
               const ModeIcon = m.icon;
               const isActive = selectedTool === m.id;
@@ -837,8 +838,11 @@ export default function App() {
             })}
           </div>
 
+          {/* 分隔线 */}
+          <div className="w-px self-stretch bg-slate-800/15 mx-1 my-1" />
+
           {/* Main Category Dock — 手机端可横向滚动 */}
-          <div className={`hand-drawn-panel px-2 py-2 flex gap-2 ${isTouch ? 'touch-tools-scroll' : 'px-4 py-3 gap-4'}`}>
+          <div id="guide-build" className={`flex gap-2 ${isTouch ? 'touch-tools-scroll' : 'gap-3'}`}>
             {categories.map((c) => {
               const CategoryIcon = c.icon;
               const isActive = activeCategory === c.name;

@@ -204,6 +204,7 @@ export const PlayerPanel: React.FC = () => {
     <>
       {/* Mini Widget */}
       <div
+        id="guide-avatar"
         onClick={() => { AudioSystem.playClick(); setIsOpen(true); }}
         className="group flex items-center gap-4 hand-drawn-btn hand-drawn-ghost p-3 pr-6"
       >
