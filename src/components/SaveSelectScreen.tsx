@@ -133,18 +133,21 @@ export const SaveSelectScreen: React.FC = () => {
             <div className="w-full max-w-6xl px-8 flex-1 overflow-y-auto no-scrollbar pb-24">
                 <div className={`grid gap-8 ${isTouch ? 'grid-cols-1 max-w-md mx-auto' : 'grid-cols-3'}`}>
 
-                    {/* 归隐之岛（联机公共服务器） */}
+                    {/* 归隐之岛（联机公共服务器）—— 沿用手绘卡片风格，绿色点缀区分 */}
                     <button
                         onClick={enterHermit}
                         disabled={hermitLoading}
-                        className="group h-64 flex flex-col items-center justify-center gap-5 cursor-pointer rounded-2xl transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] shadow-lg shadow-black/20 border-2 border-slate-800 relative overflow-hidden disabled:opacity-80"
-                        style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(110,231,183,0.35), transparent 60%), linear-gradient(160deg, #1e3a5f, #0f2438)' }}
+                        className="hand-drawn-panel group h-64 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] shadow-md hover:shadow-xl shadow-black/10 relative overflow-hidden disabled:opacity-80"
                     >
-                        <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-emerald-500/90 text-white text-[10px] font-bold tracking-widest">联机</div>
-                        <Globe size={48} className={`text-emerald-300 transition-transform ${hermitLoading ? 'animate-spin' : 'group-hover:scale-110'}`} strokeWidth={1.5} />
+                        <div className="absolute top-4 right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500 text-white text-[10px] font-bold tracking-widest shadow-[2px_2px_0_#2d3436] border border-slate-800">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> 联机
+                        </div>
+                        <div className="w-20 h-20 flex items-center justify-center border-4 border-dashed border-emerald-600/40 rounded-xl text-emerald-600 group-hover:border-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                            <Globe size={40} strokeWidth={2} className={hermitLoading ? 'animate-spin' : ''} />
+                        </div>
                         <div className="text-center px-4">
-                            <span className="block text-xl font-bold tracking-[0.15em] text-white hand-drawn-title">归隐之岛</span>
-                            <span className="block text-[11px] text-emerald-200/70 mt-1 tracking-wider">{hermitLoading ? '正在登岛…' : '与最多 20 位漫游者一同建造'}</span>
+                            <span className="block text-xl font-bold tracking-[0.2em] text-slate-800 uppercase hand-drawn-title">归隐之岛</span>
+                            <span className="block text-[11px] text-slate-500 mt-1.5 tracking-wider">{hermitLoading ? '正在登岛…' : '与最多 20 位漫游者一同建造'}</span>
                         </div>
                     </button>
 
