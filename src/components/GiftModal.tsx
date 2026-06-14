@@ -143,9 +143,11 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       im.onerror = () => res(null);
       im.src = src;
     });
+    let qrData = '';
+    try { qrData = await QRCode.toDataURL(link, { margin: 1, width: 240, errorCorrectionLevel: 'L' }); } catch { /* 链接过长无法生成 */ }
     const [bgImg, qrImg] = await Promise.all([
       shot ? loadImg(shot) : Promise.resolve(null),
-      qrUrl ? loadImg(qrUrl) : Promise.resolve(null),
+      qrData ? loadImg(qrData) : Promise.resolve(null),
     ]);
     render(bgImg || undefined, qrImg || undefined);
   };
