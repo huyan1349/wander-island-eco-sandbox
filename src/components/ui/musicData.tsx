@@ -5,26 +5,31 @@ export const TRACKS = [
     title: 'Tides of Mahogany',
     url: '/Tides_of_Mahogany.mp3',
     bg: 'radial-gradient(ellipse at 30% 120%, rgba(180,83,9,0.45), transparent 60%), linear-gradient(160deg, rgba(217,119,6,0.18), rgba(120,53,15,0.05))',
+    story: '深红木色的潮水缓缓起落，像一艘老船的甲板在记忆里轻轻摇晃。',
   },
   {
     title: 'Glockenspiel Sunprint',
     url: '/Glockenspiel_Sunprint.mp3',
     bg: 'radial-gradient(circle at 50% 22%, rgba(251,191,36,0.5), transparent 65%), linear-gradient(180deg, rgba(254,243,199,0.22), transparent)',
+    story: '钟琴的叮咚是阳光落在水面上的回声，每一个音符都被晒得暖暖的。',
   },
   {
     title: 'The Architecture of Leaves',
     url: '/The_Architecture_of_Leaves.mp3',
     bg: 'radial-gradient(ellipse at 72% 8%, rgba(132,204,22,0.42), transparent 60%), linear-gradient(160deg, rgba(22,101,52,0.16), rgba(20,83,45,0.05))',
+    story: '每一片叶子都是一座微型的建筑，叶脉是它写给风的蓝图。',
   },
   {
     title: 'Sakura Drifting Down',
     url: '/Sakura_Drifting_Down.mp3',
     bg: 'radial-gradient(ellipse at 50% 0%, rgba(251,207,232,0.55), transparent 65%), linear-gradient(160deg, rgba(244,114,182,0.18), rgba(219,39,119,0.05))',
+    story: '樱花一片片落下，把流逝的时间也悄悄染成了温柔的粉色。',
   },
   {
     title: 'Lighthouse Beam',
     url: '/Lighthouse_Beam.mp3',
     bg: 'radial-gradient(circle at 50% 18%, rgba(254,240,138,0.5), transparent 60%), linear-gradient(180deg, rgba(248,250,252,0.15), rgba(30,58,138,0.12))',
+    story: '灯塔彻夜旋转，把一束光许诺给每一艘在雾里迷路的船。',
   },
 ];
 

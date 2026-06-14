@@ -16,7 +16,11 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
     return () => clearInterval(id);
   }, []);
 
-  const play = (url: string) => { AudioSystem.switchBGM(url); setPlayingUrl(url); };
+  const play = (url: string) => {
+    if (url === AudioSystem.getCurrentBGMUrl()) return; // 已在播放，避免对同曲重复切换导致崩溃
+    AudioSystem.switchBGM(url);
+    setPlayingUrl(url);
+  };
   const n = TRACKS.length;
   const mid = (n - 1) / 2;
 
@@ -85,7 +89,8 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
               <p className="text-white/60 text-[10px] font-mono tracking-[0.3em] uppercase mb-1">TRACK {selected + 1} / {n}</p>
             </div>
             <div className="absolute bottom-0 left-0 right-0 p-6">
-              <p className="text-white text-2xl font-bold drop-shadow-lg mb-4 leading-tight">{TRACKS[selected].title}</p>
+              <p className="text-white text-2xl font-bold drop-shadow-lg mb-2 leading-tight">{TRACKS[selected].title}</p>
+              <p className="text-white/75 text-[13px] leading-relaxed mb-4 italic">{(TRACKS[selected] as any).story}</p>
               <button
                 onClick={() => play(TRACKS[selected].url)}
                 className="w-full hand-drawn-btn px-5 py-3 font-bold bg-white"
