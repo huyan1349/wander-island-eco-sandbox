@@ -6,124 +6,163 @@ interface LoadingScreenProps {
 }
 
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
-  const [loadingState, setLoadingState] = useState<'loading' | 'ready'>('loading');
   const [progress, setProgress] = useState(0);
-  const [fadeIn, setFadeIn] = useState(false);
-  const [showButton, setShowButton] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
-    setFadeIn(true);
-
     const loadAssets = async () => {
-      // Simulate progress for visual feedback while loading BGM
       const progressInterval = setInterval(() => {
         setProgress(prev => {
-          if (prev >= 85) {
+          if (prev >= 80) {
             clearInterval(progressInterval);
-            return 85;
+            return 80;
           }
-          return prev + Math.random() * 12 + 3;
+          return prev + Math.random() * 10 + 4;
         });
-      }, 300);
+      }, 250);
 
       try {
-        // Initialize audio context (still suspended until user gesture)
         AudioSystem.init();
-        // Preload title BGM
         await AudioSystem.loadBGM('/Tides_of_Mahogany.mp3');
-        // Also preload game BGM in background
         AudioSystem.loadBGM('/Glockenspiel_Sunprint.mp3').catch(() => {});
       } catch (e) {
-        console.warn('BGM preload failed, continuing without audio:', e);
+        console.warn('BGM preload failed:', e);
       }
 
       clearInterval(progressInterval);
       setProgress(100);
-      setLoadingState('ready');
-
-      // Brief pause before showing the enter button
-      setTimeout(() => setShowButton(true), 600);
+      // Small delay for the progress bar to reach 100% visually
+      setTimeout(() => setReady(true), 500);
     };
 
     loadAssets();
   }, []);
 
-  const handleEnter = () => {
-    // This click is the user gesture that unlocks AudioContext
+  const handleClick = () => {
+    if (!ready) return;
     AudioSystem.ensureResumed();
     AudioSystem.playBGM();
-    onReady();
+    setFadeOut(true);
+    setTimeout(onReady, 800);
   };
 
   return (
-    <div className={`absolute inset-0 z-[200] bg-slate-950 flex items-center justify-center transition-opacity duration-1000 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
-      {/* Ambient background particles */}
+    <div
+      onClick={handleClick}
+      className={`absolute inset-0 z-[200] bg-slate-950 flex items-center justify-center cursor-pointer select-none transition-opacity duration-800 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}
+    >
+      {/* Ocean shimmer — subtle horizontal lines */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {Array.from({ length: 20 }).map((_, i) => (
+        <div className="absolute bottom-0 left-0 right-0 h-1/3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-full h-px"
+              style={{
+                bottom: `${8 + i * 12}%`,
+                background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,${0.02 + i * 0.005}) 30%, rgba(255,255,255,${0.03 + i * 0.005}) 50%, rgba(255,255,255,${0.02 + i * 0.005}) 70%, transparent 100%)`,
+                animation: `shimmer ${6 + i * 1.5}s ease-in-out infinite`,
+                animationDelay: `${i * -1.2}s`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Floating motes */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {Array.from({ length: 12 }).map((_, i) => (
           <div
             key={i}
-            className="absolute rounded-full bg-white/5"
+            className="absolute rounded-full"
             style={{
-              width: `${2 + Math.random() * 4}px`,
-              height: `${2 + Math.random() * 4}px`,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animation: `float ${8 + Math.random() * 12}s ease-in-out infinite`,
-              animationDelay: `${Math.random() * -10}s`,
+              width: `${1.5 + Math.random() * 2.5}px`,
+              height: `${1.5 + Math.random() * 2.5}px`,
+              left: `${10 + Math.random() * 80}%`,
+              top: `${10 + Math.random() * 60}%`,
+              background: `rgba(255,255,255,${0.15 + Math.random() * 0.15})`,
+              animation: `mote ${10 + Math.random() * 15}s ease-in-out infinite`,
+              animationDelay: `${Math.random() * -12}s`,
             }}
           />
         ))}
       </div>
 
-      <div className="flex flex-col items-center gap-8 relative">
-        {/* Island outline logo */}
-        <div className={`transition-all duration-1500 ${fadeIn ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
+      <div className="flex flex-col items-center gap-6 relative">
+        {/* Island outline — breathing glow */}
+        <div className="relative">
+          <div
+            className="absolute inset-0 rounded-full blur-xl"
+            style={{
+              background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)',
+              animation: 'breathe 4s ease-in-out infinite',
+            }}
+          />
           <img
             src="/title/island-outline.svg"
             alt=""
-            className="w-20 h-20 opacity-80 drop-shadow-2xl"
+            className="w-16 h-16 opacity-70 relative"
+            style={{ animation: 'breathe 4s ease-in-out infinite' }}
           />
         </div>
 
         {/* Title */}
-        <div className={`flex flex-col items-center gap-2 transition-all duration-1500 delay-300 ${fadeIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <h1 className="text-white/90 text-3xl font-bold tracking-[0.25em] hand-drawn-title">WANDER ISLAND</h1>
-          <span className="text-white/40 text-sm tracking-[0.5em] hand-drawn-title">流 浪 岛</span>
+        <div className="flex flex-col items-center gap-1.5">
+          <h1 className="text-white/80 text-2xl font-bold tracking-[0.3em] hand-drawn-title">WANDER ISLAND</h1>
+          <span className="text-white/30 text-xs tracking-[0.6em] hand-drawn-title">流 浪 岛</span>
         </div>
 
-        {/* Progress bar */}
-        <div className={`w-48 flex flex-col items-center gap-3 transition-all duration-700 delay-700 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
-          <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
+        {/* Progress / Prompt area */}
+        <div className="h-12 flex flex-col items-center justify-center">
+          {!ready ? (
+            <div className="flex flex-col items-center gap-2.5">
+              <div className="w-36 h-[1.5px] bg-white/8 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-white/40 rounded-full transition-all duration-400 ease-out"
+                  style={{ width: `${Math.min(progress, 100)}%` }}
+                />
+              </div>
+              <span className="text-white/20 text-[9px] tracking-[0.4em] uppercase font-mono">
+                loading
+              </span>
+            </div>
+          ) : (
             <div
-              className="h-full bg-white/60 rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${Math.min(progress, 100)}%` }}
-            />
-          </div>
-          <span className="text-white/30 text-[10px] tracking-[0.3em] uppercase font-mono">
-            {loadingState === 'loading' ? 'Loading...' : 'Ready'}
-          </span>
+              className="flex flex-col items-center gap-3 animate-in fade-in duration-1000"
+            >
+              {/* Ripple ring — the natural "touch me" cue */}
+              <div className="relative w-10 h-10 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full border border-white/15" style={{ animation: 'ripple 2.5s ease-out infinite' }} />
+                <div className="absolute inset-0 rounded-full border border-white/10" style={{ animation: 'ripple 2.5s ease-out infinite 0.8s' }} />
+                <div className="w-2 h-2 rounded-full bg-white/40" style={{ animation: 'breathe 2s ease-in-out infinite' }} />
+              </div>
+              <span className="text-white/35 text-[10px] tracking-[0.5em] font-light" style={{ animation: 'breathe 3s ease-in-out infinite' }}>
+                触碰海面
+              </span>
+            </div>
+          )}
         </div>
-
-        {/* Enter button - appears after loading completes */}
-        {showButton && (
-          <button
-            onClick={handleEnter}
-            className="group relative mt-4 px-10 py-3.5 border border-white/20 rounded-full text-white/70 hover:text-white hover:border-white/50 transition-all duration-500 animate-in fade-in zoom-in-95"
-            style={{ animationDuration: '800ms' }}
-          >
-            <span className="text-sm tracking-[0.4em] uppercase font-light">Enter</span>
-            {/* Subtle glow on hover */}
-            <div className="absolute inset-0 rounded-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          </button>
-        )}
       </div>
 
       <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.3; }
-          25% { transform: translateY(-20px) translateX(10px); opacity: 0.6; }
-          50% { transform: translateY(-10px) translateX(-5px); opacity: 0.4; }
-          75% { transform: translateY(-30px) translateX(8px); opacity: 0.5; }
+        @keyframes breathe {
+          0%, 100% { opacity: 0.7; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.05); }
+        }
+        @keyframes shimmer {
+          0%, 100% { opacity: 0.3; transform: translateX(-3%); }
+          50% { opacity: 0.7; transform: translateX(3%); }
+        }
+        @keyframes mote {
+          0%, 100% { transform: translateY(0) translateX(0); opacity: 0.2; }
+          25% { transform: translateY(-15px) translateX(5px); opacity: 0.5; }
+          50% { transform: translateY(-8px) translateX(-3px); opacity: 0.3; }
+          75% { transform: translateY(-22px) translateX(4px); opacity: 0.4; }
+        }
+        @keyframes ripple {
+          0% { transform: scale(0.6); opacity: 0.6; }
+          100% { transform: scale(2.2); opacity: 0; }
         }
       `}</style>
     </div>
