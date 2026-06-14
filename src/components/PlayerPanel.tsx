@@ -206,7 +206,7 @@ export const PlayerPanel: React.FC = () => {
       <div
         id="guide-avatar"
         onClick={() => { AudioSystem.playClick(); setIsOpen(true); }}
-        className="group flex items-center gap-4 hand-drawn-btn hand-drawn-ghost p-3 pr-6"
+        className="group flex items-center gap-4 px-3 pr-6 py-2 rounded-2xl bg-slate-900/55 backdrop-blur-md border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.35)] hover:bg-slate-900/70 transition-colors cursor-pointer"
       >
         <div className="relative group">
           <div className="w-12 h-12 bg-gradient-to-tr from-emerald-500 to-cyan-500 rounded-full flex items-center justify-center border-2 border-slate-800 shadow-inner overflow-hidden">
@@ -230,7 +230,7 @@ export const PlayerPanel: React.FC = () => {
           )}
         </div>
         <div className="flex flex-col gap-1 min-w-[120px]">
-          <span className="text-sm font-bold text-white group-hover:text-slate-900 transition-colors tracking-wide">
+          <span className="text-sm font-bold text-white tracking-wide">
             {authUser ? authUser.username : playerName}
           </span>
           <div className="flex items-center gap-2">
@@ -244,7 +244,7 @@ export const PlayerPanel: React.FC = () => {
       {/* Full Modal */}
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-500">
-          <div className={`hand-drawn-panel flex overflow-hidden shadow-2xl animate-slide-up ring-1 ${isTouch ? 'touch-modal-full touch-safe-bottom flex-col' : 'w-[960px] h-[640px]'}`}>
+          <div className={`bg-[#fbf7ec] rounded-3xl border border-slate-300/70 flex overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.45)] animate-slide-up ${isTouch ? 'touch-modal-full touch-safe-bottom flex-col rounded-none' : 'w-[960px] h-[640px]'}`}>
 
             {/* Sidebar - Desktop: left column / Touch: bottom tab bar */}
             {!isTouch ? (

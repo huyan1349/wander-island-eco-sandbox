@@ -4,9 +4,7 @@ import { X, Globe, Wifi, User, Camera, Edit2, Mail, BookOpen, Compass, LogOut } 
 import { AudioSystem } from '../lib/audio';
 import { api } from '../lib/api';
 import { disconnectSocket } from '../lib/socket';
-import { MailboxModal } from './MailboxModal';
-import { VisitorBookModal } from './VisitorBookModal';
-import { SocialPlaza } from './SocialPlaza';
+import { PlayerPanel } from './PlayerPanel';
 
 type ModalType = 'NONE' | 'SETTINGS' | 'CREDITS' | 'PROFILE' | 'MAILBOX' | 'VISITORS' | 'PLAZA';
 
@@ -189,25 +187,9 @@ export const TitleScreen: React.FC = () => {
                 <span className="text-sm font-bold hand-drawn-title text-slate-700">Wander Island</span>
                 <span className="text-xs font-bold text-slate-600">流浪岛 . v2.2.0 Touch</span>
                 {authUser && (
-                  <div
-                    onClick={() => { AudioSystem.playClick(); setActiveModal('PROFILE'); }}
-                    className="group flex items-center gap-4 hand-drawn-btn hand-drawn-ghost p-3 pr-6 mt-3 pointer-events-auto cursor-pointer"
-                  >
-                    <div className="relative group">
-                      <div className="w-12 h-12 bg-gradient-to-tr from-emerald-500 to-cyan-500 rounded-full flex items-center justify-center border-2 border-slate-800 shadow-inner overflow-hidden">
-                        {authUser.avatar ? (
-                          <img src={authUser.avatar} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <User size={24} className="text-slate-700" />
-                        )}
-                      </div>
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-800 animate-pulse" title="在线" />
-                    </div>
-                    <div className="flex flex-col gap-1 min-w-[80px]">
-                      <span className="text-sm font-bold text-white group-hover:text-slate-900 transition-colors tracking-wide">
-                        {authUser.username}
-                      </span>
-                    </div>
+                  <div className="mt-3 pointer-events-auto">
+                    {/* 统一玩家界面：与正式游戏内同一套 PlayerPanel */}
+                    <PlayerPanel />
                   </div>
                 )}
             </div>
@@ -428,193 +410,6 @@ export const TitleScreen: React.FC = () => {
                         </div>
                     )}
 
-                    {/* PROFILE MODAL - Islander Card */}
-                    {activeModal === 'PROFILE' && authUser && (
-                        <div className={`hand-drawn-panel max-h-[90vh] p-0 flex flex-col animate-slide-up ring-1 overflow-hidden ${isTouch ? 'touch-modal-full touch-safe-bottom' : 'w-[750px]'}`}>
-                            {/* Header */}
-                            <div className="flex justify-between items-center border-b-2 border-slate-800 p-8 pb-6">
-                                <h2 className="text-3xl hand-drawn-title -rotate-1">岛民卡</h2>
-                                <button onClick={() => { AudioSystem.playClose(); setActiveModal('NONE'); }} className={`hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200 ${isTouch ? 'w-12 h-12' : ''}`}>
-                                    <X size={24} strokeWidth={3} className="text-slate-800" />
-                                </button>
-                            </div>
-
-                            <div className="p-8 pt-6 flex flex-col gap-5 overflow-y-auto custom-scrollbar">
-                                {/* Avatar + Name + Motto */}
-                                <div className="flex items-start gap-6">
-                                    {/* Avatar with upload */}
-                                    <div className="relative group shrink-0">
-                                        <div className="w-28 h-28 bg-gradient-to-tr from-emerald-500 to-cyan-500 rounded-full flex items-center justify-center border-3 border-slate-800 shadow-inner overflow-hidden">
-                                            {authUser.avatar ? (
-                                                <img src={authUser.avatar} alt="" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <User size={40} className="text-slate-700" />
-                                            )}
-                                        </div>
-                                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-slate-800 animate-pulse" />
-                                        <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                            <Camera size={28} className="text-white" />
-                                            <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
-                                        </label>
-                                    </div>
-
-                                    <div className="flex-1 flex flex-col gap-3">
-                                        {/* Name (editable) */}
-                                        {isEditingName ? (
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={tempName}
-                                                    onChange={(e) => setTempName(e.target.value)}
-                                                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveName(); }}
-                                                    className="hand-drawn-panel px-4 py-2 text-lg font-bold text-slate-800 tracking-wide"
-                                                    style={{ borderWidth: '2px' }}
-                                                    autoFocus
-                                                />
-                                                <button onClick={() => { AudioSystem.playConfirm(); handleSaveName(); }} className="hand-drawn-btn p-2 text-emerald-600">
-                                                    <Edit2 size={14} />
-                                                </button>
-                                                <button onClick={() => { AudioSystem.playClose(); setIsEditingName(false); }} className="hand-drawn-btn p-2 text-red-400">
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center gap-3">
-                                                <h3 className="text-3xl font-bold text-slate-800 tracking-wide">{authUser.username}</h3>
-                                                <button onClick={() => { AudioSystem.playTap(); setTempName(authUser.username); setIsEditingName(true); }} className="hand-drawn-btn p-1.5 text-slate-400 hover:text-slate-700">
-                                                    <Edit2 size={14} />
-                                                </button>
-                                            </div>
-                                        )}
-
-                                        {/* Motto / 座右铭 */}
-                                        {isEditingMotto ? (
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={tempMotto}
-                                                    onChange={(e) => setTempMotto(e.target.value)}
-                                                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveMotto(); }}
-                                                    placeholder="写点什么..."
-                                                    maxLength={30}
-                                                    className="hand-drawn-panel px-4 py-2 text-sm text-slate-600 italic"
-                                                    style={{ borderWidth: '2px' }}
-                                                    autoFocus
-                                                />
-                                                <button onClick={() => { AudioSystem.playConfirm(); handleSaveMotto(); }} className="hand-drawn-btn p-1.5 text-emerald-600">
-                                                    <Edit2 size={12} />
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <div
-                                                className="bg-amber-50 border-2 border-dashed border-amber-300 rounded-xl px-4 py-2 -rotate-1 cursor-pointer hover:bg-amber-100 transition-colors"
-                                                onClick={() => { AudioSystem.playTap(); setTempMotto(authUser.motto || ''); setIsEditingMotto(true); }}
-                                            >
-                                                <p className="text-sm italic text-slate-600" style={{ fontFamily: "'ZCOOL KuaiLe', cursive" }}>
-                                                    {authUser.motto || '点击设置座右铭...'}
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex items-center gap-1.5">
-                                                <Wifi size={12} className="text-emerald-500" />
-                                                <span className="text-[10px] font-bold text-emerald-600 tracking-widest uppercase">在线</span>
-                                            </div>
-                                            <p className="text-[10px] text-slate-400 font-mono tracking-wider">ID: {authUser.id.slice(0, 8)}...</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="w-full h-px bg-slate-200" />
-
-                                {/* Stats Grid - 4 columns */}
-                                <div className="grid grid-cols-4 gap-3">
-                                    <div className="hand-drawn-panel p-4 text-center" style={{ borderWidth: '2px' }}>
-                                        <p className="text-[9px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-1">等级</p>
-                                        <p className="text-2xl font-bold text-emerald-500">{playerLevel}</p>
-                                    </div>
-                                    <div className="hand-drawn-panel p-4 text-center" style={{ borderWidth: '2px' }}>
-                                        <p className="text-[9px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-1">生态点</p>
-                                        <p className="text-2xl font-bold text-cyan-500">{ecoPoints}</p>
-                                    </div>
-                                    <div className="hand-drawn-panel p-4 text-center" style={{ borderWidth: '2px' }}>
-                                        <p className="text-[9px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-1">游戏时长</p>
-                                        <p className="text-2xl font-bold text-amber-500">{Math.floor(stats.playtime / 60)}<span className="text-xs font-normal">min</span></p>
-                                    </div>
-                                    <div className="hand-drawn-panel p-4 text-center" style={{ borderWidth: '2px' }}>
-                                        <p className="text-[9px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-1">访客</p>
-                                        <p className="text-2xl font-bold text-violet-500">{authUser.visitorCount || 0}</p>
-                                    </div>
-                                </div>
-
-                                {/* Island Info */}
-                                <div className="hand-drawn-panel p-5 bg-gradient-to-r from-emerald-50 to-cyan-50" style={{ borderWidth: '2px' }}>
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <Globe size={18} className="text-emerald-600" />
-                                        <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase">我的岛屿</p>
-                                    </div>
-                                    <p className="text-xl font-bold text-slate-800 tracking-wide">{islandName}</p>
-                                    <p className="text-xs text-slate-400 mt-1">已放置 {stats.itemsPlaced} 个物体</p>
-                                </div>
-
-                                {/* Quick Access Buttons */}
-                                <div className="grid grid-cols-3 gap-3">
-                                    <button
-                                        onClick={() => { AudioSystem.playClick(); setActiveModal('MAILBOX'); }}
-                                        className="hand-drawn-btn p-4 flex flex-col items-center gap-2 relative"
-                                    >
-                                        <Mail size={24} className="text-amber-600" />
-                                        <span className="text-xs font-bold text-slate-700 tracking-wider">信箱</span>
-                                        {unreadMailCount > 0 && (
-                                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-slate-800">
-                                                {unreadMailCount > 9 ? '9+' : unreadMailCount}
-                                            </span>
-                                        )}
-                                    </button>
-                                    <button
-                                        onClick={() => { AudioSystem.playClick(); setActiveModal('VISITORS'); }}
-                                        className="hand-drawn-btn p-4 flex flex-col items-center gap-2"
-                                    >
-                                        <BookOpen size={24} className="text-violet-600" />
-                                        <span className="text-xs font-bold text-slate-700 tracking-wider">访客簿</span>
-                                    </button>
-                                    <button
-                                        onClick={() => { AudioSystem.playClick(); setActiveModal('PLAZA'); }}
-                                        className="hand-drawn-btn p-4 flex flex-col items-center gap-2"
-                                    >
-                                        <Compass size={24} className="text-cyan-600" />
-                                        <span className="text-xs font-bold text-slate-700 tracking-wider">漂流广场</span>
-                                    </button>
-                                </div>
-
-                                <div className="w-full h-px bg-slate-200" />
-
-                                {/* Logout */}
-                                <button
-                                    onClick={() => { AudioSystem.playClick(); handleLogout(); }}
-                                    className="w-full hand-drawn-btn px-8 py-3 text-red-600 font-bold flex items-center justify-center gap-3"
-                                >
-                                    <LogOut size={16} /> 退出登录
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* MAILBOX MODAL */}
-                    {activeModal === 'MAILBOX' && authUser && (
-                        <MailboxModal onClose={() => setActiveModal('NONE')} />
-                    )}
-
-                    {/* VISITORS MODAL */}
-                    {activeModal === 'VISITORS' && authUser && (
-                        <VisitorBookModal onClose={() => setActiveModal('NONE')} />
-                    )}
-
-                    {/* SOCIAL PLAZA MODAL */}
-                    {activeModal === 'PLAZA' && authUser && (
-                        <SocialPlaza onClose={() => setActiveModal('NONE')} />
-                    )}
 
                 </div>
             )}
