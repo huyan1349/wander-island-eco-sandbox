@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { GameCanvas } from "./components/GameCanvas";
 import { TitleScreen } from "./components/TitleScreen";
 import { SaveSelectScreen } from "./components/SaveSelectScreen";
+import { LoadingScreen } from "./components/LoadingScreen";
 import { useGameStore, ToolType } from "./store";
 import {
   TreePine,
@@ -177,38 +178,10 @@ export default function App() {
     setIsGeneratingAi(false);
   };
 
-  // Unlock audio on first user gesture (browsers block autoplay without interaction)
-  useEffect(() => {
-    const unlock = () => {
-      AudioSystem.ensureResumed();
-      // If BGM was loaded but not playing (because context was suspended), try again
-      if (!AudioSystem['isBgmPlaying']) {
-        AudioSystem.playBGM();
-      }
-      window.removeEventListener('click', unlock);
-      window.removeEventListener('touchstart', unlock);
-      window.removeEventListener('keydown', unlock);
-    };
-    window.addEventListener('click', unlock, { once: true });
-    window.addEventListener('touchstart', unlock, { once: true });
-    window.addEventListener('keydown', unlock, { once: true });
-    return () => {
-      window.removeEventListener('click', unlock);
-      window.removeEventListener('touchstart', unlock);
-      window.removeEventListener('keydown', unlock);
-    };
-  }, []);
+  // Audio is now initialized by LoadingScreen — user click on "Enter" unlocks AudioContext
+  // After LoadingScreen calls onReady, BGM is already playing
 
   useEffect(() => {
-    // Load and play title BGM immediately
-    // Note: may be silently blocked by browser autoplay policy until user interaction
-    const initAudio = async () => {
-      AudioSystem.init();
-      await AudioSystem.loadBGM('/Tides_of_Mahogany.mp3');
-      AudioSystem.playBGM();
-    };
-    initAudio();
-
     // Load Save 1 as Title Screen Background if it exists
     const slots = useGameStore.getState().getSavedSlots();
     if (slots.length > 0) {
@@ -337,6 +310,7 @@ export default function App() {
   const [giftClaimId, setGiftClaimId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [envMenuOpen, setEnvMenuOpen] = useState(false);
+  const [appLoaded, setAppLoaded] = useState(false);
   const lastToolRef = useRef<ToolType>('none');
   const lastCategoryRef = useRef<string | null>(null);
 
@@ -553,14 +527,17 @@ export default function App() {
       className="w-full h-screen relative bg-slate-950 overflow-hidden font-sans text-slate-100 flex"
       style={isFloating ? { position: 'fixed', top: 16, right: 16, width: '100vw', height: '100vh', transform: 'scale(0.32)', transformOrigin: 'top right', borderRadius: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', zIndex: 100 } : undefined}
     >
+      {/* Loading Screen — shows before everything else */}
+      {!appLoaded && <LoadingScreen onReady={() => setAppLoaded(true)} />}
+
       {/* Center Canvas */}
       <div className={`absolute inset-0 z-0 transition-all duration-1000 ${screen !== 'PLAYING' ? 'blur-none brightness-100' : 'blur-none brightness-100'}`}>
         <GameCanvas immersive={isImmersive} timer3D={timer3D} autoRotateOn={autoRotateOn} />
       </div>
 
-      {screen === 'TITLE' && <TitleScreen />}
-      {screen === 'LOGIN' && <LoginScreen />}
-      {screen === 'SAVE_SELECT' && <SaveSelectScreen />}
+      {appLoaded && screen === 'TITLE' && <TitleScreen />}
+      {appLoaded && screen === 'LOGIN' && <LoginScreen />}
+      {appLoaded && screen === 'SAVE_SELECT' && <SaveSelectScreen />}
 
       {screen === 'PLAYING' && selectedTool === 'eraser' && (
         <div className={`absolute left-1/2 -translate-x-1/2 z-50 ${isTouch ? 'bottom-28' : 'bottom-10'}`}>
