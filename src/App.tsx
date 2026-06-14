@@ -178,11 +178,35 @@ export default function App() {
     setIsGeneratingAi(false);
   };
 
-  // Audio is now initialized by LoadingScreen — user click on "Enter" unlocks AudioContext
-  // After LoadingScreen calls onReady, BGM is already playing
+  // Unlock audio on first user gesture (browsers block autoplay without interaction)
+  useEffect(() => {
+    const unlock = () => {
+      AudioSystem.ensureResumed();
+      if (!AudioSystem['isBgmPlaying']) {
+        AudioSystem.playBGM();
+      }
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+    window.addEventListener('click', unlock, { once: true });
+    window.addEventListener('touchstart', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
 
   useEffect(() => {
-    // Load Save 1 as Title Screen Background if it exists
+    const initAudio = async () => {
+      AudioSystem.init();
+      await AudioSystem.loadBGM('/Tides_of_Mahogany.mp3');
+      AudioSystem.playBGM();
+    };
+    initAudio();
+
     const slots = useGameStore.getState().getSavedSlots();
     if (slots.length > 0) {
         useGameStore.getState().loadGame(slots[0].id, true);
