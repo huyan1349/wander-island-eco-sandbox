@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { AudioSystem } from '../lib/audio';
-import { TRACKS } from './ui/musicData';
+import { TRACKS, renderTrackTexture } from './ui/musicData';
 import { Camera, User, ArrowRight, Sparkles, Globe } from 'lucide-react';
 
 // 居民证主题配色（呼应 5 段记忆的色调）
@@ -23,7 +23,9 @@ export const OnboardingFlow: React.FC = () => {
   const addToast = useGameStore(s => s.addToast);
   const setShowWelcomeGuide = useGameStore(s => s.setShowWelcomeGuide);
 
-  const [phase, setPhase] = useState<'PROFILE' | 'CARD'>('PROFILE');
+  const [phase, setPhase] = useState<'PROFILE' | 'CARD' | 'GIFT'>('PROFILE');
+  const [giftIn, setGiftIn] = useState(false);
+  const [flyOut, setFlyOut] = useState(false);
   const [name, setName] = useState(authUser?.username || '');
   const [islandName, setIslandName] = useState('');
   const [motto, setMotto] = useState('');
@@ -94,8 +96,19 @@ export const OnboardingFlow: React.FC = () => {
     setTilt({ x: -py * 14, y: px * 16 });
   };
 
-  // 收下居民证：赠 5 张记忆卡 + 用岛名建岛进入 + 触发引导
-  const handleEnter = () => {
+  // 收下居民证 → 进入赠卡仪式
+  const goToGift = () => { AudioSystem.playConfirm(); setPhase('GIFT'); };
+
+  // 赠卡仪式：5 张卡依次翻出 + 逐张音效
+  useEffect(() => {
+    if (phase !== 'GIFT') return;
+    const r = requestAnimationFrame(() => setGiftIn(true));
+    const timers = TRACKS.map((_, i) => setTimeout(() => AudioSystem.playPop(), 350 + i * 160));
+    return () => { cancelAnimationFrame(r); timers.forEach(clearTimeout); };
+  }, [phase]);
+
+  // 进入漫游岛：赠 5 张记忆卡 + 卡片飞向左下 + 用岛名建岛 + 触发引导
+  const enterGame = () => {
     AudioSystem.playConfirm();
     TRACKS.forEach(t => {
       const k = `card_got_${t.url}`;
@@ -103,8 +116,9 @@ export const OnboardingFlow: React.FC = () => {
     });
     addToast(`${TRACKS.length} 段记忆已收入行囊 ♪`, 'info');
     setShowWelcomeGuide(true);
+    setFlyOut(true);
     const finalIsland = islandName.trim() || `${name.trim() || authUser?.username || '漫游者'}的岛`;
-    createSaveSlot(finalIsland); // 内部 set screen=PLAYING
+    setTimeout(() => createSaveSlot(finalIsland), 650); // 等飞出动画再建岛(内部 set screen=PLAYING)
   };
 
   return (
@@ -290,10 +304,63 @@ export const OnboardingFlow: React.FC = () => {
             你是第 <span className="text-amber-300 font-black text-lg">{memberNo}</span> 位登上漫游岛的旅人
           </p>
 
-          <button onClick={(e) => { e.stopPropagation(); handleEnter(); }}
+          <button onClick={(e) => { e.stopPropagation(); goToGift(); }}
             className="hand-drawn-btn px-10 py-3.5 text-lg font-bold tracking-[0.2em] flex items-center gap-3 transition-all duration-700 delay-300"
             style={{ opacity: cardIn ? 1 : 0, transform: cardIn ? 'translateY(0)' : 'translateY(12px)' }}>
             收下居民证，启程 <ArrowRight size={18} />
+          </button>
+        </div>
+      )}
+
+      {/* ========== 阶段三：赠卡仪式 ========== */}
+      {phase === 'GIFT' && (
+        <div className="flex flex-col items-center gap-8 w-full">
+          <p className="text-center transition-all duration-700" style={{ opacity: giftIn && !flyOut ? 1 : 0, transform: giftIn ? 'translateY(0)' : 'translateY(-14px)' }}>
+            <span className="block text-[11px] font-black tracking-[0.45em] uppercase text-white/50 mb-1">Memories Gifted</span>
+            <span className="hand-drawn-title text-3xl text-white/90">{TRACKS.length} 段记忆，已收入你的行囊</span>
+          </p>
+
+          {/* 扇形铺开的 5 张记忆卡 */}
+          <div className="relative flex items-end justify-center" style={{ height: 240, width: '92vw', maxWidth: 760 }}>
+            {TRACKS.map((t, i) => {
+              const off = i - (TRACKS.length - 1) / 2;
+              return (
+                <div
+                  key={i}
+                  className="absolute w-36 h-52 rounded-2xl overflow-hidden hand-drawn-panel"
+                  style={{
+                    transform: flyOut
+                      // 飞向屏幕左下（收藏库入口方向）
+                      ? 'translate(-44vw, 60vh) rotate(-12deg) scale(0.35)'
+                      : giftIn
+                        ? `translateX(${off * 128}px) translateY(${Math.abs(off) * 14}px) rotate(${off * 7}deg) scale(1)`
+                        : 'translateY(120px) scale(0.6) rotate(0deg)',
+                    opacity: flyOut ? 0 : giftIn ? 1 : 0,
+                    zIndex: 20 - Math.abs(off),
+                    boxShadow: '0 16px 38px rgba(0,0,0,0.5)',
+                    transition: flyOut
+                      ? `transform 0.65s cubic-bezier(0.5,0,0.75,0) ${i * 0.05}s, opacity 0.6s ease ${i * 0.05}s`
+                      : `transform 0.7s cubic-bezier(0.34,1.45,0.64,1) ${i * 0.16}s, opacity 0.5s ease ${i * 0.16}s`,
+                  }}
+                >
+                  <div className="absolute inset-0" style={{ background: t.bg }} />
+                  {renderTrackTexture(i)}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent" />
+                  <div className="absolute top-2.5 left-2.5 w-7 h-7 rounded-full bg-slate-100 border-2 border-slate-800 flex items-center justify-center text-xs font-bold text-slate-700">{i + 1}</div>
+                  <p className="absolute bottom-2.5 left-2.5 right-2.5 text-white font-bold text-xs leading-tight drop-shadow">{t.title}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-white/70 text-sm tracking-wider text-center transition-all duration-700 delay-500" style={{ opacity: giftIn && !flyOut ? 1 : 0 }}>
+            它们都收进了你的<span className="text-amber-300 font-bold">收藏库</span> ♪ 随时在左下角的音乐卡片里翻看
+          </p>
+
+          <button onClick={enterGame} disabled={flyOut}
+            className="hand-drawn-btn px-10 py-3.5 text-lg font-bold tracking-[0.2em] flex items-center gap-3 transition-all duration-700 delay-700 disabled:opacity-60"
+            style={{ opacity: giftIn ? 1 : 0, transform: giftIn ? 'translateY(0)' : 'translateY(12px)' }}>
+            进入漫游岛 <ArrowRight size={18} />
           </button>
         </div>
       )}

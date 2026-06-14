@@ -439,18 +439,39 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeCategory, selectedTool, setSelectedTool]);
 
+  // 常驻模式（始终显示，不进分类）：选择 / 橡皮擦
+  const modeTools = [
+    { id: "none", icon: MousePointer2, label: "选择 / 观察" },
+    { id: "eraser", icon: Eraser, label: "橡皮擦" },
+  ] as const;
+
+  // 放置物分类（重组：自然/生物 分家，去除重复，系统操作移入头像菜单）。分类图标沿用原有 lucide SVG。
   const categories = [
     {
-      name: "环境",
+      name: "自然",
       icon: TreePine,
       tools: [
-        { id: "none", icon: MousePointer2, label: "选择 / 观察", cost: 0 },
-        { id: "eraser", icon: Eraser, label: "橡皮擦", cost: 0 },
         { id: "treeA", icon: TreePine, label: "松树", cost: 0 },
         { id: "treeB", icon: TreeDeciduous, label: "秋季树", cost: 0 },
+        { id: "cherry_tree", icon: Flower2, label: "樱花树", cost: 200 },
+        { id: "willow_tree", icon: TreeDeciduous, label: "垂柳", cost: 180 },
+        { id: "pine_tree", icon: TreePine, label: "云杉", cost: 150 },
+        { id: "bamboo", icon: Sprout, label: "竹子", cost: 100 },
+        { id: "bush", icon: Clover, label: "灌木丛", cost: 50 },
+        { id: "spirit_tree", icon: Star, label: "远古神树", cost: 1000 },
         { id: "rock", icon: Mountain, label: "岩石", cost: 0 },
         { id: "spring", icon: Droplets, label: "生命之泉", cost: 1500 },
-        { id: "streetlamp", icon: Lamp, label: "路灯", cost: 200 },
+      ]
+    },
+    {
+      name: "生物",
+      icon: Rabbit,
+      tools: [
+        { id: "deer", icon: Rabbit, label: "鹿", cost: 300 },
+        { id: "wolf", icon: Dog, label: "狼", cost: 800 },
+        { id: "seagull", icon: Bird, label: "海鸥", cost: 100 },
+        { id: "dolphin", icon: Waves, label: "海豚", cost: 500 },
+        { id: "fish", icon: Fish, label: "荧光鱼群", cost: 150 },
       ]
     },
     {
@@ -460,23 +481,6 @@ export default function App() {
         { id: "terrainUp", icon: ArrowUp, label: "隆起地形", cost: 0 },
         { id: "terrainDown", icon: ArrowDown, label: "降低地形", cost: 0 },
         { id: "pave", icon: Hammer, label: "铺设石板路", cost: 0 },
-      ]
-    },
-    {
-      name: "生态",
-      icon: Rabbit,
-      tools: [
-        { id: "deer", icon: Rabbit, label: "鹿", cost: 300 },
-        { id: "wolf", icon: Dog, label: "狼", cost: 800 },
-        { id: "seagull", icon: Bird, label: "海鸥", cost: 100 },
-        { id: "dolphin", icon: Waves, label: "海豚", cost: 500 },
-        { id: "fish", icon: Fish, label: "荧光鱼群", cost: 150 },
-        { id: "spirit_tree", icon: Star, label: "远古神树", cost: 1000 },
-        { id: "cherry_tree", icon: Flower2, label: "樱花树", cost: 200 },
-        { id: "bamboo", icon: Sprout, label: "竹子", cost: 100 },
-        { id: "pine_tree", icon: TreePine, label: "松树", cost: 150 },
-        { id: "willow_tree", icon: TreeDeciduous, label: "垂柳", cost: 180 },
-        { id: "bush", icon: Clover, label: "灌木丛", cost: 50 },
       ]
     },
     {
@@ -491,6 +495,7 @@ export default function App() {
         { id: "fence", icon: Fence, label: "木栅栏", cost: 20 },
         { id: "well", icon: Droplet, label: "水井", cost: 150 },
         { id: "bench", icon: Armchair, label: "长椅", cost: 40 },
+        { id: "streetlamp", icon: Lamp, label: "路灯", cost: 200 },
         { id: "observatory", icon: Telescope, label: "观星台", cost: 1500 },
         { id: "ruins_arch", icon: Castle, label: "遗迹石门", cost: 2000 },
         { id: "waterwheel", icon: LifeBuoy, label: "巨型水车", cost: 1800 },
@@ -506,7 +511,7 @@ export default function App() {
       ]
     },
     {
-      name: "海洋工程",
+      name: "海洋",
       icon: Waves,
       tools: [
         { id: "platform", icon: Anchor, label: "海上浮板", cost: 50 },
@@ -528,15 +533,6 @@ export default function App() {
         { id: "balloon_bridge", icon: Cloud, label: "热气球(吊桥)", cost: 200 },
       ]
     },
-    {
-      name: "系统",
-      icon: Settings,
-      tools: [
-        { id: "save", icon: Save, label: "保存岛屿", cost: 0 },
-        { id: "load", icon: Download, label: "读取岛屿", cost: 0 },
-        { id: "clear", icon: Trash2, label: "清空岛屿", cost: 0 },
-      ]
-    }
   ];
 
   const activeCatObj = categories.find(c => c.name === activeCategory);
@@ -816,8 +812,33 @@ export default function App() {
             </div>
           )}
 
+          {/* Bottom Dock：常驻模式区 + 分类区 */}
+          <div className="flex items-end gap-3 pointer-events-auto max-w-[97vw]">
+
+          {/* 常驻模式：选择 / 橡皮擦（始终显示） */}
+          <div className={`hand-drawn-panel px-2 py-2 flex gap-2 shrink-0 ${isTouch ? '' : 'py-3'}`}>
+            {modeTools.map((m) => {
+              const ModeIcon = m.icon;
+              const isActive = selectedTool === m.id;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => { setSelectedTool(m.id as ToolType); showTouchTooltip(m.label); }}
+                  className={`hand-drawn-btn relative group shrink-0 ${isTouch ? 'w-12 h-12' : 'w-12 h-12'} ${isActive ? 'hand-drawn-btn-active' : ''}`}
+                >
+                  <ModeIcon size={isTouch ? 22 : 24} className={isActive ? 'text-amber-700' : 'text-slate-800'} />
+                  {!isTouch && (
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 hand-drawn-panel text-[12px] font-bold py-1 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                      {m.label}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Main Category Dock — 手机端可横向滚动 */}
-          <div className={`hand-drawn-panel px-2 py-2 flex gap-2 pointer-events-auto ${isTouch ? 'touch-tools-scroll max-w-[95vw]' : 'px-4 py-3 gap-4'}`}>
+          <div className={`hand-drawn-panel px-2 py-2 flex gap-2 ${isTouch ? 'touch-tools-scroll' : 'px-4 py-3 gap-4'}`}>
             {categories.map((c) => {
               const CategoryIcon = c.icon;
               const isActive = activeCategory === c.name;
@@ -846,6 +867,7 @@ export default function App() {
                 </button>
               );
             })}
+          </div>
           </div>
         </div>
       )}

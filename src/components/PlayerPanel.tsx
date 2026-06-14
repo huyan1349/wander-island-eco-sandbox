@@ -9,9 +9,9 @@ import { SocialPlaza } from './SocialPlaza';
 import {
   User, Edit2, BarChart2, Leaf, Unlock, Settings, LogOut, Clock, Layers,
   Wifi, WifiOff, Camera, X, Users, MessageCircle, Globe, Search, Send,
-  UserPlus, Check, ArrowLeft, Mail, BookOpen, Compass, Star, Waves, Download, Gift
+  UserPlus, Check, ArrowLeft, Mail, BookOpen, Compass, Star, Waves, Download, Gift, Upload, Trash2
 } from 'lucide-react';
-import { exportIslandFile } from '../utils/islandIO';
+import { exportIslandFile, applyIslandData } from '../utils/islandIO';
 import { GiftModal } from './GiftModal';
 
 type Tab = 'stats' | 'ecology' | 'unlocks' | 'social' | 'system';
@@ -47,6 +47,27 @@ export const PlayerPanel: React.FC = () => {
     const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     setIsTouch(hasCoarse || hasTouch);
   }, []);
+
+  // 从 JSON 文件导入岛屿
+  const handleImportIsland = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const d = JSON.parse(String(reader.result));
+        const name = d.name || d.islandName || '导入的岛屿';
+        applyIslandData(d, name);
+        AudioSystem.playConfirm();
+        setIsOpen(false);
+        alert(`已导入岛屿「${name}」`);
+      } catch {
+        alert('导入失败：文件格式不正确');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   // Social state
   const [friends, setFriends] = useState<any[]>([]);
@@ -580,8 +601,15 @@ export const PlayerPanel: React.FC = () => {
                       )}
                     </div>
                     <button onClick={() => { AudioSystem.playConfirm(); saveGame(); alert("Game Saved Successfully!"); }} className="hand-drawn-btn px-8 py-4 text-xl font-bold w-full">保存进度</button>
-                    <button onClick={() => { AudioSystem.playClick(); exportIslandFile(); }} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Download size={18} /> 导出小岛文件</button>
+                    <div className="grid grid-cols-2 gap-3 w-full">
+                      <button onClick={() => { AudioSystem.playClick(); exportIslandFile(); }} className="hand-drawn-btn px-4 py-4 text-sm font-bold flex items-center justify-center gap-2"><Download size={16} /> 导出文件</button>
+                      <label className="hand-drawn-btn px-4 py-4 text-sm font-bold flex items-center justify-center gap-2 cursor-pointer">
+                        <Upload size={16} /> 导入文件
+                        <input type="file" accept="application/json,.json" className="hidden" onChange={handleImportIsland} />
+                      </label>
+                    </div>
                     <button onClick={() => { AudioSystem.playClick(); setShowGift(true); }} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Gift size={18} /> 生成礼物链接</button>
+                    <button onClick={() => { AudioSystem.playClick(); if (confirm('确定清空当前岛屿上的所有物体？此操作不可撤销。')) { store.clearAll(); setIsOpen(false); } }} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3 text-red-600"><Trash2 size={18} /> 清空岛屿</button>
                     {authUser && (
                       <button onClick={() => { AudioSystem.playConfirm(); api.setToken(null); disconnectSocket(); clearAuthUser(); setIsOpen(false); }} className="w-full flex items-center justify-center gap-3 hand-drawn-btn px-8 py-4 text-red-600 font-bold">
                         <LogOut size={18} /><span className="font-light tracking-[0.2em] uppercase text-sm">退出登录</span>
