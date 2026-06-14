@@ -178,32 +178,7 @@ export default function App() {
     setIsGeneratingAi(false);
   };
 
-  // Try to play BGM immediately — <audio> element may autoplay based on MEI
-  // If autoplay is blocked, ensureResumed() will retry on user gesture
-  useEffect(() => {
-    const initAudio = async () => {
-      AudioSystem.init();
-      await AudioSystem.loadBGM('/Tides_of_Mahogany.mp3');
-      AudioSystem.playBGM(); // Will autoplay if browser allows, otherwise marks as blocked
-    };
-    initAudio();
-
-    // Fallback: if autoplay was blocked, retry on first user gesture
-    const unlock = () => {
-      AudioSystem.ensureResumed();
-      window.removeEventListener('click', unlock);
-      window.removeEventListener('touchstart', unlock);
-      window.removeEventListener('keydown', unlock);
-    };
-    window.addEventListener('click', unlock, { once: true });
-    window.addEventListener('touchstart', unlock, { once: true });
-    window.addEventListener('keydown', unlock, { once: true });
-    return () => {
-      window.removeEventListener('click', unlock);
-      window.removeEventListener('touchstart', unlock);
-      window.removeEventListener('keydown', unlock);
-    };
-  }, []);
+  // Audio init moved after appLoaded declaration
 
   useEffect(() => {
     // Load Save 1 as Title Screen Background if it exists
@@ -337,6 +312,35 @@ export default function App() {
   const [appLoaded, setAppLoaded] = useState(() => hasVisitedBefore());
   const lastToolRef = useRef<ToolType>('none');
   const lastCategoryRef = useRef<string | null>(null);
+
+  // Audio initialization
+  // - If LoadingScreen is shown (first visit), it handles init + play in handleEnter
+  // - If LoadingScreen is skipped (return visit), we init + play here
+  useEffect(() => {
+    if (!appLoaded) return; // LoadingScreen will handle it
+
+    const initAudio = async () => {
+      AudioSystem.init();
+      await AudioSystem.loadBGM('/Tides_of_Mahogany.mp3');
+      AudioSystem.playBGM();
+    };
+    initAudio();
+
+    const unlock = () => {
+      AudioSystem.ensureResumed();
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+    window.addEventListener('click', unlock, { once: true });
+    window.addEventListener('touchstart', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, [appLoaded]);
 
   // Switch BGM based on screen
   useEffect(() => {
