@@ -31,6 +31,12 @@ export const TRACKS = [
     bg: 'radial-gradient(circle at 50% 18%, rgba(254,240,138,0.5), transparent 60%), linear-gradient(180deg, rgba(248,250,252,0.15), rgba(30,58,138,0.12))',
     story: '最后的守岛人把自己变成了灯塔，好在每个夜里继续转动——为那艘他早知道不会回来、却仍在等的船，留一束光。',
   },
+  {
+    title: 'Before the First Snow',
+    url: '/Before_the_First_Snow.mp3',
+    bg: 'radial-gradient(ellipse at 50% 6%, rgba(224,242,254,0.6), transparent 62%), linear-gradient(170deg, rgba(186,230,253,0.18), rgba(100,116,139,0.10))',
+    story: '这座岛永远停在初雪落下的前一刻。曾有两个人约好一起看第一场雪，后来只剩一个人留了下来——于是整座岛屏住呼吸，替他把那场雪，一直等了下去。',
+  },
 ];
 
 // 针对每首歌曲风绘制的纹理（叠在渐变之上）
@@ -88,22 +94,34 @@ export function renderTrackTexture(idx: number) {
     );
   }
   // 灯塔之光：绕灯顶旋转扫射的光锥 + 明灭灯泡
+  if (idx === 4) {
+    return (
+      <svg viewBox="0 0 100 120" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+        <defs>
+          <linearGradient id="lhBeam" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor="#fde047" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#fde047" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <polygon points="50,46 16,-34 84,-34" fill="url(#lhBeam)">
+          <animateTransform attributeName="transform" type="rotate" values="-40 50 46;40 50 46;-40 50 46" dur="6s" repeatCount="indefinite" />
+        </polygon>
+        <path d="M44,116 L46,54 L54,54 L56,116 Z" fill="#475569" opacity="0.55" />
+        <rect x="45" y="42" width="10" height="13" rx="1" fill="#64748b" opacity="0.6" />
+        <circle cx="50" cy="48" r="3" fill="#fde047">
+          <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" />
+        </circle>
+      </svg>
+    );
+  }
+  // 初雪之前：缓缓飘落的雪点
   return (
     <svg viewBox="0 0 100 120" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
-      <defs>
-        <linearGradient id="lhBeam" x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0%" stopColor="#fde047" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#fde047" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points="50,46 16,-34 84,-34" fill="url(#lhBeam)">
-        <animateTransform attributeName="transform" type="rotate" values="-40 50 46;40 50 46;-40 50 46" dur="6s" repeatCount="indefinite" />
-      </polygon>
-      <path d="M44,116 L46,54 L54,54 L56,116 Z" fill="#475569" opacity="0.55" />
-      <rect x="45" y="42" width="10" height="13" rx="1" fill="#64748b" opacity="0.6" />
-      <circle cx="50" cy="48" r="3" fill="#fde047">
-        <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" />
-      </circle>
+      {([[16, 18, 1.7], [34, 50, 1.1], [60, 28, 1.9], [80, 60, 1.3], [26, 86, 1.5], [50, 70, 1.0], [72, 102, 1.7], [44, 14, 1.2], [88, 38, 1.0], [12, 58, 1.4], [62, 90, 1.2], [38, 110, 1.5]] as const).map(([x, y, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill="#e0f2fe" opacity={0.45 + (i % 3) * 0.12}>
+          <animateTransform attributeName="transform" type="translate" values={`0 -4; 0 ${10 + (i % 4) * 4}; 0 -4`} dur={`${4.5 + (i % 5) * 0.8}s`} repeatCount="indefinite" />
+        </circle>
+      ))}
     </svg>
   );
 }

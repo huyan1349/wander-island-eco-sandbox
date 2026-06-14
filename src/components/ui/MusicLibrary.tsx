@@ -10,7 +10,7 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [hovered, setHovered] = useState<number | null>(null);
   const [flipped, setFlipped] = useState(false);
-  const RARITY = [64, 78, 41, 53, 29];
+  const RARITY = [64, 78, 41, 53, 29, 17];
   const obtainedDate = (url: string) => {
     const k = `card_got_${url}`;
     let v = localStorage.getItem(k);
