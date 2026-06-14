@@ -138,16 +138,23 @@ export function WeatherForecast() {
         </svg>
       );
     }
-    // 灯塔之光：灯塔剪影 + 放射光束
+    // 灯塔之光：绕灯顶旋转扫射的光锥 + 明灭灯泡（动态）
     return (
       <svg viewBox="0 0 100 120" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
-        {Array.from({ length: 7 }).map((_, i) => {
-          const ang = (-50 + i * 17) * Math.PI / 180;
-          return <line key={i} x1="50" y1="44" x2={50 + Math.sin(ang) * 90} y2={44 - Math.cos(ang) * 72} stroke="#fde047" strokeWidth="0.8" opacity="0.35" />;
-        })}
-        <path d="M44,116 L46,54 L54,54 L56,116 Z" fill="#475569" opacity="0.5" />
-        <rect x="45" y="42" width="10" height="13" rx="1" fill="#64748b" opacity="0.55" />
-        <circle cx="50" cy="48" r="3" fill="#fde047" opacity="0.75" />
+        <defs>
+          <linearGradient id="lhBeam" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor="#fde047" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#fde047" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <polygon points="50,46 16,-34 84,-34" fill="url(#lhBeam)">
+          <animateTransform attributeName="transform" type="rotate" values="-40 50 46;40 50 46;-40 50 46" dur="6s" repeatCount="indefinite" />
+        </polygon>
+        <path d="M44,116 L46,54 L54,54 L56,116 Z" fill="#475569" opacity="0.55" />
+        <rect x="45" y="42" width="10" height="13" rx="1" fill="#64748b" opacity="0.6" />
+        <circle cx="50" cy="48" r="3" fill="#fde047">
+          <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite" />
+        </circle>
       </svg>
     );
   };
