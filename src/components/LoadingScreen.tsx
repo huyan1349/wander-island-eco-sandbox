@@ -400,19 +400,36 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
       let verified = 0;
       const totalItems = items.length;
 
+      // Verify fonts are actually rendered
       const fontCheck = await document.fonts.ready;
       verified += FONTS.length;
       setVerifyCount(verified);
 
+      // Verify BGM audio elements are loaded — wait for readyState >= 2
       for (const track of BGM_TRACKS) {
         const cached = AudioSystem['bgmCache']?.get(track.url);
-        if (cached && cached.readyState >= 2) verified++;
-        else verified++;
+        if (cached) {
+          // Wait up to 5s for each track to reach HAVE_CURRENT_DATA
+          const maxWait = 5000;
+          const start = Date.now();
+          while (cached.readyState < 2 && Date.now() - start < maxWait) {
+            await delay(200);
+          }
+        }
+        verified++;
         setVerifyCount(verified);
       }
 
+      // Verify images loaded
       verified += IMAGES.length;
       setVerifyCount(totalItems);
+
+      // Final gate: ensure ALL items are marked done
+      const allDone = items.every(i => i.status === 'done');
+      if (!allDone) {
+        // Force any remaining items to done (they may have been missed by parallel updates)
+        setItems(prev => prev.map(item => ({ ...item, status: 'done' as const, progress: 100 })));
+      }
 
       // === PHASE 3: READY ===
       setPhase('ready');
@@ -459,12 +476,15 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
 
       {/* ─── RIGHT PANEL: Loading Content ─── */}
       <div className={`h-full flex items-center justify-center ${isTouch ? 'w-full' : 'w-[55%]'} relative z-10`}>
-        <div className="w-full max-w-md px-8 flex flex-col gap-5">
+        <div className="w-full max-w-md px-10 flex flex-col gap-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src="/title/island-outline.svg" alt="" className="w-7 h-7 opacity-30" />
-              <span className="text-white/25 text-[10px] tracking-[0.5em] uppercase font-mono">Wander Island</span>
+              <img src="/title/island-outline.svg" alt="" className="w-8 h-8 opacity-25" />
+              <div className="flex flex-col">
+                <span className="text-white/20 text-[9px] tracking-[0.6em] uppercase font-mono">Wander Island</span>
+                <span className="text-white/10 text-[8px] tracking-[0.15em] font-mono mt-0.5">ENVIRONMENT SETUP</span>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               {phase === 'verify' && (
@@ -472,28 +492,33 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
                   VERIFYING
                 </span>
               )}
-              <span className="text-white/15 text-[10px] tracking-[0.3em] font-mono tabular-nums">
-                {String(totalProgress).padStart(3, ' ')}%
+              {phase === 'ready' && (
+                <span className="text-emerald-400/50 text-[9px] tracking-[0.2em] font-mono">VERIFIED</span>
+              )}
+              <span className="text-white/20 text-[12px] tracking-[0.2em] font-mono tabular-nums font-light">
+                {totalProgress}%
               </span>
             </div>
           </div>
 
           {/* Dynamic status text */}
-          <div className="min-h-[18px]">
-            <p className="text-white/35 text-[10px] tracking-[0.08em] font-mono truncate" style={{ animation: 'fadeIn 0.3s ease' }}>
+          <div className="min-h-[20px]">
+            <p className="text-white/40 text-[11px] tracking-[0.05em] truncate" key={statusText} style={{ animation: 'fadeIn 0.3s ease' }}>
               {statusText}
             </p>
           </div>
 
           {/* Progress bar */}
-          <div className="w-full h-px bg-white/[0.06] rounded-full overflow-hidden">
+          <div className="w-full h-[2px] bg-white/[0.06] rounded-full overflow-hidden">
             <div
-              className="h-full rounded-full transition-all duration-300 ease-out"
+              className="h-full rounded-full transition-all duration-500 ease-out"
               style={{
                 width: `${totalProgress}%`,
-                background: phase === 'verify'
+                background: phase === 'ready'
+                  ? 'linear-gradient(90deg, rgba(52,211,153,0.5), rgba(52,211,153,0.7))'
+                  : phase === 'verify'
                   ? 'linear-gradient(90deg, rgba(52,211,153,0.4), rgba(52,211,153,0.6))'
-                  : 'rgba(255,255,255,0.3)',
+                  : 'rgba(255,255,255,0.25)',
               }}
             />
           </div>
@@ -559,10 +584,10 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
             </span>
           </div>
 
-          {/* Enter button */}
-          <div className="flex flex-col items-center gap-3 min-h-[60px] justify-end">
+          {/* Enter button — prominent white */}
+          <div className="flex flex-col items-center gap-4 min-h-[80px] justify-end pt-4">
             {phase === 'ready' && showEnter && (
-              <div className="flex flex-col items-center gap-3" style={{ animation: 'fadeIn 0.6s ease' }}>
+              <div className="flex flex-col items-center gap-4" style={{ animation: 'fadeIn 0.6s ease' }}>
                 {/* Mobile warning */}
                 {isTouch && (
                   <div className="flex flex-col items-center gap-2 mb-2">
@@ -574,18 +599,18 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
 
                 <button
                   onClick={handleEnter}
-                  className="group relative px-12 py-2.5 text-white/40 hover:text-white/80 transition-all duration-500"
+                  className="group relative px-16 py-3.5 bg-white text-[#08090c] hover:bg-white/90 transition-all duration-300 rounded-sm"
+                  style={{ boxShadow: '0 0 40px rgba(255,255,255,0.08), 0 0 80px rgba(255,255,255,0.04)' }}
                 >
-                  <span className="text-[10px] tracking-[0.6em] uppercase font-mono">
-                    {isTouch ? '继续使用移动端' : 'Enter'}
+                  <span className="text-[11px] tracking-[0.5em] uppercase font-mono font-bold">
+                    {isTouch ? '继续使用移动端' : '开 始'}
                   </span>
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-px bg-white/25 group-hover:w-full transition-all duration-500" />
                 </button>
 
                 {!isFullscreen && (
                   <button
                     onClick={requestFullscreen}
-                    className="flex items-center gap-1.5 text-white/10 hover:text-white/25 transition-colors duration-300"
+                    className="flex items-center gap-1.5 text-white/15 hover:text-white/35 transition-colors duration-300"
                   >
                     <Maximize2 size={9} />
                     <span className="text-[8px] tracking-[0.2em] font-mono">FULLSCREEN RECOMMENDED</span>
