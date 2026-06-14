@@ -467,16 +467,35 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
         background: 'radial-gradient(ellipse 60% 50% at 50% 45%, rgba(30,40,60,0.25) 0%, transparent 70%)',
       }} />
 
-      {/* ─── LEFT PANEL: Full Music Library Cards ─── */}
+      {/* ─── LEFT PANEL: Full Music Library Cards (Desktop only) ─── */}
       {!isTouch && (
         <div className="w-[45%] h-full relative z-10 border-r border-white/[0.04]">
           <MusicCardPanel />
         </div>
       )}
 
+      {/* ─── MOBILE WARNING BANNER ─── */}
+      {isTouch && phase !== 'ready' && (
+        <div className="absolute top-0 left-0 right-0 z-50 safe-top" style={{ animation: 'fadeIn 0.5s ease' }}>
+          <div className="mx-4 mt-4 px-4 py-3 rounded-lg border border-amber-500/30 bg-amber-500/10 backdrop-blur-sm">
+            <div className="flex items-start gap-3">
+              <span className="text-amber-400 text-lg leading-none mt-0.5">⚠</span>
+              <div className="flex-1">
+                <p className="text-amber-300 text-[13px] font-medium leading-snug">
+                  移动端尚未优化完成
+                </p>
+                <p className="text-amber-400/60 text-[11px] mt-1 leading-relaxed">
+                  建议使用电脑端访问以获得最佳体验
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── RIGHT PANEL: Loading Content ─── */}
       <div className={`h-full flex items-center justify-center ${isTouch ? 'w-full' : 'w-[55%]'} relative z-10`}>
-        <div className="w-full max-w-md px-10 flex flex-col gap-6">
+        <div className={`w-full max-w-md flex flex-col gap-5 ${isTouch ? 'px-6 pt-20 pb-8' : 'px-10'}`}>
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -587,19 +606,22 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
           {/* Enter button — prominent white */}
           <div className="flex flex-col items-center gap-4 min-h-[80px] justify-end pt-4">
             {phase === 'ready' && showEnter && (
-              <div className="flex flex-col items-center gap-4" style={{ animation: 'fadeIn 0.6s ease' }}>
-                {/* Mobile warning */}
+              <div className="flex flex-col items-center gap-4 w-full" style={{ animation: 'fadeIn 0.6s ease' }}>
+                {/* Mobile warning — prominent at bottom too */}
                 {isTouch && (
-                  <div className="flex flex-col items-center gap-2 mb-2">
-                    <span className="text-amber-400/50 text-[9px] tracking-[0.15em] font-mono text-center leading-relaxed">
-                      移动端优化尚未完成，建议使用电脑端访问
-                    </span>
+                  <div className="w-full px-4 py-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-center">
+                    <p className="text-amber-300 text-[13px] font-medium">
+                      移动端尚未优化完成
+                    </p>
+                    <p className="text-amber-400/60 text-[11px] mt-1">
+                      建议使用电脑端访问以获得最佳体验
+                    </p>
                   </div>
                 )}
 
                 <button
                   onClick={handleEnter}
-                  className="group relative px-16 py-3.5 bg-white text-[#08090c] hover:bg-white/90 transition-all duration-300 rounded-sm"
+                  className="group relative px-16 py-3.5 bg-white text-[#08090c] hover:bg-white/90 active:bg-white/80 transition-all duration-300 rounded-sm w-full max-w-[280px]"
                   style={{ boxShadow: '0 0 40px rgba(255,255,255,0.08), 0 0 80px rgba(255,255,255,0.04)' }}
                 >
                   <span className="text-[11px] tracking-[0.5em] uppercase font-mono font-bold">
@@ -607,7 +629,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
                   </span>
                 </button>
 
-                {!isFullscreen && (
+                {!isTouch && !isFullscreen && (
                   <button
                     onClick={requestFullscreen}
                     className="flex items-center gap-1.5 text-white/15 hover:text-white/35 transition-colors duration-300"
