@@ -48,6 +48,72 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
+
+  // 把礼物卡渲染成一张带游戏水印+链接的图片下载（用于宣传/分享）
+  const downloadCard = () => {
+    const W = 640, H = 900, imgH = Math.round(H * 0.64);
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    if (!ctx) return;
+
+    const wrap = (text: string, x: number, y: number, maxW: number, lh: number) => {
+      let line = '', yy = y;
+      for (const ch of [...text]) {
+        if (ctx.measureText(line + ch).width > maxW && line) { ctx.fillText(line, x, yy); line = ch; yy += lh; }
+        else line += ch;
+      }
+      ctx.fillText(line, x, yy);
+    };
+
+    const render = (img?: HTMLImageElement) => {
+      // 顶部图片（cover 裁切）
+      if (img) {
+        const tar = W / imgH, ar = img.width / img.height;
+        let sw = img.width, sh = img.height, sx = 0, sy = 0;
+        if (ar > tar) { sw = img.height * tar; sx = (img.width - sw) / 2; }
+        else { sh = img.width / tar; sy = (img.height - sh) / 2; }
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, W, imgH);
+      } else {
+        const g = ctx.createLinearGradient(0, 0, W, imgH); g.addColorStop(0, '#a7f3d0'); g.addColorStop(1, '#bae6fd');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, W, imgH);
+      }
+      const vg = ctx.createLinearGradient(0, 0, 0, imgH);
+      vg.addColorStop(0, 'rgba(0,0,0,0.05)'); vg.addColorStop(1, 'rgba(0,0,0,0.68)');
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, W, imgH);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.font = '600 16px monospace';
+      ctx.fillText('A GIFT ISLAND', 44, imgH - 80);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 48px sans-serif';
+      ctx.fillText(cardName, 42, imgH - 34);
+
+      // 底部纸区
+      ctx.fillStyle = '#fcf8ec'; ctx.fillRect(0, imgH, W, H - imgH);
+      if (message) {
+        ctx.fillStyle = '#475569'; ctx.font = 'italic 22px sans-serif'; ctx.textAlign = 'center';
+        wrap(`「${message}」`, W / 2, imgH + 56, W - 110, 32);
+      }
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#94a3b8'; ctx.font = '13px monospace';
+      ctx.fillText('打开链接 · 收下这座小岛', W / 2, H - 96);
+      ctx.fillStyle = '#64748b'; ctx.font = '12px monospace';
+      ctx.fillText(link.length > 56 ? link.slice(0, 56) + '…' : link, W / 2, H - 74);
+      ctx.textAlign = 'left';
+
+      // 游戏水印
+      ctx.fillStyle = '#15803d'; ctx.font = 'bold 24px sans-serif';
+      ctx.fillText('🌿 Wander Island', 42, H - 30);
+      ctx.fillStyle = '#cbd5e1'; ctx.font = '12px monospace'; ctx.textAlign = 'right';
+      ctx.fillText('漫游岛 · 生态沙盒', W - 42, H - 32); ctx.textAlign = 'left';
+
+      const a = document.createElement('a');
+      a.href = c.toDataURL('image/png');
+      a.download = `wander-island-gift-${cardName}.png`;
+      a.click();
+    };
+
+    if (shot) { const im = new Image(); im.onload = () => render(im); im.src = shot; } else render();
+  };
   const enter = () => {
     if (!gift) return;
     const n = gift.fromName ? `${gift.name || '小岛'} (来自 ${gift.fromName})` : (gift.name || '礼物小岛');
@@ -59,7 +125,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
     const r = e.currentTarget.getBoundingClientRect();
     const px = (e.clientX - r.left) / r.width;
     const py = (e.clientY - r.top) / r.height;
-    setTilt({ x: (0.5 - py) * 18, y: (px - 0.5) * 18, gx: px * 100, gy: py * 100, active: true });
+    setTilt({ x: (0.5 - py) * 26, y: (px - 0.5) * 26, gx: px * 100, gy: py * 100, active: true });
   };
   const onLeave = () => setTilt({ x: 0, y: 0, gx: 50, gy: 50, active: false });
 
@@ -74,7 +140,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
     >
       <style>{`
         @keyframes giftHover{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
-        @keyframes sheen{0%{transform:translateX(-130%) skewX(-20deg)}100%{transform:translateX(240%) skewX(-20deg)}}
+        @keyframes sheen{0%{transform:translateX(-130%) skewX(-20deg);opacity:0}8%{opacity:.55}26%{transform:translateX(240%) skewX(-20deg);opacity:0}100%{transform:translateX(240%) skewX(-20deg);opacity:0}}
         @keyframes cardEnter{0%{opacity:0;transform:scale(0.6) translateY(40px)}60%{opacity:1;transform:scale(1.06) translateY(-4px)}100%{opacity:1;transform:scale(1) translateY(0)}}
         @keyframes petalFall{0%{transform:translateY(-30px) rotate(0deg);opacity:0}15%{opacity:.95}100%{transform:translateY(460px) rotate(380deg);opacity:0}}
         @keyframes glowPulse{0%,100%{opacity:.35}50%{opacity:.6}}
@@ -131,7 +197,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
                   {/* 跟随鼠标的高光（全息感） */}
                   <div className="absolute inset-0 pointer-events-none mix-blend-overlay" style={{ background: `radial-gradient(circle at ${tilt.gx}% ${tilt.gy}%, rgba(255,255,255,0.55), transparent 45%)`, opacity: tilt.active ? 1 : 0, transition: 'opacity 0.3s' }} />
                   <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-0 -left-1/3 w-1/3 h-full bg-white/25" style={{ animation: 'sheen 4.5s ease-in-out infinite' }} />
+                    <div className="absolute top-0 -left-1/3 w-1/3 h-full bg-white/25" style={{ animation: 'sheen 6s ease-in-out infinite' }} />
                   </div>
                   <div className="absolute bottom-0 left-0 right-0 p-5">
                     <p className="text-white/60 text-[10px] font-mono tracking-[0.3em] uppercase mb-1">A Gift Island</p>
@@ -203,6 +269,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
               <>
                 <div className="px-3 py-2 rounded-xl bg-white/95 border-2 border-slate-300 text-[11px] break-all text-slate-600 max-h-20 overflow-auto">{link}</div>
                 <button onClick={copy} className="hand-drawn-btn px-5 py-3 font-bold bg-white">{copied ? '✓ 已复制链接' : '复制链接送给 TA'}</button>
+                <button onClick={downloadCard} className="hand-drawn-btn px-5 py-3 font-bold bg-white">⬇ 下载礼物卡图片（含链接）</button>
               </>
             )}
             <button onClick={onClose} className="text-white/50 text-sm py-1">关闭</button>
