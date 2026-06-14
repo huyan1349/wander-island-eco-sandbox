@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { createGiftLink, fetchGift, applyIslandData, captureScreenshot, GiftPayload } from '../utils/islandIO';
 
-// 高级 3D 翻转礼物卡 + 仪式感动效：
-// 弹性登场 / 翻面写寄语 / 封装光印 / 樱花瓣飘落 / 拆开展示。
-// 动画分层：入场层(scale)·漂浮层(translateY)·翻转层(rotateY) 互不冲突。
+// 真 3D 礼物卡：鼠标视差倾斜(rotateX/Y 跟随) + 跟随高光 + 翻面 + 漂浮 + 光环绽放。
+// 层次：入场(scale)·漂浮(translateY)·倾斜(rotateX/Y 跟随)·翻转(rotateY)，各层独立不冲突。
 export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
   mode: 'create' | 'claim';
   giftId?: string;
@@ -21,6 +20,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
   const [petals, setPetals] = useState(false);
   const [gift, setGift] = useState<GiftPayload | null>(null);
   const [err, setErr] = useState('');
+  const [tilt, setTilt] = useState({ x: 0, y: 0, gx: 50, gy: 50, active: false });
 
   useEffect(() => {
     if (mode === 'create') {
@@ -55,6 +55,14 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
     onClose();
   };
 
+  const onMove = (e: React.PointerEvent) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    setTilt({ x: (0.5 - py) * 18, y: (px - 0.5) * 18, gx: px * 100, gy: py * 100, active: true });
+  };
+  const onLeave = () => setTilt({ x: 0, y: 0, gx: 50, gy: 50, active: false });
+
   const ge: any = (gift?.data as any)?._gift;
   const frontShot = mode === 'create' ? shot : (ge?.screenshot || '');
   const cardName = mode === 'create' ? (islandName || '我的小岛') : (gift?.name || '一座小岛');
@@ -70,6 +78,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
         @keyframes cardEnter{0%{opacity:0;transform:scale(0.6) translateY(40px)}60%{opacity:1;transform:scale(1.06) translateY(-4px)}100%{opacity:1;transform:scale(1) translateY(0)}}
         @keyframes petalFall{0%{transform:translateY(-30px) rotate(0deg);opacity:0}15%{opacity:.95}100%{transform:translateY(460px) rotate(380deg);opacity:0}}
         @keyframes glowPulse{0%,100%{opacity:.35}50%{opacity:.6}}
+        @keyframes ringBurst{0%{transform:translate(-50%,-50%) scale(0.5);opacity:.7}100%{transform:translate(-50%,-50%) scale(1.7);opacity:0}}
       `}</style>
 
       {/* 遮罩柔光晕 */}
@@ -85,81 +94,99 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       )}
 
       <div onClick={(e) => e.stopPropagation()} className="relative flex flex-col items-center gap-5">
-        {/* 入场层（scale 弹性登场） */}
-        <div style={{ perspective: 1200, animation: 'cardEnter 0.8s cubic-bezier(0.34,1.56,0.64,1)' }}>
-          {/* 漂浮层（translateY 循环） */}
-          <div style={{ animation: 'giftHover 4s ease-in-out infinite' }}>
-            {/* 翻转层（rotateY） */}
+        {/* 进场光环绽放 */}
+        <div className="absolute left-1/2 top-44 w-72 h-72 rounded-full pointer-events-none" style={{ border: '2px solid rgba(251,207,232,0.6)', animation: 'ringBurst 1.1s ease-out 0.2s both' }} />
+
+        {/* 入场层 + 3D 透视 */}
+        <div style={{ perspective: 1000, animation: 'cardEnter 0.8s cubic-bezier(0.34,1.56,0.64,1)' }}>
+          {/* 漂浮层 */}
+          <div style={{ animation: tilt.active ? 'none' : 'giftHover 4s ease-in-out infinite' }}>
+            {/* 倾斜层（跟随鼠标，真 3D） */}
             <div
-              className="relative w-64 h-96"
+              onPointerMove={onMove}
+              onPointerLeave={onLeave}
               style={{
                 transformStyle: 'preserve-3d',
-                transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                transition: 'transform 0.7s cubic-bezier(0.4,0.2,0.2,1)',
+                transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+                transition: tilt.active ? 'transform 0.08s linear' : 'transform 0.5s ease',
               }}
             >
-              {/* 正面：截图 + 岛名 */}
-              <div className="absolute inset-0 rounded-3xl overflow-hidden hand-drawn-panel" style={{ backfaceVisibility: 'hidden' }}>
-                {frontShot
-                  ? <img src={frontShot} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                  : <div className="absolute inset-0 bg-gradient-to-br from-emerald-200 to-sky-200" />}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/15" />
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                  <div className="absolute top-0 -left-1/3 w-1/3 h-full bg-white/25" style={{ animation: 'sheen 4.5s ease-in-out infinite' }} />
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 p-5">
-                  <p className="text-white/60 text-[10px] font-mono tracking-[0.3em] uppercase mb-1">A Gift Island</p>
-                  <p className="text-white text-2xl font-bold drop-shadow-lg leading-tight">{cardName}</p>
-                </div>
-                {mode === 'create' && !link && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setFlipped(true); }}
-                    className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-white/90 text-slate-800 text-[11px] font-bold shadow-lg hover:bg-white transition-colors animate-pulse"
-                  >
-                    ✍ 翻面写寄语
-                  </button>
-                )}
-              </div>
-
-              {/* 背面：create=卡上手写；claim=展示寄语 */}
+              {/* 翻转层 */}
               <div
-                className="absolute inset-0 rounded-3xl overflow-hidden hand-drawn-panel bg-[#fcf8ec] p-6 flex flex-col"
-                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+                className="relative w-64 h-96"
+                style={{
+                  transformStyle: 'preserve-3d',
+                  transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                  transition: 'transform 0.7s cubic-bezier(0.4,0.2,0.2,1)',
+                  boxShadow: '0 30px 60px rgba(0,0,0,0.5)',
+                  borderRadius: 24,
+                }}
               >
-                {mode === 'create' ? (
-                  <>
-                    <p className="text-slate-400 text-[10px] font-mono tracking-[0.3em] uppercase mb-3 text-center">写一张寄语卡</p>
-                    <input
-                      value={toName} onChange={(e) => setToName(e.target.value)} placeholder="致 · 谁"
-                      className="mb-3 px-3 py-2 rounded-lg border-b-2 border-slate-300 focus:border-slate-700 outline-none text-sm bg-transparent text-center font-bold text-slate-800"
-                    />
-                    <textarea
-                      value={message} onChange={(e) => setMessage(e.target.value)} placeholder="写下你想对 TA 说的话…"
-                      className="flex-1 px-2 py-2 outline-none text-base resize-none bg-transparent text-slate-700 leading-relaxed text-center italic"
-                    />
-                    <div className="border-t-2 border-dashed border-slate-300 pt-3 text-right">
-                      <p className="text-slate-400 text-[10px] uppercase tracking-widest">From</p>
-                      <p className="text-slate-800 font-bold">{fromName || '匿名'}</p>
-                    </div>
+                {/* 正面 */}
+                <div className="absolute inset-0 rounded-3xl overflow-hidden hand-drawn-panel" style={{ backfaceVisibility: 'hidden' }}>
+                  {frontShot
+                    ? <img src={frontShot} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                    : <div className="absolute inset-0 bg-gradient-to-br from-emerald-200 to-sky-200" />}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/15" />
+                  {/* 跟随鼠标的高光（全息感） */}
+                  <div className="absolute inset-0 pointer-events-none mix-blend-overlay" style={{ background: `radial-gradient(circle at ${tilt.gx}% ${tilt.gy}%, rgba(255,255,255,0.55), transparent 45%)`, opacity: tilt.active ? 1 : 0, transition: 'opacity 0.3s' }} />
+                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute top-0 -left-1/3 w-1/3 h-full bg-white/25" style={{ animation: 'sheen 4.5s ease-in-out infinite' }} />
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 p-5">
+                    <p className="text-white/60 text-[10px] font-mono tracking-[0.3em] uppercase mb-1">A Gift Island</p>
+                    <p className="text-white text-2xl font-bold drop-shadow-lg leading-tight">{cardName}</p>
+                  </div>
+                  {mode === 'create' && !link && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); setFlipped(false); }}
-                      className="absolute top-4 left-4 text-slate-400 text-[11px] font-bold hover:text-slate-700"
-                    >← 看正面</button>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-slate-400 text-[10px] font-mono tracking-[0.3em] uppercase mb-4 text-center">致 · {ge?.toName || '你'}</p>
-                    <div className="flex-1 flex items-center justify-center">
-                      <p className="text-slate-700 text-base leading-relaxed text-center italic">
-                        {gift?.message ? `「${gift.message}」` : '愿这座小岛陪你慢下来。'}
-                      </p>
-                    </div>
-                    <div className="border-t-2 border-dashed border-slate-300 pt-3 text-right">
-                      <p className="text-slate-400 text-[10px] uppercase tracking-widest">From</p>
-                      <p className="text-slate-800 font-bold">{gift?.fromName || '匿名'}</p>
-                    </div>
-                  </>
-                )}
+                      onClick={(e) => { e.stopPropagation(); setFlipped(true); }}
+                      className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-white/90 text-slate-800 text-[11px] font-bold shadow-lg hover:bg-white transition-colors animate-pulse"
+                    >
+                      ✍ 翻面写寄语
+                    </button>
+                  )}
+                </div>
+
+                {/* 背面 */}
+                <div
+                  className="absolute inset-0 rounded-3xl overflow-hidden hand-drawn-panel bg-[#fcf8ec] p-6 flex flex-col"
+                  style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+                >
+                  {mode === 'create' ? (
+                    <>
+                      <p className="text-slate-400 text-[10px] font-mono tracking-[0.3em] uppercase mb-3 text-center">写一张寄语卡</p>
+                      <input
+                        value={toName} onChange={(e) => setToName(e.target.value)} placeholder="致 · 谁"
+                        className="mb-3 px-3 py-2 rounded-lg border-b-2 border-slate-300 focus:border-slate-700 outline-none text-sm bg-transparent text-center font-bold text-slate-800"
+                      />
+                      <textarea
+                        value={message} onChange={(e) => setMessage(e.target.value)} placeholder="写下你想对 TA 说的话…"
+                        className="flex-1 px-2 py-2 outline-none text-base resize-none bg-transparent text-slate-700 leading-relaxed text-center italic"
+                      />
+                      <div className="border-t-2 border-dashed border-slate-300 pt-3 text-right">
+                        <p className="text-slate-400 text-[10px] uppercase tracking-widest">From</p>
+                        <p className="text-slate-800 font-bold">{fromName || '匿名'}</p>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setFlipped(false); }}
+                        className="absolute top-4 left-4 text-slate-400 text-[11px] font-bold hover:text-slate-700"
+                      >← 看正面</button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-slate-400 text-[10px] font-mono tracking-[0.3em] uppercase mb-4 text-center">致 · {ge?.toName || '你'}</p>
+                      <div className="flex-1 flex items-center justify-center">
+                        <p className="text-slate-700 text-base leading-relaxed text-center italic">
+                          {gift?.message ? `「${gift.message}」` : '愿这座小岛陪你慢下来。'}
+                        </p>
+                      </div>
+                      <div className="border-t-2 border-dashed border-slate-300 pt-3 text-right">
+                        <p className="text-slate-400 text-[10px] uppercase tracking-widest">From</p>
+                        <p className="text-slate-800 font-bold">{gift?.fromName || '匿名'}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
