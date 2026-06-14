@@ -59,6 +59,12 @@ class ApiClient {
     });
   }
 
+  async checkUsername(username: string) {
+    return this.request<{ available: boolean; reason?: string }>(
+      `/api/auth/check-username?username=${encodeURIComponent(username)}`
+    );
+  }
+
   async login(username: string, password: string) {
     return this.request<{ token: string; user: any }>('/api/auth/login', {
       method: 'POST',

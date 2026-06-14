@@ -32,6 +32,18 @@ const avatarUpload = multer({
 
 const router = Router();
 
+// GET /api/auth/check-username?username=xxx  —— 注册时实时校验用户名是否可用
+router.get('/check-username', (req: AuthRequest, res: Response) => {
+  const username = String(req.query.username || '').trim();
+  if (username.length < 2 || username.length > 20) {
+    res.json({ available: false, reason: 'length' });
+    return;
+  }
+  const db = getDb();
+  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+  res.json({ available: !existing });
+});
+
 // POST /api/auth/register
 router.post('/register', (req: AuthRequest, res: Response) => {
   const { username, password } = req.body;

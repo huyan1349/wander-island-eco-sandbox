@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { connectSocket } from '../lib/socket';
 import { AudioSystem } from '../lib/audio';
-import { User, Lock, ArrowRight, Globe, ArrowLeft } from 'lucide-react';
+import { User, Lock, ArrowRight, Globe, ArrowLeft, Check, X } from 'lucide-react';
+
+type NameStatus = 'idle' | 'checking' | 'available' | 'taken' | 'short';
 
 export const LoginScreen: React.FC = () => {
   const setScreen = useGameStore(state => state.setScreen);
@@ -13,6 +15,24 @@ export const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [nameStatus, setNameStatus] = useState<NameStatus>('idle');
+
+  // 注册模式下实时校验用户名是否可用（防抖）
+  useEffect(() => {
+    if (mode !== 'register') { setNameStatus('idle'); return; }
+    const u = username.trim();
+    if (u.length === 0) { setNameStatus('idle'); return; }
+    if (u.length < 2) { setNameStatus('short'); return; }
+    setNameStatus('checking');
+    const t = setTimeout(async () => {
+      try {
+        const res = await api.checkUsername(u);
+        // 仅当输入未变时才应用结果
+        setNameStatus(res.available ? 'available' : 'taken');
+      } catch { setNameStatus('idle'); }
+    }, 450);
+    return () => clearTimeout(t);
+  }, [username, mode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +82,11 @@ export const LoginScreen: React.FC = () => {
             </div>
             <h1 className="text-4xl font-black text-slate-900 tracking-wider hand-drawn-title">漫游小岛</h1>
             <p className="text-xs font-bold text-emerald-600 tracking-[0.3em] mt-2 uppercase">Online · Multiplayer</p>
+            {mode === 'register' && (
+              <p className="text-[13px] text-slate-500 mt-4 leading-relaxed px-2" style={{ fontFamily: "'ZCOOL KuaiLe', cursive" }}>
+                云海之上，每位漫游者<br />都从一座荒岛启程。
+              </p>
+            )}
           </div>
 
           {/* Mode Toggle */}
@@ -82,19 +107,33 @@ export const LoginScreen: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             {/* Username */}
-            <div className="relative">
-              <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="用户名"
-                className="w-full pl-11 pr-4 py-3 hand-drawn-panel text-slate-800 placeholder:text-slate-400 focus:outline-none text-sm font-bold tracking-wide"
-                style={{ borderWidth: '2px' }}
-                required
-                minLength={2}
-                maxLength={20}
-              />
+            <div>
+              <div className="relative">
+                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="用户名"
+                  className="w-full pl-11 pr-10 py-3 hand-drawn-panel text-slate-800 placeholder:text-slate-400 focus:outline-none text-sm font-bold tracking-wide"
+                  style={{ borderWidth: '2px' }}
+                  required
+                  minLength={2}
+                  maxLength={20}
+                />
+                {mode === 'register' && nameStatus !== 'idle' && (
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                    {nameStatus === 'checking' && <span className="text-slate-400 text-xs animate-spin inline-block">⏳</span>}
+                    {nameStatus === 'available' && <Check size={16} className="text-emerald-500" strokeWidth={3} />}
+                    {(nameStatus === 'taken' || nameStatus === 'short') && <X size={16} className="text-red-500" strokeWidth={3} />}
+                  </span>
+                )}
+              </div>
+              {mode === 'register' && (nameStatus === 'available' || nameStatus === 'taken' || nameStatus === 'short') && (
+                <p className={`text-[11px] font-bold mt-1.5 ml-1 ${nameStatus === 'available' ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {nameStatus === 'available' ? '✓ 这个名字可用' : nameStatus === 'short' ? '名字至少 2 个字' : '✗ 这个名字已被占用'}
+                </p>
+              )}
             </div>
 
             {/* Password */}
@@ -122,7 +161,7 @@ export const LoginScreen: React.FC = () => {
             {/* Submit */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (mode === 'register' && (nameStatus === 'taken' || nameStatus === 'short'))}
               className="hand-drawn-btn w-full py-3.5 text-lg font-bold tracking-[0.2em] flex items-center justify-center gap-3 disabled:opacity-50"
             >
               {loading ? (

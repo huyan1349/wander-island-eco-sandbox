@@ -281,6 +281,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
   const isReady = phase === 'ready';
 
   useEffect(() => {
+    mountedRef.current = true; // 重新挂载时复位（StrictMode 双挂载会先触发上一次的 cleanup 置 false）
     setIsFullscreen(!!document.fullscreenElement);
     const onFs = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', onFs);

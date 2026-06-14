@@ -75,6 +75,10 @@ interface GameState {
   isSplashDone: boolean;
   setIsSplashDone: (val: boolean) => void;
 
+  // 新手登岛欢迎引导（注册后首次进岛显示「辞」气泡）
+  showWelcomeGuide: boolean;
+  setShowWelcomeGuide: (val: boolean) => void;
+
   // Auth
   authUser: AuthUser | null;
   setAuthUser: (user: AuthUser | null) => void;
@@ -218,6 +222,9 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   isSplashDone: false,
   setIsSplashDone: (val) => set({ isSplashDone: val }),
+
+  showWelcomeGuide: false,
+  setShowWelcomeGuide: (val) => set({ showWelcomeGuide: val }),
 
   // Auth
   authUser: null,

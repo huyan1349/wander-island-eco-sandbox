@@ -76,6 +76,7 @@ import {
 import { PlayerPanel } from "./components/PlayerPanel";
 import { LoginScreen } from "./components/LoginScreen";
 import { OnboardingFlow } from "./components/OnboardingFlow";
+import { WelcomeGuide } from "./components/WelcomeGuide";
 import { SocialPanel } from "./components/SocialPanel";
 import { Toast } from "./components/Toast";
 import { FlourishHUD } from "./components/FlourishHUD";
@@ -91,6 +92,7 @@ import { AudioSystem } from "./lib/audio";
 
 export default function App() {
   const screen = useGameStore(state => state.screen);
+  const showWelcomeGuide = useGameStore(state => state.showWelcomeGuide);
   const timeOfDay = useGameStore(state => state.timeOfDay);
   const setTimeOfDay = useGameStore(state => state.setTimeOfDay);
   const setIsTimeScrubbing = useGameStore(state => state.setIsTimeScrubbing);
@@ -988,6 +990,7 @@ export default function App() {
       </>
       )}
       {screen === 'PLAYING' && <Toast />}
+      {screen === 'PLAYING' && showWelcomeGuide && <WelcomeGuide />}
       <FlourishHUD />
       {giftClaimId && (
         <GiftModal mode="claim" giftId={giftClaimId} onClose={() => { setGiftClaimId(null); history.replaceState({}, '', location.pathname); }} />
