@@ -44,147 +44,221 @@ const IMAGES = [
   { url: '/title/island-mark-cut.png', name: 'ISLAND MARK', sub: 'Brand asset' },
 ];
 
-// ─── Music Card Carousel (Left Panel) ───
-function MusicCardCarousel() {
-  const [activeIdx, setActiveIdx] = useState(0);
-  const [mounted, setMounted] = useState(false);
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+// ─── Full Music Library Card Panel (Left Panel) ───
+// 全复用 MusicLibrary 的扇形摊开 + 点击放大 + 翻面逻辑
+function MusicCardPanel() {
+  const [playingUrl, setPlayingUrl] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [hovered, setHovered] = useState<number | null>(null);
   const [flipped, setFlipped] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const autoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const RARITY = [64, 78, 41, 53, 29];
+
+  const obtainedDate = (url: string) => {
+    const k = `card_got_${url}`;
+    let v = localStorage.getItem(k);
+    if (!v) { v = Date.now().toString(); localStorage.setItem(k, v); }
+    const d = new Date(+v);
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     const r = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(r);
   }, []);
 
-  // Auto-switch cards every 6 seconds
+  // Poll playing state
   useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      setActiveIdx(prev => (prev + 1) % TRACKS.length);
-      setFlipped(false);
-    }, 6000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    const id = setInterval(() => {
+      setPlayingUrl(AudioSystem.getCurrentBGMUrl());
+      setProgress(AudioSystem.getBGMProgress());
+    }, 400);
+    return () => clearInterval(id);
   }, []);
 
-  // Reset auto-switch timer on user interaction
-  const resetTimer = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      setActiveIdx(prev => (prev + 1) % TRACKS.length);
-      setFlipped(false);
-    }, 6000);
-  }, []);
+  // Auto-cycle: every 8s auto-open next card detail
+  useEffect(() => {
+    if (detailOpen) return; // Don't auto-cycle while detail is open
+    autoTimerRef.current = setInterval(() => {
+      const next = ((selected ?? -1) + 1) % TRACKS.length;
+      openDetail(next);
+    }, 8000);
+    return () => { if (autoTimerRef.current) clearInterval(autoTimerRef.current); };
+  }, [detailOpen, selected]);
 
-  const navigate = useCallback((dir: 'prev' | 'next') => {
-    setActiveIdx(prev => dir === 'next' ? (prev + 1) % TRACKS.length : (prev - 1 + TRACKS.length) % TRACKS.length);
+  const play = (url: string) => {
+    if (url === AudioSystem.getCurrentBGMUrl()) return;
+    AudioSystem.switchBGM(url);
+    setPlayingUrl(url);
+  };
+
+  const openDetail = (i: number) => {
+    setSelected(i);
     setFlipped(false);
-    resetTimer();
-  }, [resetTimer]);
+    obtainedDate(TRACKS[i].url);
+    requestAnimationFrame(() => requestAnimationFrame(() => setDetailOpen(true)));
+  };
 
-  const goTo = useCallback((idx: number) => {
-    setActiveIdx(idx);
-    setFlipped(false);
-    resetTimer();
-  }, [resetTimer]);
+  const closeDetail = () => {
+    setDetailOpen(false);
+    setTimeout(() => setSelected(null), 300);
+  };
 
-  const t = TRACKS[activeIdx];
+  const n = TRACKS.length;
+  const mid = (n - 1) / 2;
+
+  // Scaled spread for left panel (45% of viewport)
+  const CARD_W = 144; // w-36
+  const CARD_H = 208; // h-52
+  const SPREAD_X = 105;
+  const SPREAD_Y = 12;
+  const SPREAD_ROT = 6;
 
   return (
-    <div className="relative flex flex-col items-center justify-center h-full w-full select-none">
-      {/* Subtle background glow matching current card */}
-      <div
-        className="absolute inset-0 pointer-events-none transition-all duration-1000"
-        style={{ background: t.bg, opacity: 0.3, filter: 'blur(80px)' }}
-      />
+    <div className="relative flex flex-col items-center justify-center h-full w-full select-none overflow-hidden">
+      {/* Background glow */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 55%, rgba(125,211,252,0.08), transparent 55%)' }} />
 
       {/* Title */}
-      <p className="hand-drawn-title text-3xl text-white mb-1 -rotate-1 relative z-10" style={{ animation: 'fadeIn 0.6s ease' }}>
-        音乐长廊
-      </p>
-      <p className="text-white/30 text-[9px] font-mono tracking-[0.3em] uppercase mb-8 relative z-10">
-        PREVIEW · {TRACKS.length} TRACKS
-      </p>
+      <p className="hand-drawn-title text-2xl text-white mb-1 -rotate-1 relative z-10">音乐长廊</p>
+      <p className="text-white/30 text-[9px] font-mono tracking-[0.3em] uppercase mb-8 relative z-10">{n} TRACKS · 点击卡片查看</p>
 
-      {/* Card */}
+      {/* Fan-spread cards */}
       <div
-        className="relative z-10 cursor-pointer"
-        style={{ perspective: 1200 }}
-        onClick={() => { setFlipped(f => !f); resetTimer(); }}
-        onMouseEnter={() => setHoveredIdx(activeIdx)}
-        onMouseLeave={() => setHoveredIdx(null)}
+        className="relative flex items-end justify-center"
+        style={{ height: CARD_H + 40, width: '100%', maxWidth: SPREAD_X * (n - 1) + CARD_W + 40 }}
+        onClick={(e) => e.stopPropagation()}
       >
+        {TRACKS.map((t, i) => {
+          const off = i - mid;
+          const isPlaying = t.url === playingUrl;
+          return (
+            <div
+              key={i}
+              className="absolute"
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered(null)}
+              style={{
+                width: CARD_W,
+                height: CARD_H,
+                transform: mounted
+                  ? `translateX(${off * SPREAD_X}px) translateY(${Math.abs(off) * SPREAD_Y}px) rotate(${off * SPREAD_ROT}deg)`
+                  : 'translateX(0px) translateY(100px) rotate(0deg) scale(0.7)',
+                opacity: mounted ? 1 : 0,
+                zIndex: hovered === i ? 60 : 30 - Math.abs(off),
+                willChange: 'transform, opacity',
+                transition: `transform 0.65s cubic-bezier(0.34,1.45,0.64,1) ${i * 0.07}s, opacity 0.45s ease ${i * 0.07}s`,
+              } as React.CSSProperties}
+            >
+              <div
+                onClick={() => openDetail(i)}
+                className="relative w-full h-full rounded-2xl overflow-hidden hand-drawn-panel cursor-pointer"
+                style={{
+                  boxShadow: isPlaying
+                    ? '0 0 0 3px #15803d, 0 14px 32px rgba(0,0,0,0.55)'
+                    : (hovered === i ? '0 16px 36px rgba(0,0,0,0.55)' : '0 8px 20px rgba(0,0,0,0.4)'),
+                  opacity: (selected === i && detailOpen) ? 0 : 1,
+                  transform: hovered === i ? 'translateY(-12px) scale(1.07)' : 'translateY(0px) scale(1)',
+                  transition: 'transform 0.35s cubic-bezier(0.22,1,0.36,1), box-shadow 0.35s ease, opacity 0.4s ease',
+                }}
+              >
+                <div className="absolute inset-0" style={{ background: t.bg }} />
+                {renderTrackTexture(i)}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent" />
+                <div className="absolute top-2.5 left-2.5 w-7 h-7 rounded-full bg-slate-100 border-2 border-slate-800 flex items-center justify-center shadow-[0_2px_0_rgba(30,41,59,1)]">
+                  {isPlaying ? <span className="text-slate-900 text-xs">♪</span> : <span className="text-slate-500 text-[10px] font-bold">{i + 1}</span>}
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 p-2.5">
+                  <p className="text-white font-bold text-xs leading-tight drop-shadow">{t.title}</p>
+                  {isPlaying && (
+                    <div className="mt-1.5 h-1 rounded-full bg-white/30 overflow-hidden">
+                      <div className="h-full bg-white rounded-full transition-[width] duration-300 ease-linear" style={{ width: `${progress * 100}%` }} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Detail overlay — same as MusicLibrary but scoped to left panel */}
+      {selected !== null && (
         <div
-          className="relative w-52 h-[300px] hand-drawn-panel rounded-2xl overflow-hidden"
+          className="absolute inset-0 z-[220] flex flex-col items-center justify-center gap-3"
+          onClick={(e) => { e.stopPropagation(); closeDetail(); }}
           style={{
-            transformStyle: 'preserve-3d',
-            transform: flipped ? 'rotateY(180deg)' : `rotateY(0deg) ${hoveredIdx === activeIdx ? 'scale(1.04)' : 'scale(1)'}`,
-            transition: 'transform 0.6s cubic-bezier(0.4,0.2,0.2,1), box-shadow 0.4s ease',
-            boxShadow: hoveredIdx === activeIdx
-              ? '0 20px 50px rgba(0,0,0,0.6)'
-              : '0 12px 36px rgba(0,0,0,0.45)',
+            background: `rgba(2,6,23,${detailOpen ? 0.72 : 0})`,
+            backdropFilter: `blur(${detailOpen ? 8 : 0}px)`,
+            WebkitBackdropFilter: `blur(${detailOpen ? 8 : 0}px)`,
+            transition: 'background 0.3s ease, backdrop-filter 0.3s ease',
           }}
         >
-          {/* Front */}
-          <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{ backfaceVisibility: 'hidden' }}>
-            <div className="absolute inset-0" style={{ background: t.bg }} />
-            {renderTrackTexture(activeIdx)}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent" />
-            <div className="absolute top-3 left-3 w-9 h-9 rounded-full bg-slate-100 border-2 border-slate-800 flex items-center justify-center shadow-[0_3px_0_rgba(30,41,59,1)]">
-              <span className="text-slate-900 text-sm">♪</span>
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 p-4">
-              <p className="text-white font-bold text-base leading-tight drop-shadow">{t.title}</p>
-              <p className="text-white/50 text-[10px] font-mono tracking-widest mt-1 uppercase">
-                Track {activeIdx + 1} / {TRACKS.length}
-              </p>
-            </div>
-          </div>
-
-          {/* Back */}
           <div
-            className="absolute inset-0 rounded-2xl overflow-hidden hand-drawn-panel bg-[#fcf8ec] p-5 flex flex-col justify-center items-center"
-            style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-          >
-            <p className="text-slate-400 text-[9px] font-mono tracking-[0.3em] uppercase mb-4">记忆回声</p>
-            <p className="hand-drawn-title text-xl text-slate-800 text-center -rotate-1 mb-5">{t.title}</p>
-            <p className="text-slate-600 text-[12px] leading-relaxed text-center italic px-2">{(t as any).story}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation dots */}
-      <div className="flex items-center gap-2 mt-6 relative z-10">
-        {TRACKS.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => goTo(i)}
-            className="transition-all duration-300"
             style={{
-              width: i === activeIdx ? 20 : 6,
-              height: 6,
-              borderRadius: 3,
-              background: i === activeIdx ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.15)',
+              perspective: 1200,
+              transform: detailOpen
+                ? 'translate(0px, 0px) scale(1)'
+                : `translate(${(selected - mid) * SPREAD_X}px, ${30 + Math.abs(selected - mid) * SPREAD_Y}px) rotate(${(selected - mid) * SPREAD_ROT}deg) scale(0.6)`,
+              opacity: detailOpen ? 1 : 0,
+              transition: 'transform 0.5s cubic-bezier(0.22,1,0.36,1), opacity 0.45s cubic-bezier(0.22,1,0.36,1)',
             }}
-          />
-        ))}
-      </div>
-
-      {/* Prev / Next arrows */}
-      <div className="flex items-center gap-6 mt-4 relative z-10">
-        <button
-          onClick={() => navigate('prev')}
-          className="text-white/20 hover:text-white/60 transition-colors text-lg tracking-widest font-mono"
-        >
-          ‹
-        </button>
-        <span className="text-white/15 text-[8px] font-mono tracking-[0.2em] uppercase">点击卡片翻面</span>
-        <button
-          onClick={() => navigate('next')}
-          className="text-white/20 hover:text-white/60 transition-colors text-lg tracking-widest font-mono"
-        >
-          ›
-        </button>
-      </div>
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              onClick={() => setFlipped((f) => !f)}
+              className="relative w-60 h-[360px] cursor-pointer"
+              style={{ transformStyle: 'preserve-3d', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)', transition: 'transform 0.6s cubic-bezier(0.4,0.2,0.2,1)', boxShadow: '0 24px 56px rgba(0,0,0,0.6)', borderRadius: 20 }}
+            >
+              {/* Front */}
+              <div className="absolute inset-0 rounded-2xl overflow-hidden hand-drawn-panel" style={{ backfaceVisibility: 'hidden' }}>
+                <div className="absolute inset-0" style={{ background: TRACKS[selected].bg }} />
+                {renderTrackTexture(selected)}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
+                <p className="absolute top-4 left-4 text-white/60 text-[9px] font-mono tracking-[0.3em] uppercase">TRACK {selected + 1} / {n}</p>
+                <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <p className="text-white text-xl font-bold drop-shadow-lg mb-1.5 leading-tight">{TRACKS[selected].title}</p>
+                  <p className="text-white/75 text-[12px] leading-relaxed mb-3 italic">{(TRACKS[selected] as any).story}</p>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); play(TRACKS[selected].url); }}
+                    className="w-full hand-drawn-btn px-4 py-2.5 font-bold bg-white text-sm"
+                  >
+                    {TRACKS[selected].url === playingUrl ? '♪ 正在播放' : '▶ 播放这首'}
+                  </button>
+                </div>
+              </div>
+              {/* Back */}
+              <div
+                className="absolute inset-0 rounded-2xl overflow-hidden hand-drawn-panel bg-[#fcf8ec] p-5 flex flex-col"
+                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+              >
+                <p className="text-slate-400 text-[9px] font-mono tracking-[0.3em] uppercase text-center mb-4">CARD · 记忆回声</p>
+                <p className="hand-drawn-title text-lg text-slate-800 text-center mb-6 -rotate-1">{TRACKS[selected].title}</p>
+                <div className="flex-1 flex flex-col justify-center gap-5">
+                  <div className="text-center">
+                    <p className="text-slate-400 text-[9px] uppercase tracking-widest mb-1">获得于</p>
+                    <p className="text-slate-800 text-lg font-bold">{obtainedDate(TRACKS[selected].url)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-slate-400 text-[9px] uppercase tracking-widest mb-1">稀有度</p>
+                    <p className="text-emerald-700 text-lg font-bold">{RARITY[selected]}%</p>
+                    <p className="text-slate-400 text-[10px] mt-0.5">的漫游者拥有这张卡</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p className="text-white/55 text-[10px] font-mono tracking-[0.25em] pointer-events-none" style={{ opacity: detailOpen ? 1 : 0, transition: 'opacity 0.3s' }}>
+            {flipped ? '点击卡片 · 翻回正面' : '点击卡片 · 查看背面'}
+          </p>
+          <p className="text-white/25 text-[9px] font-mono tracking-[0.2em] pointer-events-none" style={{ opacity: detailOpen ? 1 : 0, transition: 'opacity 0.3s 0.1s' }}>
+            点击空白处收起
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -222,6 +296,21 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
     const total = items.reduce((sum, item) => sum + item.progress, 0) / items.length;
     setTotalProgress(Math.round(total));
   }, [items]);
+
+  // Dynamic status text: what's currently being installed
+  const currentInstalling = items.find(i => i.status === 'installing');
+  const statusText = (() => {
+    if (phase === 'verify') return '正在验证资源完整性...';
+    if (phase === 'ready') return '所有资源已就绪';
+    if (!currentInstalling) return '准备安装...';
+    const label = currentInstalling.label;
+    if (label.startsWith('BGM')) return `正在加载背景音乐 — ${currentInstalling.sublabel}...`;
+    if (label.startsWith('FONT')) return `正在安装字体 — ${currentInstalling.sublabel}...`;
+    if (label.startsWith('IMAGE')) return `正在加载图片资源 — ${currentInstalling.sublabel}...`;
+    if (label === 'AUDIO ENGINE') return '正在初始化音频引擎...';
+    if (label === 'DISPLAY') return '正在适配显示环境...';
+    return `正在安装 ${label}...`;
+  })();
 
   useEffect(() => {
     const runInstall = async () => {
@@ -349,7 +438,6 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
     setTimeout(onReady, 800);
   };
 
-  const installingCount = items.filter(i => i.status === 'installing').length;
   const doneCount = items.filter(i => i.status === 'done').length;
 
   return (
@@ -362,10 +450,10 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
         background: 'radial-gradient(ellipse 60% 50% at 50% 45%, rgba(30,40,60,0.25) 0%, transparent 70%)',
       }} />
 
-      {/* ─── LEFT PANEL: Music Card Carousel ─── */}
+      {/* ─── LEFT PANEL: Full Music Library Cards ─── */}
       {!isTouch && (
         <div className="w-[45%] h-full relative z-10 border-r border-white/[0.04]">
-          <MusicCardCarousel />
+          <MusicCardPanel />
         </div>
       )}
 
@@ -390,6 +478,13 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
             </div>
           </div>
 
+          {/* Dynamic status text */}
+          <div className="min-h-[18px]">
+            <p className="text-white/35 text-[10px] tracking-[0.08em] font-mono truncate" style={{ animation: 'fadeIn 0.3s ease' }}>
+              {statusText}
+            </p>
+          </div>
+
           {/* Progress bar */}
           <div className="w-full h-px bg-white/[0.06] rounded-full overflow-hidden">
             <div
@@ -404,7 +499,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
           </div>
 
           {/* Install list — scrollable */}
-          <div className="flex flex-col gap-0 max-h-[50vh] overflow-y-auto scrollbar-none">
+          <div className="flex flex-col gap-0 max-h-[45vh] overflow-y-auto scrollbar-none">
             {items.map((item) => (
               <div
                 key={item.id}
