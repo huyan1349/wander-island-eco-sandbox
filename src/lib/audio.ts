@@ -46,12 +46,27 @@ export class AudioSystem {
         if (this.ctx && this.ctx.state === 'suspended') {
             this.ctx.resume().catch(() => {});
         }
-        // Also try to play BGM if it was blocked
-        if (this.bgmAutoplayBlocked && this.bgmEl) {
-            this.bgmEl.play().then(() => {
+        // On any user gesture, if BGM isn't actually playing, (re)start it now.
+        // Don't gate on bgmAutoplayBlocked — that flag can lag behind a rejected
+        // autoplay attempt, which would otherwise skip the retry on some devices.
+        if (this.bgmEl && !this.isBGMActuallyPlaying()) {
+            // play() MUST be called synchronously inside the gesture (iOS Safari)
+            const p = this.bgmEl.play();
+            if (p !== undefined) {
+                p.then(() => {
+                    this.isBgmPlaying = true;
+                    this.bgmAutoplayBlocked = false;
+                    this.currentBgmUrl = this.bgmEl!.src;
+                    this.fadeBGMIN();
+                }).catch(() => {
+                    this.bgmAutoplayBlocked = true;
+                });
+            } else {
+                this.isBgmPlaying = true;
                 this.bgmAutoplayBlocked = false;
+                this.currentBgmUrl = this.bgmEl.src;
                 this.fadeBGMIN();
-            }).catch(() => {});
+            }
         }
     }
 

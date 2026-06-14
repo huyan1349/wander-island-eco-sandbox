@@ -326,20 +326,19 @@ export default function App() {
     };
     initAudio();
 
+    // Robust autoplay unlock: capture phase survives stopPropagation on UI
+    // buttons; we keep listening across multiple gesture types and re-arm until
+    // BGM is *confirmed* playing (some devices need a 2nd gesture / late ctx resume).
+    const opts: AddEventListenerOptions = { capture: true };
+    const events = ['pointerdown', 'click', 'touchstart', 'keydown'] as const;
+    const removeUnlock = () => events.forEach((e) => window.removeEventListener(e, unlock, opts));
     const unlock = () => {
       AudioSystem.ensureResumed();
-      window.removeEventListener('click', unlock);
-      window.removeEventListener('touchstart', unlock);
-      window.removeEventListener('keydown', unlock);
+      // Detach only once playback is actually confirmed.
+      setTimeout(() => { if (AudioSystem.isBGMActuallyPlaying()) removeUnlock(); }, 250);
     };
-    window.addEventListener('click', unlock, { once: true });
-    window.addEventListener('touchstart', unlock, { once: true });
-    window.addEventListener('keydown', unlock, { once: true });
-    return () => {
-      window.removeEventListener('click', unlock);
-      window.removeEventListener('touchstart', unlock);
-      window.removeEventListener('keydown', unlock);
-    };
+    events.forEach((e) => window.addEventListener(e, unlock, opts));
+    return removeUnlock;
   }, [appLoaded]);
 
   // Switch BGM based on screen
