@@ -177,8 +177,31 @@ export default function App() {
     setIsGeneratingAi(false);
   };
 
+  // Unlock audio on first user gesture (browsers block autoplay without interaction)
+  useEffect(() => {
+    const unlock = () => {
+      AudioSystem.ensureResumed();
+      // If BGM was loaded but not playing (because context was suspended), try again
+      if (!AudioSystem['isBgmPlaying']) {
+        AudioSystem.playBGM();
+      }
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+    window.addEventListener('click', unlock, { once: true });
+    window.addEventListener('touchstart', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
+
   useEffect(() => {
     // Load and play title BGM immediately
+    // Note: may be silently blocked by browser autoplay policy until user interaction
     const initAudio = async () => {
       AudioSystem.init();
       await AudioSystem.loadBGM('/Tides_of_Mahogany.mp3');

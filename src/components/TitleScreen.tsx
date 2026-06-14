@@ -141,10 +141,10 @@ export const TitleScreen: React.FC = () => {
                                 <img
                                     src="/title/island-outline.svg"
                                     alt=""
-                                    className="w-20 h-20 opacity-95 drop-shadow-2xl"
+                                    className="w-16 h-16 opacity-95 drop-shadow-2xl"
                                 />
-                                <h1 className="text-white text-[6rem] font-bold tracking-[0.2em] hand-drawn-title drop-shadow-2xl">WANDER ISLAND</h1>
-                                <span className="text-slate-300 text-2xl tracking-[0.5em] hand-drawn-title">流 浪 岛</span>
+                                <h1 className="text-white text-[3.5rem] font-bold tracking-[0.2em] hand-drawn-title drop-shadow-2xl">WANDER ISLAND</h1>
+                                <span className="text-slate-300 text-xl tracking-[0.5em] hand-drawn-title">流 浪 岛</span>
                             </>
                         )}
                     </div>
@@ -186,56 +186,56 @@ export const TitleScreen: React.FC = () => {
             <div className="flex flex-col justify-between h-full w-full max-w-3xl">
 
                 {/* Titles */}
-                <div className={`${isTouch ? 'mt-10' : 'mt-20'} animate-slide-up`} style={{ opacity: 0 }}>
-                    <h1 className={`${isTouch ? 'text-[4rem] leading-[0.8]' : 'text-[8rem] leading-[0.8]'} font-bold hand-drawn-title tracking-[0.1em] ` + (titleTheme === 'white' ? "text-white/90" : "text-slate-900")}>
+                <div className={`${isTouch ? 'mt-8' : 'mt-16'} animate-slide-up`} style={{ opacity: 0 }}>
+                    <h1 className={`${isTouch ? 'text-[3rem] leading-[0.8]' : 'text-[5rem] leading-[0.8]'} font-bold hand-drawn-title tracking-[0.1em] ` + (titleTheme === 'white' ? "text-white/90" : "text-slate-900")}>
                         WANDER
                     </h1>
-                    <h1 className={`${isTouch ? 'text-[3rem] leading-none' : 'text-[6rem] leading-none'} font-bold hand-drawn-title tracking-[0.2em] ` + (titleTheme === 'white' ? "text-white/70" : "text-slate-900/60")}>
+                    <h1 className={`${isTouch ? 'text-[2.25rem] leading-none' : 'text-[3.75rem] leading-none'} font-bold hand-drawn-title tracking-[0.2em] ` + (titleTheme === 'white' ? "text-white/70" : "text-slate-900/60")}>
                         ISLAND
                     </h1>
-                    <div className="flex items-center gap-3 mt-12 opacity-80">
+                    <div className="flex items-center gap-3 mt-8 opacity-80">
                         <img
                             src="/title/island-outline.svg"
                             alt=""
-                            className={`${isTouch ? 'w-8 h-8' : 'w-10 h-10'} opacity-90 drop-shadow-lg shrink-0`}
+                            className={`${isTouch ? 'w-6 h-6' : 'w-8 h-8'} opacity-90 drop-shadow-lg shrink-0`}
                         />
-                        <span className={`${isTouch ? 'text-xl' : 'text-2xl'} font-bold tracking-[0.2em] hand-drawn-title ` + (titleTheme === 'white' ? "text-white/80" : "text-slate-400")}>流浪岛</span>
+                        <span className={`${isTouch ? 'text-lg' : 'text-xl'} font-bold tracking-[0.2em] hand-drawn-title ` + (titleTheme === 'white' ? "text-white/80" : "text-slate-400")}>流浪岛</span>
                     </div>
                 </div>
 
                 {/* Cinematic Chinese Menu */}
-                <div className={`pointer-events-auto animate-slide-up ${isTouch ? 'mb-8' : 'mb-20'} flex flex-col items-start gap-6 pl-4 mt-12 w-full ${isTouch ? 'max-w-full' : 'max-w-md'}`}>
+                <div className={`pointer-events-auto animate-slide-up ${isTouch ? 'mb-8' : 'mb-16'} flex flex-col items-start gap-4 pl-4 mt-8 w-full ${isTouch ? 'max-w-full' : 'max-w-md'}`}>
                     <button
                         onClick={() => authUser ? setScreen('SAVE_SELECT') : setScreen('LOGIN')}
-                        className={`hand-drawn-btn flex items-center justify-center gap-3 w-full ${isTouch ? 'py-5 text-xl' : 'py-4 text-xl'}`}
+                        className={`hand-drawn-btn flex items-center justify-center gap-3 w-full ${isTouch ? 'py-4 text-lg' : 'py-3 text-lg'}`}
                     >
-                        <Globe size={isTouch ? 28 : 24} />
+                        <Globe size={isTouch ? 24 : 20} />
                         联机模式
                         {authUser && <span className="text-sm font-normal text-emerald-600 ml-1">({authUser.username})</span>}
                     </button>
                     <button
                         onClick={() => setScreen('SAVE_SELECT')}
-                        className={`group flex justify-center items-center hand-drawn-btn hand-drawn-ghost ${isTouch ? 'w-full py-5' : 'w-64 px-6 py-4'} -rotate-2`}
+                        className={`group flex justify-center items-center hand-drawn-btn hand-drawn-ghost ${isTouch ? 'w-full py-4' : 'w-56 px-5 py-3'} -rotate-2`}
                     >
-                        <span className={`${isTouch ? 'text-2xl' : 'text-2xl'} font-bold group-hover:text-slate-900 transition-colors ` + (titleTheme === 'white' ? "text-white/90" : "text-slate-400")}>
+                        <span className={`${isTouch ? 'text-xl' : 'text-xl'} font-bold group-hover:text-slate-900 transition-colors ` + (titleTheme === 'white' ? "text-white/90" : "text-slate-400")}>
                             开始旅程
                         </span>
                     </button>
 
                     <button
                         onClick={() => setActiveModal('SETTINGS')}
-                        className={`group flex justify-center items-center hand-drawn-btn hand-drawn-ghost ${isTouch ? 'w-full py-5' : 'w-64 px-6 py-4'} rotate-1`}
+                        className={`group flex justify-center items-center hand-drawn-btn hand-drawn-ghost ${isTouch ? 'w-full py-4' : 'w-56 px-5 py-3'} rotate-1`}
                     >
-                        <span className={`${isTouch ? 'text-2xl' : 'text-2xl'} font-bold group-hover:text-slate-900 transition-colors ` + (titleTheme === 'white' ? "text-white/90" : "text-slate-400")}>
+                        <span className={`${isTouch ? 'text-xl' : 'text-xl'} font-bold group-hover:text-slate-900 transition-colors ` + (titleTheme === 'white' ? "text-white/90" : "text-slate-400")}>
                             游戏设置
                         </span>
                     </button>
 
                     <button
                         onClick={() => setActiveModal('CREDITS')}
-                        className={`group flex justify-center items-center hand-drawn-btn hand-drawn-ghost ${isTouch ? 'w-full py-5' : 'w-64 px-6 py-4'} -rotate-1`}
+                        className={`group flex justify-center items-center hand-drawn-btn hand-drawn-ghost ${isTouch ? 'w-full py-4' : 'w-56 px-5 py-3'} -rotate-1`}
                     >
-                        <span className={`${isTouch ? 'text-2xl' : 'text-2xl'} font-bold group-hover:text-slate-900 transition-colors ` + (titleTheme === 'white' ? "text-white/90" : "text-slate-400")}>
+                        <span className={`${isTouch ? 'text-xl' : 'text-xl'} font-bold group-hover:text-slate-900 transition-colors ` + (titleTheme === 'white' ? "text-white/90" : "text-slate-400")}>
                             制作组
                         </span>
                     </button>

@@ -38,8 +38,17 @@ export class AudioSystem {
             } catch (e) {
                 console.error("Audio init failed", e);
             }
-        } else if (this.ctx.state === 'suspended') {
-            this.ctx.resume();
+        }
+        // Always try to resume — browsers require user gesture for autoplay
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+        }
+    }
+
+    /** Call this on the first user gesture (click/touch/keydown) to unlock audio */
+    static ensureResumed() {
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
         }
     }
 
