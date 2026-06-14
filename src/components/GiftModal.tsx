@@ -66,7 +66,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       ctx.fillText(line, x, yy);
     };
 
-    const render = (img?: HTMLImageElement) => {
+    const render = (img?: HTMLImageElement, qr?: HTMLImageElement) => {
       // 顶部图片（cover 裁切）
       if (img) {
         const tar = W / imgH, ar = img.width / img.height;
@@ -93,26 +93,39 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
         ctx.fillStyle = '#475569'; ctx.font = 'italic 22px sans-serif'; ctx.textAlign = 'center';
         wrap(`「${message}」`, W / 2, imgH + 56, W - 110, 32);
       }
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#94a3b8'; ctx.font = '13px monospace';
-      ctx.fillText('打开链接 · 收下这座小岛', W / 2, H - 96);
-      ctx.fillStyle = '#64748b'; ctx.font = '12px monospace';
-      ctx.fillText(link.length > 56 ? link.slice(0, 56) + '…' : link, W / 2, H - 74);
       ctx.textAlign = 'left';
+      // 二维码（右下角）
+      if (qr) ctx.drawImage(qr, W - 156, H - 170, 116, 116);
+      // 扫码引导 + 链接（左下）
+      ctx.fillStyle = '#334155'; ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('扫码 · 收下这座小岛', 44, H - 122);
+      ctx.fillStyle = '#94a3b8'; ctx.font = '11px monospace';
+      ctx.fillText(link.length > 40 ? link.slice(0, 40) + '…' : link, 44, H - 98);
 
       // 游戏水印
       ctx.fillStyle = '#15803d'; ctx.font = 'bold 24px sans-serif';
-      ctx.fillText('🌿 Wander Island', 42, H - 30);
-      ctx.fillStyle = '#cbd5e1'; ctx.font = '12px monospace'; ctx.textAlign = 'right';
-      ctx.fillText('漫游岛 · 生态沙盒', W - 42, H - 32); ctx.textAlign = 'left';
+      ctx.fillText('🌿 Wander Island', 44, H - 36);
+      ctx.fillStyle = '#cbd5e1'; ctx.font = '11px monospace'; ctx.textAlign = 'right';
+      ctx.fillText('漫游岛 · 生态沙盒', W - 44, H - 38); ctx.textAlign = 'left';
 
-      const a = document.createElement('a');
-      a.href = c.toDataURL('image/png');
-      a.download = `wander-island-gift-${cardName}.png`;
-      a.click();
+      try {
+        const a = document.createElement('a');
+        a.href = c.toDataURL('image/png');
+        a.download = `wander-island-gift-${cardName}.png`;
+        a.click();
+      } catch { /* qr 跨域失败时忽略 */ }
     };
 
-    if (shot) { const im = new Image(); im.onload = () => render(im); im.src = shot; } else render();
+    const loadImg = (src: string, cross?: boolean) => new Promise<HTMLImageElement | null>((res) => {
+      const im = new Image();
+      if (cross) im.crossOrigin = 'anonymous';
+      im.onload = () => res(im);
+      im.onerror = () => res(null);
+      im.src = src;
+    });
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(link)}`;
+    Promise.all([shot ? loadImg(shot) : Promise.resolve(null), loadImg(qrUrl, true)])
+      .then(([img, qr]) => render(img || undefined, qr || undefined));
   };
   const enter = () => {
     if (!gift) return;
@@ -267,6 +280,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
               </button>
             ) : (
               <>
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(link)}`} alt="扫码收下" className="w-32 h-32 mx-auto rounded-xl bg-white p-1 border-2 border-slate-300" />
                 <div className="px-3 py-2 rounded-xl bg-white/95 border-2 border-slate-300 text-[11px] break-all text-slate-600 max-h-20 overflow-auto">{link}</div>
                 <button onClick={copy} className="hand-drawn-btn px-5 py-3 font-bold bg-white">{copied ? '✓ 已复制链接' : '复制链接送给 TA'}</button>
                 <button onClick={downloadCard} className="hand-drawn-btn px-5 py-3 font-bold bg-white">⬇ 下载礼物卡图片（含链接）</button>
