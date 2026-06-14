@@ -407,6 +407,135 @@ export class AudioSystem {
         noise.stop(t + 0.06);
     }
 
+    /** Soft tap — lighter wood click for tab switches, minor actions */
+    static playTap() {
+        this.init();
+        if (!this.ctx) return;
+        const t = this.ctx.currentTime;
+
+        const bufferSize = this.ctx.sampleRate * 0.025;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.06));
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1200, t);
+        filter.Q.setValueAtTime(1.5, t);
+
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.07, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+
+        noise.connect(filter);
+        filter.connect(g);
+        if (this.masterGain) g.connect(this.masterGain);
+        noise.start(t);
+        noise.stop(t + 0.04);
+    }
+
+    /** Confirm — warm low thud for major actions (start, login, save) */
+    static playConfirm() {
+        this.init();
+        if (!this.ctx) return;
+        const t = this.ctx.currentTime;
+
+        // Low thud component
+        const o = this.ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(150, t);
+        o.frequency.exponentialRampToValueAtTime(80, t + 0.12);
+        const og = this.ctx.createGain();
+        og.gain.setValueAtTime(0.1, t);
+        og.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        o.connect(og);
+        if (this.masterGain) og.connect(this.masterGain);
+        o.start(t);
+        o.stop(t + 0.12);
+
+        // Wood tap on top
+        const bufferSize = this.ctx.sampleRate * 0.05;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.1));
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(600, t);
+        filter.Q.setValueAtTime(2, t);
+
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.14, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+
+        noise.connect(filter);
+        filter.connect(g);
+        if (this.masterGain) g.connect(this.masterGain);
+        noise.start(t);
+        noise.stop(t + 0.08);
+    }
+
+    /** Toggle — crisp snap for on/off switches */
+    static playToggle() {
+        this.init();
+        if (!this.ctx) return;
+        const t = this.ctx.currentTime;
+
+        const o = this.ctx.createOscillator();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(1000, t);
+        o.frequency.exponentialRampToValueAtTime(500, t + 0.04);
+
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.06, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+
+        o.connect(g);
+        if (this.masterGain) g.connect(this.masterGain);
+        o.start(t);
+        o.stop(t + 0.05);
+    }
+
+    /** Close — soft reverse tap for closing panels/modals */
+    static playClose() {
+        this.init();
+        if (!this.ctx) return;
+        const t = this.ctx.currentTime;
+
+        const bufferSize = this.ctx.sampleRate * 0.03;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            // Reverse envelope — fade in then cut
+            data[i] = (Math.random() * 2 - 1) * (1 - Math.exp(-i / (bufferSize * 0.15)));
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(600, t);
+        filter.Q.setValueAtTime(2, t);
+
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.08, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+
+        noise.connect(filter);
+        filter.connect(g);
+        if (this.masterGain) g.connect(this.masterGain);
+        noise.start(t);
+        noise.stop(t + 0.04);
+    }
+
     static playPop() {
         this.init();
         if (!this.ctx) return;
