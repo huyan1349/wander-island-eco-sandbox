@@ -57,6 +57,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
   const [fadeOut, setFadeOut] = useState(false);
   const [showEnter, setShowEnter] = useState(false);
   const [verifyCount, setVerifyCount] = useState(0);
+  const [isTouch] = useState(() => 'ontouchstart' in window || navigator.maxTouchPoints > 0);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -314,11 +315,22 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
         <div className="flex flex-col items-center gap-3 min-h-[60px] justify-end">
           {phase === 'ready' && showEnter && (
             <div className="flex flex-col items-center gap-3" style={{ animation: 'fadeIn 0.6s ease' }}>
+              {/* Mobile warning */}
+              {isTouch && (
+                <div className="flex flex-col items-center gap-2 mb-2">
+                  <span className="text-amber-400/50 text-[9px] tracking-[0.15em] font-mono text-center leading-relaxed">
+                    移动端优化尚未完成，建议使用电脑端访问
+                  </span>
+                </div>
+              )}
+
               <button
                 onClick={handleEnter}
                 className="group relative px-12 py-2.5 text-white/40 hover:text-white/80 transition-all duration-500"
               >
-                <span className="text-[10px] tracking-[0.6em] uppercase font-mono">Enter</span>
+                <span className="text-[10px] tracking-[0.6em] uppercase font-mono">
+                  {isTouch ? '继续使用移动端' : 'Enter'}
+                </span>
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-px bg-white/25 group-hover:w-full transition-all duration-500" />
               </button>
 
