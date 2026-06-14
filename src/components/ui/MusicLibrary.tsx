@@ -85,13 +85,13 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
                   transition: 'transform 0.35s cubic-bezier(0.22,1,0.36,1), box-shadow 0.35s ease, opacity 0.4s ease',
                 }}
               >
-                <div className="absolute inset-0" style={{ background: t.bg, filter: owned ? 'none' : 'grayscale(1) brightness(0.7)' }} />
-                <div style={{ filter: owned ? 'none' : 'grayscale(1) opacity(0.5)' }}>{renderTrackTexture(i)}</div>
+                <div className="absolute inset-0" style={{ background: owned ? t.bg : 'linear-gradient(160deg,#cbd5e1 0%,#64748b 100%)' }} />
+                {owned && renderTrackTexture(i)}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent" />
-                {/* 未获得：置灰罩 + 标注 */}
+                {/* 未获得：标注 */}
                 {!owned && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-slate-900/45">
-                    <span className="px-3 py-1 rounded-full bg-slate-900/80 border border-white/30 text-white/90 text-xs font-bold tracking-widest">🔒 未获得</span>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="px-3 py-1 rounded-full bg-slate-900/75 border border-white/40 text-white/90 text-xs font-bold tracking-widest flex items-center gap-1">🔒 未获得</span>
                   </div>
                 )}
                 <div className="absolute top-3 left-3 w-9 h-9 rounded-full bg-slate-100 border-2 border-slate-800 flex items-center justify-center shadow-[0_3px_0_rgba(30,41,59,1)]">
@@ -138,8 +138,8 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
             >
               {/* 正面 */}
               <div className="absolute inset-0 rounded-3xl overflow-hidden hand-drawn-panel" style={{ backfaceVisibility: 'hidden' }}>
-                <div className="absolute inset-0" style={{ background: TRACKS[selected].bg, filter: isCardOwned(TRACKS[selected].url) ? 'none' : 'grayscale(1) brightness(0.7)' }} />
-                <div style={{ filter: isCardOwned(TRACKS[selected].url) ? 'none' : 'grayscale(1) opacity(0.5)' }}>{renderTrackTexture(selected)}</div>
+                <div className="absolute inset-0" style={{ background: isCardOwned(TRACKS[selected].url) ? TRACKS[selected].bg : 'linear-gradient(160deg,#cbd5e1 0%,#64748b 100%)' }} />
+                {isCardOwned(TRACKS[selected].url) && renderTrackTexture(selected)}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
                 <p className="absolute top-5 left-5 text-white/60 text-[10px] font-mono tracking-[0.3em] uppercase">TRACK {selected + 1} / {n}</p>
                 {/* 翻面提示见卡片下方 */}

@@ -38,23 +38,43 @@ const CI_USER_ID = '00000000-0000-0000-0000-000000000001';
 const NEW_CARD_MAILS = [
   { url: '/Before_the_First_Snow.mp3', title: 'Before the First Snow' },
 ];
+function sendCardMail(db: any, userId: string, card: { url: string; title: string }) {
+  const giftType = `music_card:${card.url}`;
+  const exists = db.prepare('SELECT id FROM mailbox WHERE to_id = ? AND gift_type = ?').get(userId, giftType);
+  if (exists) return;
+  db.prepare('INSERT INTO mailbox (id, from_id, to_id, subject, content, gift_type) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(
+      crypto.randomUUID(), CI_USER_ID, userId,
+      '一段新的记忆',
+      `云海里又浮现了一座岛——「${card.title}」。这段记忆，「辞」替你存了下来。点击领取，把它收进你的收藏库吧。`,
+      giftType
+    );
+}
+
 function backfillCardMails(db: any, userId: string) {
   try {
     const ci = db.prepare('SELECT id FROM users WHERE id = ?').get(CI_USER_ID);
     if (!ci) return; // 「辞」尚未 seed
-    for (const card of NEW_CARD_MAILS) {
-      const giftType = `music_card:${card.url}`;
-      const exists = db.prepare('SELECT id FROM mailbox WHERE to_id = ? AND gift_type = ?').get(userId, giftType);
-      if (exists) continue;
-      db.prepare('INSERT INTO mailbox (id, from_id, to_id, subject, content, gift_type) VALUES (?, ?, ?, ?, ?, ?)')
-        .run(
-          crypto.randomUUID(), CI_USER_ID, userId,
-          '一段新的记忆',
-          `云海里又浮现了一座岛——「${card.title}」。这段记忆，「辞」替你存了下来。点击领取，把它收进你的收藏库吧。`,
-          giftType
-        );
-    }
+    for (const card of NEW_CARD_MAILS) sendCardMail(db, userId, card);
   } catch { /* 补发失败不阻断登录 */ }
+}
+
+// 启动时批量发给所有现有用户（除「辞」自己），保证人人都收到新卡邮件
+export function sendNewCardMailsToAll(db: any) {
+  try {
+    const ci = db.prepare('SELECT id FROM users WHERE id = ?').get(CI_USER_ID);
+    if (!ci) return;
+    const users = db.prepare('SELECT id FROM users WHERE id != ?').all(CI_USER_ID) as { id: string }[];
+    let sent = 0;
+    for (const u of users) {
+      for (const card of NEW_CARD_MAILS) {
+        const giftType = `music_card:${card.url}`;
+        const exists = db.prepare('SELECT id FROM mailbox WHERE to_id = ? AND gift_type = ?').get(u.id, giftType);
+        if (!exists) { sendCardMail(db, u.id, card); sent++; }
+      }
+    }
+    if (sent) console.log(`📬 新卡邮件已补发给 ${sent} 位用户`);
+  } catch (e) { console.error('批量补发新卡邮件失败', e); }
 }
 
 // GET /api/auth/check-username?username=xxx  —— 注册时实时校验用户名是否可用

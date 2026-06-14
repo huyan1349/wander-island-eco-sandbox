@@ -9,7 +9,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import OpenAI from 'openai';
 
 import getDb from './db.js';
-import authRoutes from './routes/auth.js';
+import authRoutes, { sendNewCardMailsToAll } from './routes/auth.js';
 import islandRoutes from './routes/islands.js';
 import friendRoutes from './routes/friends.js';
 import chatRoutes from './routes/chat.js';
@@ -58,6 +58,9 @@ app.use('/avatars', express.static(path.join(__dirname, '..', 'data', 'avatars')
 
 // Initialize database
 getDb();
+
+// 启动时给所有现有用户批量补发新卡邮件
+sendNewCardMailsToAll(getDb());
 
 // API Routes
 app.use('/api/auth', authRoutes);

@@ -55,7 +55,7 @@ export const TRACKS = [
   {
     title: 'Before the First Snow',
     url: '/Before_the_First_Snow.mp3',
-    bg: 'radial-gradient(ellipse at 50% 6%, rgba(224,242,254,0.6), transparent 62%), linear-gradient(170deg, rgba(186,230,253,0.18), rgba(100,116,139,0.10))',
+    bg: 'radial-gradient(ellipse at 50% 0%, rgba(224,242,254,0.85), transparent 70%), linear-gradient(165deg, #c3dcef 0%, #8fb4d6 52%, #5d7da0 100%)',
     story: '这座岛永远停在初雪落下的前一刻。曾有两个人约好一起看第一场雪，后来只剩一个人留了下来——于是整座岛屏住呼吸，替他把那场雪，一直等了下去。',
   },
 ];
@@ -135,12 +135,39 @@ export function renderTrackTexture(idx: number) {
       </svg>
     );
   }
-  // 初雪之前：缓缓飘落的雪点
+  // 初雪之前：雪丘剪影 + 优雅的六角雪晶 + 少量飘雪
+  const flake = (cx: number, cy: number, s: number, dur: number, key: number) => (
+    <g key={key} opacity="0.92">
+      <g style={{ transformOrigin: `${cx}px ${cy}px` }}>
+        {[0, 1, 2, 3, 4, 5].map((k) => {
+          const a = (k * 60) * Math.PI / 180;
+          const ex = cx + Math.cos(a) * s, ey = cy + Math.sin(a) * s;
+          const bx = cx + Math.cos(a) * s * 0.62, by = cy + Math.sin(a) * s * 0.62;
+          return (
+            <g key={k} stroke="#ffffff" strokeWidth="0.7" strokeLinecap="round">
+              <line x1={cx} y1={cy} x2={ex} y2={ey} />
+              <line x1={bx} y1={by} x2={bx + Math.cos(a + 0.55) * s * 0.28} y2={by + Math.sin(a + 0.55) * s * 0.28} />
+              <line x1={bx} y1={by} x2={bx + Math.cos(a - 0.55) * s * 0.28} y2={by + Math.sin(a - 0.55) * s * 0.28} />
+            </g>
+          );
+        })}
+        <animateTransform attributeName="transform" type="rotate" values={`0 ${cx} ${cy};360 ${cx} ${cy}`} dur={`${dur}s`} repeatCount="indefinite" />
+      </g>
+    </g>
+  );
   return (
     <svg viewBox="0 0 100 120" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
-      {([[16, 18, 1.7], [34, 50, 1.1], [60, 28, 1.9], [80, 60, 1.3], [26, 86, 1.5], [50, 70, 1.0], [72, 102, 1.7], [44, 14, 1.2], [88, 38, 1.0], [12, 58, 1.4], [62, 90, 1.2], [38, 110, 1.5]] as const).map(([x, y, r], i) => (
-        <circle key={i} cx={x} cy={y} r={r} fill="#e0f2fe" opacity={0.45 + (i % 3) * 0.12}>
-          <animateTransform attributeName="transform" type="translate" values={`0 -4; 0 ${10 + (i % 4) * 4}; 0 -4`} dur={`${4.5 + (i % 5) * 0.8}s`} repeatCount="indefinite" />
+      {/* 远处雪丘剪影 */}
+      <path d="M-5,104 Q22,90 50,99 T105,100 L105,121 L-5,121 Z" fill="#ffffff" opacity="0.18" />
+      <path d="M-5,112 Q30,100 58,108 T105,109 L105,121 L-5,121 Z" fill="#ffffff" opacity="0.3" />
+      {/* 优雅雪晶 */}
+      {flake(28, 30, 9, 26, 1)}
+      {flake(72, 52, 6.5, 20, 2)}
+      {flake(46, 78, 7.5, 32, 3)}
+      {/* 少量飘雪点 */}
+      {([[16, 18, 1.3], [60, 22, 1.1], [84, 40, 1.4], [38, 56, 1.0], [80, 74, 1.2], [22, 86, 1.1]] as const).map(([x, y, r], i) => (
+        <circle key={`d${i}`} cx={x} cy={y} r={r} fill="#ffffff" opacity={0.6}>
+          <animateTransform attributeName="transform" type="translate" values={`0 -3; 0 ${8 + (i % 3) * 4}; 0 -3`} dur={`${5 + (i % 4)}s`} repeatCount="indefinite" />
         </circle>
       ))}
     </svg>

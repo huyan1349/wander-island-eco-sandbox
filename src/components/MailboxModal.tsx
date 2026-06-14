@@ -215,9 +215,10 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
                       boxShadow: owned ? '0 0 0 3px #15803d, 0 14px 34px rgba(0,0,0,0.4)' : '0 12px 30px rgba(0,0,0,0.35)',
                     }}
                   >
-                    <div className="absolute inset-0" style={{ background: card.bg, filter: owned ? 'none' : 'grayscale(0.35) brightness(0.92)' }} />
-                    {renderTrackTexture(card.idx)}
+                    <div className="absolute inset-0" style={{ background: owned ? card.bg : 'linear-gradient(160deg,#cbd5e1 0%,#64748b 100%)' }} />
+                    {owned && renderTrackTexture(card.idx)}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent" />
+                    {!owned && <div className="absolute inset-0 flex items-center justify-center"><span className="px-2.5 py-1 rounded-full bg-slate-900/70 border border-white/40 text-white/90 text-[11px] font-bold tracking-widest">🔒 未领取</span></div>}
                     <p className="absolute bottom-3 left-3 right-3 text-white font-bold text-sm leading-tight drop-shadow">{card.title}</p>
                     {claimAnim && <div className="absolute inset-0 animate-pulse" style={{ boxShadow: 'inset 0 0 44px rgba(253,224,71,0.85)' }} />}
                   </div>
