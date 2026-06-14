@@ -491,109 +491,81 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
 
       {/* ─── RIGHT PANEL ─── */}
       <div className={`h-full flex flex-col items-center justify-center ${isTouch ? 'w-full' : 'w-[55%]'} relative z-10`}>
+        <div className={`w-full max-w-md flex flex-col ${isTouch ? 'px-6 pt-24 pb-8 gap-5' : 'px-10 gap-5'}`}>
 
-        {/* === READY STATE: Centered welcome === */}
-        {isReady ? (
-          <div className="flex flex-col items-center gap-8 px-10" style={{ animation: 'fadeIn 0.8s ease' }}>
-            {/* Welcome text — blur fade in */}
-            <div className="flex flex-col items-center gap-2">
-              <p
-                className="text-white/25 text-[14px] tracking-[0.4em] font-light"
-                style={{ animation: 'welcomeBlur 1s ease 0s both' }}
-              >
-                欢迎来到
-              </p>
-              <p
-                className="hand-drawn-title text-5xl text-white/70 -rotate-1"
-                style={{ animation: 'welcomeBlur 1s ease 0.3s both' }}
-              >
-                流浪岛
-              </p>
-              <p
-                className="text-white/15 text-[9px] tracking-[0.7em] uppercase font-mono mt-2"
-                style={{ animation: 'welcomeBlur 1s ease 0.6s both' }}
-              >
-                WANDER ISLAND
-              </p>
-            </div>
-
-            {/* Enter button */}
-            {showEnter && (
-              <div className="flex flex-col items-center gap-5 w-full" style={{ animation: 'fadeIn 0.6s ease' }}>
-                {isTouch && (
-                  <div className="w-full max-w-[300px] px-4 py-3.5 rounded-xl border border-amber-500/40 bg-amber-950/40 text-center">
-                    <p className="text-amber-200 text-[14px] font-semibold">移动端尚未优化完成</p>
-                    <p className="text-amber-400/70 text-[12px] mt-1">建议使用电脑端访问以获得最佳体验</p>
-                  </div>
-                )}
-
-                <button
-                  onClick={handleEnter}
-                  className="group relative px-16 py-4 bg-white text-[#08090c] hover:bg-white/90 active:bg-white/80 transition-all duration-300 rounded-sm w-full max-w-[280px]"
-                  style={{ boxShadow: '0 0 40px rgba(255,255,255,0.1), 0 0 80px rgba(255,255,255,0.05)' }}
-                >
-                  <span className="text-[12px] tracking-[0.5em] uppercase font-mono font-bold">
-                    {isTouch ? '继续使用移动端' : '开 始'}
-                  </span>
-                </button>
-
-                {!isTouch && !isFullscreen && (
-                  <button
-                    onClick={() => { playClick(); requestFullscreen(); }}
-                    className="flex items-center gap-1.5 text-white/15 hover:text-white/35 transition-colors duration-300"
-                  >
-                    <Maximize2 size={9} />
-                    <span className="text-[8px] tracking-[0.2em] font-mono">FULLSCREEN RECOMMENDED</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          /* === LOADING STATE: Install list === */
-          <div className={`w-full max-w-md flex flex-col ${isTouch ? 'px-6 pt-24 pb-8 gap-5' : 'px-10 gap-5'}`}>
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img src="/title/island-outline.svg" alt="" className="w-8 h-8 opacity-25" />
-                <div className="flex flex-col">
-                  <span className="text-white/25 text-[10px] tracking-[0.5em] uppercase font-mono">Wander Island</span>
-                  <span className="text-white/12 text-[8px] tracking-[0.15em] font-mono mt-0.5">ENVIRONMENT SETUP</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {phase === 'verify' && (
-                  <span className="text-emerald-400/50 text-[9px] tracking-[0.2em] font-mono" style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>
-                    VERIFYING
-                  </span>
-                )}
-                <span className="text-white/25 text-[14px] tracking-[0.15em] font-mono tabular-nums font-extralight">
-                  {totalProgress}%
+          {/* Header — always visible */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img src="/title/island-outline.svg" alt="" className="w-8 h-8 opacity-25" />
+              <div className="flex flex-col">
+                <span className="text-white/25 text-[10px] tracking-[0.5em] uppercase font-mono">Wander Island</span>
+                <span className="text-white/12 text-[8px] tracking-[0.15em] font-mono mt-0.5">
+                  {isReady ? 'READY' : 'ENVIRONMENT SETUP'}
                 </span>
               </div>
             </div>
+            <div className="flex items-center gap-3">
+              {phase === 'verify' && (
+                <span className="text-emerald-400/50 text-[9px] tracking-[0.2em] font-mono" style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>
+                  VERIFYING
+                </span>
+              )}
+              {isReady && (
+                <span className="text-emerald-400/60 text-[9px] tracking-[0.2em] font-mono">VERIFIED</span>
+              )}
+              <span className="text-white/25 text-[14px] tracking-[0.15em] font-mono tabular-nums font-extralight">
+                {totalProgress}%
+              </span>
+            </div>
+          </div>
 
-            {/* Status text */}
-            <div className="min-h-[22px]">
+          {/* Status text / Welcome text */}
+          <div className="min-h-[22px]">
+            {!isReady ? (
               <p className="text-white/50 text-[12px] tracking-[0.03em] truncate" key={statusText} style={{ animation: 'fadeIn 0.3s ease' }}>
                 {statusText}
               </p>
-            </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 pt-4" style={{ animation: 'fadeIn 0.5s ease' }}>
+                <p
+                  className="text-white/25 text-[14px] tracking-[0.4em] font-light"
+                  style={{ animation: 'welcomeBlur 1s ease 0s both' }}
+                >
+                  欢迎来到
+                </p>
+                <p
+                  className="hand-drawn-title text-5xl text-white/70 -rotate-1"
+                  style={{ animation: 'welcomeBlur 1s ease 0.3s both' }}
+                >
+                  流浪岛
+                </p>
+                <p
+                  className="text-white/15 text-[9px] tracking-[0.7em] uppercase font-mono mt-2"
+                  style={{ animation: 'welcomeBlur 1s ease 0.6s both' }}
+                >
+                  WANDER ISLAND
+                </p>
+              </div>
+            )}
+          </div>
 
-            {/* Progress bar */}
-            <div className="w-full h-[2px] bg-white/[0.06] rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-500 ease-out"
-                style={{
-                  width: `${totalProgress}%`,
-                  background: phase === 'verify'
-                    ? 'linear-gradient(90deg, rgba(52,211,153,0.4), rgba(52,211,153,0.6))'
-                    : 'rgba(255,255,255,0.25)',
-                }}
-              />
-            </div>
+          {/* Progress bar */}
+          <div className="w-full h-[2px] bg-white/[0.06] rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500 ease-out"
+              style={{
+                width: `${totalProgress}%`,
+                background: isReady
+                  ? 'linear-gradient(90deg, rgba(52,211,153,0.5), rgba(52,211,153,0.7))'
+                  : phase === 'verify'
+                  ? 'linear-gradient(90deg, rgba(52,211,153,0.4), rgba(52,211,153,0.6))'
+                  : 'rgba(255,255,255,0.25)',
+              }}
+            />
+          </div>
 
-            {/* Install list */}
+          {/* Install list — only during install/verify */}
+          {!isReady && (
             <div className="flex flex-col gap-0 max-h-[40vh] overflow-y-auto scrollbar-none">
               {items.map((item) => (
                 <div
@@ -620,8 +592,10 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
                 </div>
               ))}
             </div>
+          )}
 
-            {/* Status line */}
+          {/* Status line / Enter button */}
+          {!isReady ? (
             <div className="flex items-center justify-between text-[9px] font-mono text-white/15 tracking-[0.1em]">
               <span>
                 {phase === 'install' && `${doneCount}/${items.length} installed`}
@@ -632,8 +606,37 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
                 {phase === 'verify' && 'VERIFYING'}
               </span>
             </div>
-          </div>
-        )}
+          ) : showEnter && (
+            <div className="flex flex-col items-center gap-5 pt-4" style={{ animation: 'fadeIn 0.6s ease' }}>
+              {isTouch && (
+                <div className="w-full max-w-[300px] px-4 py-3.5 rounded-xl border border-amber-500/40 bg-amber-950/40 text-center">
+                  <p className="text-amber-200 text-[14px] font-semibold">移动端尚未优化完成</p>
+                  <p className="text-amber-400/70 text-[12px] mt-1">建议使用电脑端访问以获得最佳体验</p>
+                </div>
+              )}
+
+              <button
+                onClick={handleEnter}
+                className="group relative px-16 py-4 bg-white text-[#08090c] hover:bg-white/90 active:bg-white/80 transition-all duration-300 rounded-sm w-full max-w-[280px]"
+                style={{ boxShadow: '0 0 40px rgba(255,255,255,0.1), 0 0 80px rgba(255,255,255,0.05)' }}
+              >
+                <span className="text-[12px] tracking-[0.5em] uppercase font-mono font-bold">
+                  {isTouch ? '继续使用移动端' : '开 始'}
+                </span>
+              </button>
+
+              {!isTouch && !isFullscreen && (
+                <button
+                  onClick={() => { playClick(); requestFullscreen(); }}
+                  className="flex items-center gap-1.5 text-white/15 hover:text-white/35 transition-colors duration-300"
+                >
+                  <Maximize2 size={9} />
+                  <span className="text-[8px] tracking-[0.2em] font-mono">FULLSCREEN RECOMMENDED</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <style>{`

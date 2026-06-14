@@ -380,18 +380,31 @@ export class AudioSystem {
         this.init();
         if (!this.ctx) return;
         const t = this.ctx.currentTime;
-        const o = this.ctx.createOscillator();
+
+        // Wood tap — short noise burst through bandpass filter
+        const bufferSize = this.ctx.sampleRate * 0.04;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.08));
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(800, t);
+        filter.Q.setValueAtTime(2, t);
+
         const g = this.ctx.createGain();
-        o.type = 'sine';
-        o.frequency.setValueAtTime(600, t);
-        o.frequency.exponentialRampToValueAtTime(400, t + 0.06);
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(0.06, t + 0.005);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-        o.connect(g);
+        g.gain.setValueAtTime(0.12, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+
+        noise.connect(filter);
+        filter.connect(g);
         if (this.masterGain) g.connect(this.masterGain);
-        o.start();
-        o.stop(t + 0.1);
+        noise.start(t);
+        noise.stop(t + 0.06);
     }
 
     static playPop() {
