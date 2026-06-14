@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
+import { AudioSystem } from '../lib/audio';
 import { X, BookOpen, User, Star } from 'lucide-react';
 
 export const VisitorBookModal: React.FC<{ onClose: () => void; embedded?: boolean }> = ({ onClose, embedded }) => {
@@ -63,7 +64,7 @@ export const VisitorBookModal: React.FC<{ onClose: () => void; embedded?: boolea
           <BookOpen size={24} className="text-violet-600" />
           <h2 className="text-3xl hand-drawn-title -rotate-1">访客簿</h2>
         </div>
-        <button onClick={onClose} className="hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200">
+        <button onClick={() => { AudioSystem.playClose(); onClose(); }} className="hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200">
           <X size={24} strokeWidth={3} className="text-slate-800" />
         </button>
       </div>

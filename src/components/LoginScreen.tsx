@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { connectSocket } from '../lib/socket';
+import { AudioSystem } from '../lib/audio';
 import { User, Lock, ArrowRight, Globe, ArrowLeft } from 'lucide-react';
 
 export const LoginScreen: React.FC = () => {
@@ -15,6 +16,7 @@ export const LoginScreen: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    AudioSystem.playConfirm();
     setError('');
     setLoading(true);
 
@@ -40,7 +42,7 @@ export const LoginScreen: React.FC = () => {
 
         {/* Back Button */}
         <button
-          onClick={() => setScreen('TITLE')}
+          onClick={() => { AudioSystem.playClose(); setScreen('TITLE'); }}
           className="group flex items-center gap-3 text-slate-600 hover:text-slate-900 mb-8 hand-drawn-btn hand-drawn-ghost px-4 py-2"
         >
           <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
@@ -64,13 +66,13 @@ export const LoginScreen: React.FC = () => {
           {/* Mode Toggle */}
           <div className="flex mb-8 border-2 border-slate-800 rounded-xl overflow-hidden">
             <button
-              onClick={() => { setMode('login'); setError(''); }}
+              onClick={() => { AudioSystem.playTap(); setMode('login'); setError(''); }}
               className={`flex-1 py-3 text-sm font-bold tracking-widest transition-all ${mode === 'login' ? 'hand-drawn-btn-active' : 'bg-transparent text-slate-500 hover:bg-amber-50'}`}
             >
               登录
             </button>
             <button
-              onClick={() => { setMode('register'); setError(''); }}
+              onClick={() => { AudioSystem.playTap(); setMode('register'); setError(''); }}
               className={`flex-1 py-3 text-sm font-bold tracking-widest transition-all ${mode === 'register' ? 'hand-drawn-btn-active' : 'bg-transparent text-slate-500 hover:bg-amber-50'}`}
             >
               注册

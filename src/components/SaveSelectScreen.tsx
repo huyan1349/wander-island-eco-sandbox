@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
+import { AudioSystem } from '../lib/audio';
 import { Plus, Trash2, ArrowLeft, TreePine, Mountain, Waves, Bird, Fish, Cloud, Sun, Globe, Check } from 'lucide-react';
 
 export const SaveSelectScreen: React.FC = () => {
@@ -35,6 +36,7 @@ export const SaveSelectScreen: React.FC = () => {
     }, []);
 
     const handleCreateNew = () => {
+        AudioSystem.playConfirm();
         const name = prompt("Enter a name for your new island:");
         if (name && name.trim()) {
             store.createSaveSlot(name.trim());

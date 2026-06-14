@@ -30,18 +30,21 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
   }, []);
 
   const play = (url: string) => {
+    AudioSystem.playTap();
     if (url === AudioSystem.getCurrentBGMUrl()) return; // 已在播放，避免对同曲重复切换导致崩溃
     AudioSystem.switchBGM(url);
     setPlayingUrl(url);
   };
 
   const openDetail = (i: number) => {
+    AudioSystem.playClick();
     setSelected(i);
     setFlipped(false);
     obtainedDate(TRACKS[i].url); // 首次抽出即记录获得时间
     requestAnimationFrame(() => requestAnimationFrame(() => setDetailOpen(true)));
   };
   const closeDetail = () => {
+    AudioSystem.playClose();
     setDetailOpen(false);
     setTimeout(() => setSelected(null), 300);
   };
@@ -109,7 +112,7 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
         })}
       </div>
 
-      <button onClick={onClose} className="mt-12 hand-drawn-btn px-8 py-3 font-bold bg-white">收起</button>
+      <button onClick={() => { AudioSystem.playClose(); onClose(); }} className="mt-12 hand-drawn-btn px-8 py-3 font-bold bg-white">收起</button>
 
       {/* 查看大卡详情 */}
       {selected !== null && (
@@ -130,7 +133,7 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div
-              onClick={() => setFlipped((f) => !f)}
+              onClick={() => { AudioSystem.playTap(); setFlipped((f) => !f); }}
               className="relative w-72 h-[420px] cursor-pointer"
               style={{ transformStyle: 'preserve-3d', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)', transition: 'transform 0.6s cubic-bezier(0.4,0.2,0.2,1)', boxShadow: '0 30px 70px rgba(0,0,0,0.6)', borderRadius: 24 }}
             >
