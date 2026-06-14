@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
+import { AudioSystem } from '../lib/audio';
 import { disconnectSocket, onChatMessage, onFriendRequest, onFriendAccepted, onIslandVisitor, emitChatSend, emitFriendRequest, emitFriendAccepted, emitPresenceCheck, emitIslandVisit, onPresenceStatus, onUserOnline, onUserOffline } from '../lib/socket';
 import { MailboxModal } from './MailboxModal';
 import { VisitorBookModal } from './VisitorBookModal';
@@ -101,6 +102,7 @@ export const PlayerPanel: React.FC = () => {
   };
 
   const handleSaveName = async () => {
+    AudioSystem.playConfirm();
     if (tempName.trim()) {
       setPlayerName(tempName.trim());
       if (authUser) {
@@ -124,6 +126,7 @@ export const PlayerPanel: React.FC = () => {
   };
 
   const handleOpenChat = async (friend: any) => {
+    AudioSystem.playClick();
     setChatTarget(friend);
     setActiveSocialTab('chat');
     try {
@@ -133,12 +136,14 @@ export const PlayerPanel: React.FC = () => {
   };
 
   const handleSendMessage = () => {
+    AudioSystem.playConfirm();
     if (!chatInput.trim() || !chatTarget) return;
     emitChatSend(chatTarget.id, chatInput.trim());
     setChatInput('');
   };
 
   const handleSearch = async () => {
+    AudioSystem.playClick();
     if (!searchQuery.trim()) return;
     try {
       const res = await api.searchUsers(searchQuery.trim());
@@ -147,6 +152,7 @@ export const PlayerPanel: React.FC = () => {
   };
 
   const handleSendFriendRequest = async (userId: string) => {
+    AudioSystem.playConfirm();
     try {
       await api.sendFriendRequest(userId);
       emitFriendRequest(userId);
@@ -155,6 +161,7 @@ export const PlayerPanel: React.FC = () => {
   };
 
   const handleAcceptRequest = async (userId: string) => {
+    AudioSystem.playConfirm();
     try {
       await api.acceptFriendRequest(userId);
       emitFriendAccepted(userId);
@@ -163,6 +170,7 @@ export const PlayerPanel: React.FC = () => {
   };
 
   const handleRejectRequest = async (userId: string) => {
+    AudioSystem.playClose();
     try {
       await api.rejectFriendRequest(userId);
       setIncomingRequests(prev => prev.filter(r => r.id !== userId));
@@ -175,7 +183,7 @@ export const PlayerPanel: React.FC = () => {
     <>
       {/* Mini Widget */}
       <div
-        onClick={() => setIsOpen(true)}
+        onClick={() => { AudioSystem.playClick(); setIsOpen(true); }}
         className="group flex items-center gap-4 hand-drawn-btn hand-drawn-ghost p-3 pr-6"
       >
         <div className="relative group">
@@ -243,16 +251,16 @@ export const PlayerPanel: React.FC = () => {
                   </div>
                 </div>
 
-                <button onClick={() => setActiveTab('stats')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'stats' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
+                <button onClick={() => { AudioSystem.playTap(); setActiveTab('stats'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'stats' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
                   <BarChart2 size={16} /> 护照
                 </button>
-                <button onClick={() => setActiveTab('ecology')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'ecology' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
+                <button onClick={() => { AudioSystem.playTap(); setActiveTab('ecology'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'ecology' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
                   <Leaf size={16} /> 生态
                 </button>
-                <button onClick={() => setActiveTab('unlocks')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'unlocks' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
+                <button onClick={() => { AudioSystem.playTap(); setActiveTab('unlocks'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'unlocks' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
                   <Unlock size={16} /> 蓝图
                 </button>
-                <button onClick={() => { setActiveTab('social'); setActiveSocialTab('friends'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all relative ${activeTab === 'social' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
+                <button onClick={() => { AudioSystem.playTap(); setActiveTab('social'); setActiveSocialTab('friends'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all relative ${activeTab === 'social' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
                   <Users size={16} /> 社交
                   {(unreadCount > 0 || unreadMailCount > 0) && (
                     <span className="absolute right-3 top-2 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-[16px] flex items-center justify-center rounded-full border border-slate-800">
@@ -260,23 +268,23 @@ export const PlayerPanel: React.FC = () => {
                     </span>
                   )}
                 </button>
-                <button onClick={() => setActiveTab('system')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all mt-auto ${activeTab === 'system' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
+                <button onClick={() => { AudioSystem.playTap(); setActiveTab('system'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all mt-auto ${activeTab === 'system' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
                   <Settings size={16} /> 系统
                 </button>
               </div>
             ) : (
               /* 触屏：底部 Tab 导航 */
               <div className="flex-shrink-0 border-t-2 border-slate-800 flex items-center justify-around px-2 py-2 touch-safe-bottom bg-[#fcf8ec]">
-                <button onClick={() => setActiveTab('stats')} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'stats' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+                <button onClick={() => { AudioSystem.playTap(); setActiveTab('stats'); }} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'stats' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
                   <BarChart2 size={20} /><span className="text-[10px] font-bold">护照</span>
                 </button>
-                <button onClick={() => setActiveTab('ecology')} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'ecology' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+                <button onClick={() => { AudioSystem.playTap(); setActiveTab('ecology'); }} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'ecology' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
                   <Leaf size={20} /><span className="text-[10px] font-bold">生态</span>
                 </button>
-                <button onClick={() => setActiveTab('unlocks')} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'unlocks' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+                <button onClick={() => { AudioSystem.playTap(); setActiveTab('unlocks'); }} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'unlocks' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
                   <Unlock size={20} /><span className="text-[10px] font-bold">蓝图</span>
                 </button>
-                <button onClick={() => { setActiveTab('social'); setActiveSocialTab('friends'); }} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl relative ${activeTab === 'social' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+                <button onClick={() => { AudioSystem.playTap(); setActiveTab('social'); setActiveSocialTab('friends'); }} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl relative ${activeTab === 'social' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
                   <Users size={20} /><span className="text-[10px] font-bold">社交</span>
                   {(unreadCount > 0 || unreadMailCount > 0) && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold min-w-[14px] h-[14px] flex items-center justify-center rounded-full">
@@ -284,7 +292,7 @@ export const PlayerPanel: React.FC = () => {
                     </span>
                   )}
                 </button>
-                <button onClick={() => setActiveTab('system')} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'system' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+                <button onClick={() => { AudioSystem.playTap(); setActiveTab('system'); }} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'system' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
                   <Settings size={20} /><span className="text-[10px] font-bold">系统</span>
                 </button>
               </div>
@@ -292,7 +300,7 @@ export const PlayerPanel: React.FC = () => {
 
             {/* Content Area */}
             <div className="flex-1 flex flex-col relative">
-              <button onClick={() => setIsOpen(false)} className="absolute top-6 right-6 hand-drawn-btn p-2 rounded-full z-10">
+              <button onClick={() => { AudioSystem.playClose(); setIsOpen(false); }} className="absolute top-6 right-6 hand-drawn-btn p-2 rounded-full z-10">
                 <X size={20} />
               </button>
 
@@ -358,8 +366,8 @@ export const PlayerPanel: React.FC = () => {
                   {/* 分享你的小岛 */}
                   <div className="mt-8 flex flex-col gap-4 max-w-md">
                     <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase">分享你的小岛</p>
-                    <button onClick={() => exportIslandFile()} className="hand-drawn-btn px-6 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Download size={18} /> 导出小岛文件</button>
-                    <button onClick={() => setShowGift(true)} className="hand-drawn-btn px-6 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Gift size={18} /> 生成礼物链接</button>
+                    <button onClick={() => { AudioSystem.playClick(); exportIslandFile(); }} className="hand-drawn-btn px-6 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Download size={18} /> 导出小岛文件</button>
+                    <button onClick={() => { AudioSystem.playClick(); setShowGift(true); }} className="hand-drawn-btn px-6 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Gift size={18} /> 生成礼物链接</button>
                   </div>
                 </div>
               )}
@@ -384,21 +392,21 @@ export const PlayerPanel: React.FC = () => {
                 <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-4">
                   {/* Social Sub-tabs */}
                   <div className="flex gap-1 px-8 pt-6 pb-3 border-b border-slate-200">
-                    <button onClick={() => setActiveSocialTab('friends')} className={`hand-drawn-btn px-4 py-2 text-xs font-bold flex items-center gap-1.5 ${activeSocialTab === 'friends' ? 'hand-drawn-btn-active' : ''}`}>
+                    <button onClick={() => { AudioSystem.playTap(); setActiveSocialTab('friends'); }} className={`hand-drawn-btn px-4 py-2 text-xs font-bold flex items-center gap-1.5 ${activeSocialTab === 'friends' ? 'hand-drawn-btn-active' : ''}`}>
                       <Users size={13} /> 好友
                     </button>
-                    <button onClick={() => setActiveSocialTab('chat')} className={`hand-drawn-btn px-4 py-2 text-xs font-bold flex items-center gap-1.5 ${activeSocialTab === 'chat' ? 'hand-drawn-btn-active' : ''}`}>
+                    <button onClick={() => { AudioSystem.playTap(); setActiveSocialTab('chat'); }} className={`hand-drawn-btn px-4 py-2 text-xs font-bold flex items-center gap-1.5 ${activeSocialTab === 'chat' ? 'hand-drawn-btn-active' : ''}`}>
                       <MessageCircle size={13} /> 聊天
                       {unreadCount > 0 && <span className="bg-red-500 text-white text-[9px] font-bold min-w-[14px] h-[14px] flex items-center justify-center rounded-full">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                     </button>
-                    <button onClick={() => setActiveSocialTab('mailbox')} className={`hand-drawn-btn px-4 py-2 text-xs font-bold flex items-center gap-1.5 ${activeSocialTab === 'mailbox' ? 'hand-drawn-btn-active' : ''}`}>
+                    <button onClick={() => { AudioSystem.playTap(); setActiveSocialTab('mailbox'); }} className={`hand-drawn-btn px-4 py-2 text-xs font-bold flex items-center gap-1.5 ${activeSocialTab === 'mailbox' ? 'hand-drawn-btn-active' : ''}`}>
                       <Mail size={13} /> 信箱
                       {unreadMailCount > 0 && <span className="bg-red-500 text-white text-[9px] font-bold min-w-[14px] h-[14px] flex items-center justify-center rounded-full">{unreadMailCount > 9 ? '9+' : unreadMailCount}</span>}
                     </button>
-                    <button onClick={() => setActiveSocialTab('visitors')} className={`hand-drawn-btn px-4 py-2 text-xs font-bold flex items-center gap-1.5 ${activeSocialTab === 'visitors' ? 'hand-drawn-btn-active' : ''}`}>
+                    <button onClick={() => { AudioSystem.playTap(); setActiveSocialTab('visitors'); }} className={`hand-drawn-btn px-4 py-2 text-xs font-bold flex items-center gap-1.5 ${activeSocialTab === 'visitors' ? 'hand-drawn-btn-active' : ''}`}>
                       <BookOpen size={13} /> 访客簿
                     </button>
-                    <button onClick={() => setActiveSocialTab('plaza')} className={`hand-drawn-btn px-4 py-2 text-xs font-bold flex items-center gap-1.5 ${activeSocialTab === 'plaza' ? 'hand-drawn-btn-active' : ''}`}>
+                    <button onClick={() => { AudioSystem.playTap(); setActiveSocialTab('plaza'); }} className={`hand-drawn-btn px-4 py-2 text-xs font-bold flex items-center gap-1.5 ${activeSocialTab === 'plaza' ? 'hand-drawn-btn-active' : ''}`}>
                       <Compass size={13} /> 广场
                     </button>
                   </div>
@@ -413,7 +421,7 @@ export const PlayerPanel: React.FC = () => {
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder="搜索用户..." className="w-full pl-9 pr-4 py-2.5 hand-drawn-panel text-slate-800 placeholder:text-slate-400 focus:outline-none text-sm" style={{ borderWidth: '2px' }} />
                           </div>
-                          <button onClick={handleSearch} className="hand-drawn-btn px-4 py-2"><Search size={16} /></button>
+                          <button onClick={() => { AudioSystem.playClick(); handleSearch(); }} className="hand-drawn-btn px-4 py-2"><Search size={16} /></button>
                         </div>
 
                         {searchResults.length > 0 && (
@@ -425,7 +433,7 @@ export const PlayerPanel: React.FC = () => {
                                   <img src={user.avatar} alt="" className="w-8 h-8 rounded-full border border-slate-800" />
                                   <span className="font-bold text-slate-800 text-sm">{user.username}</span>
                                 </div>
-                                <button onClick={() => handleSendFriendRequest(user.id)} className="hand-drawn-btn flex items-center gap-1 px-3 py-1 text-xs"><UserPlus size={12} /> 加好友</button>
+                                <button onClick={() => { AudioSystem.playConfirm(); handleSendFriendRequest(user.id); }} className="hand-drawn-btn flex items-center gap-1 px-3 py-1 text-xs"><UserPlus size={12} /> 加好友</button>
                               </div>
                             ))}
                           </div>
@@ -441,8 +449,8 @@ export const PlayerPanel: React.FC = () => {
                                   <span className="font-bold text-slate-800 text-sm">{req.username}</span>
                                 </div>
                                 <div className="flex gap-2">
-                                  <button onClick={() => handleAcceptRequest(req.id)} className="hand-drawn-btn p-1.5 text-emerald-600"><Check size={14} /></button>
-                                  <button onClick={() => handleRejectRequest(req.id)} className="hand-drawn-btn p-1.5 text-red-500"><X size={14} /></button>
+                                  <button onClick={() => { AudioSystem.playConfirm(); handleAcceptRequest(req.id); }} className="hand-drawn-btn p-1.5 text-emerald-600"><Check size={14} /></button>
+                                  <button onClick={() => { AudioSystem.playClose(); handleRejectRequest(req.id); }} className="hand-drawn-btn p-1.5 text-red-500"><X size={14} /></button>
                                 </div>
                               </div>
                             ))}
@@ -481,7 +489,7 @@ export const PlayerPanel: React.FC = () => {
                         {chatTarget ? (
                           <>
                             <div className="flex items-center gap-3 px-8 py-3 border-b border-slate-200">
-                              <button onClick={() => { setChatTarget(null); setChatMessages([]); }} className="hand-drawn-btn p-1"><ArrowLeft size={14} /></button>
+                              <button onClick={() => { AudioSystem.playClose(); setChatTarget(null); setChatMessages([]); }} className="hand-drawn-btn p-1"><ArrowLeft size={14} /></button>
                               <img src={chatTarget.avatar} alt="" className="w-7 h-7 rounded-full border border-slate-800" />
                               <span className="font-bold text-slate-800 text-sm tracking-wide">{chatTarget.username}</span>
                               {chatTarget.is_ai && <span className="text-[9px] text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-full font-bold">AI</span>}
@@ -505,7 +513,7 @@ export const PlayerPanel: React.FC = () => {
                             <div className="px-6 py-3 border-t-2 border-slate-800">
                               <div className="flex gap-2">
                                 <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} placeholder={chatTarget.is_ai ? '和辞说点什么...' : '输入消息...'} className="flex-1 px-4 py-2.5 hand-drawn-panel text-slate-800 placeholder:text-slate-400 focus:outline-none text-sm" style={{ borderWidth: '2px' }} />
-                                <button onClick={handleSendMessage} className="hand-drawn-btn px-4 py-2"><Send size={16} /></button>
+                                <button onClick={() => { AudioSystem.playConfirm(); handleSendMessage(); }} className="hand-drawn-btn px-4 py-2"><Send size={16} /></button>
                               </div>
                             </div>
                           </>
@@ -571,15 +579,15 @@ export const PlayerPanel: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    <button onClick={() => { saveGame(); alert("Game Saved Successfully!"); }} className="hand-drawn-btn px-8 py-4 text-xl font-bold w-full">保存进度</button>
-                    <button onClick={() => exportIslandFile()} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Download size={18} /> 导出小岛文件</button>
-                    <button onClick={() => setShowGift(true)} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Gift size={18} /> 生成礼物链接</button>
+                    <button onClick={() => { AudioSystem.playConfirm(); saveGame(); alert("Game Saved Successfully!"); }} className="hand-drawn-btn px-8 py-4 text-xl font-bold w-full">保存进度</button>
+                    <button onClick={() => { AudioSystem.playClick(); exportIslandFile(); }} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Download size={18} /> 导出小岛文件</button>
+                    <button onClick={() => { AudioSystem.playClick(); setShowGift(true); }} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Gift size={18} /> 生成礼物链接</button>
                     {authUser && (
-                      <button onClick={() => { api.setToken(null); disconnectSocket(); clearAuthUser(); setIsOpen(false); }} className="w-full flex items-center justify-center gap-3 hand-drawn-btn px-8 py-4 text-red-600 font-bold">
+                      <button onClick={() => { AudioSystem.playConfirm(); api.setToken(null); disconnectSocket(); clearAuthUser(); setIsOpen(false); }} className="w-full flex items-center justify-center gap-3 hand-drawn-btn px-8 py-4 text-red-600 font-bold">
                         <LogOut size={18} /><span className="font-light tracking-[0.2em] uppercase text-sm">退出登录</span>
                       </button>
                     )}
-                    <button onClick={() => { if (confirm("Return to Title Screen? Any unsaved progress will be lost!")) { setIsOpen(false); setScreen('TITLE'); } }} className="w-full flex items-center justify-center gap-3 hand-drawn-btn px-8 py-4 mt-12 text-red-600 font-bold">
+                    <button onClick={() => { AudioSystem.playConfirm(); if (confirm("Return to Title Screen? Any unsaved progress will be lost!")) { setIsOpen(false); setScreen('TITLE'); } }} className="w-full flex items-center justify-center gap-3 hand-drawn-btn px-8 py-4 mt-12 text-red-600 font-bold">
                       <LogOut size={18} /><span className="font-light tracking-[0.2em] uppercase text-sm">返回标题</span>
                     </button>
                   </div>

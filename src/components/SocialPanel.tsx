@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
+import { AudioSystem } from '../lib/audio';
 import {
   onChatMessage, onFriendRequest, onFriendAccepted,
   onIslandVisitor, emitChatSend, emitFriendRequest, emitFriendAccepted,
@@ -101,6 +102,7 @@ export const SocialPanel: React.FC = () => {
   };
 
   const handleSearch = async () => {
+    AudioSystem.playClick();
     if (!searchQuery.trim()) return;
     try {
       const res = await api.searchUsers(searchQuery.trim());
@@ -109,6 +111,7 @@ export const SocialPanel: React.FC = () => {
   };
 
   const handleSendFriendRequest = async (userId: string) => {
+    AudioSystem.playConfirm();
     try {
       await api.sendFriendRequest(userId);
       emitFriendRequest(userId);
@@ -117,6 +120,7 @@ export const SocialPanel: React.FC = () => {
   };
 
   const handleAcceptRequest = async (userId: string) => {
+    AudioSystem.playConfirm();
     try {
       await api.acceptFriendRequest(userId);
       emitFriendAccepted(userId);
@@ -125,6 +129,7 @@ export const SocialPanel: React.FC = () => {
   };
 
   const handleRejectRequest = async (userId: string) => {
+    AudioSystem.playClose();
     try {
       await api.rejectFriendRequest(userId);
       setIncomingRequests(prev => prev.filter(r => r.id !== userId));
@@ -132,6 +137,7 @@ export const SocialPanel: React.FC = () => {
   };
 
   const handleOpenChat = async (friend: any) => {
+    AudioSystem.playClick();
     setChatTarget(friend);
     setActiveTab('chat');
     try {
@@ -141,12 +147,14 @@ export const SocialPanel: React.FC = () => {
   };
 
   const handleSendMessage = () => {
+    AudioSystem.playConfirm();
     if (!chatInput.trim() || !chatTarget) return;
     emitChatSend(chatTarget.id, chatInput.trim());
     setChatInput('');
   };
 
   const handleLogout = () => {
+    AudioSystem.playConfirm();
     api.setToken(null);
     disconnectSocket();
     clearAuthUser();
@@ -158,7 +166,7 @@ export const SocialPanel: React.FC = () => {
   if (!isOpen) {
     return (
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={() => { AudioSystem.playClick(); setIsOpen(true); }}
         className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 ${isTouch ? 'w-11 h-11' : 'w-12 h-12'}`}
         title="社交"
       >
@@ -198,34 +206,34 @@ export const SocialPanel: React.FC = () => {
             </div>
           </div>
 
-          <button onClick={() => setActiveTab('friends')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest transition-all ${activeTab === 'friends' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
+          <button onClick={() => { AudioSystem.playTap(); setActiveTab('friends'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest transition-all ${activeTab === 'friends' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
             <Users size={16} /> 好友
           </button>
-          <button onClick={() => setActiveTab('chat')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest transition-all ${activeTab === 'chat' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
+          <button onClick={() => { AudioSystem.playTap(); setActiveTab('chat'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest transition-all ${activeTab === 'chat' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
             <MessageCircle size={16} /> 聊天
           </button>
-          <button onClick={() => setActiveTab('islands')} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest transition-all ${activeTab === 'islands' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
+          <button onClick={() => { AudioSystem.playTap(); setActiveTab('islands'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest transition-all ${activeTab === 'islands' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
             <Globe size={16} /> 岛屿
           </button>
 
-          <button onClick={handleLogout} className="mt-auto flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest text-red-400 hover:text-red-600 transition-all">
+          <button onClick={() => { AudioSystem.playConfirm(); handleLogout(); }} className="mt-auto flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold tracking-widest text-red-400 hover:text-red-600 transition-all">
             <LogOut size={16} /> 退出
           </button>
         </div>
         ) : (
           /* 触屏：底部 Tab 导航 */
           <div className="flex-shrink-0 border-t-2 border-slate-800 flex items-center justify-around px-2 py-2 touch-safe-bottom bg-[#fcf8ec]">
-            <button onClick={() => setActiveTab('friends')} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'friends' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+            <button onClick={() => { AudioSystem.playTap(); setActiveTab('friends'); }} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'friends' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
               <Users size={20} /><span className="text-[10px] font-bold">好友</span>
             </button>
-            <button onClick={() => setActiveTab('chat')} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl relative ${activeTab === 'chat' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+            <button onClick={() => { AudioSystem.playTap(); setActiveTab('chat'); }} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl relative ${activeTab === 'chat' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
               <MessageCircle size={20} /><span className="text-[10px] font-bold">聊天</span>
               {unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold min-w-[14px] h-[14px] flex items-center justify-center rounded-full">{unreadCount > 9 ? '9+' : unreadCount}</span>}
             </button>
-            <button onClick={() => setActiveTab('islands')} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'islands' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+            <button onClick={() => { AudioSystem.playTap(); setActiveTab('islands'); }} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'islands' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
               <Globe size={20} /><span className="text-[10px] font-bold">岛屿</span>
             </button>
-            <button onClick={handleLogout} className="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl text-red-400">
+            <button onClick={() => { AudioSystem.playConfirm(); handleLogout(); }} className="flex flex-col items-center gap-1 px-3 py-2 rounded-2xl text-red-400">
               <LogOut size={20} /><span className="text-[10px] font-bold">退出</span>
             </button>
           </div>
@@ -235,7 +243,7 @@ export const SocialPanel: React.FC = () => {
         <div className="flex-1 flex flex-col relative">
           {/* Close */}
           <button
-            onClick={() => setIsOpen(false)}
+            onClick={() => { AudioSystem.playClose(); setIsOpen(false); }}
             className="absolute top-6 right-6 hand-drawn-btn p-2 rounded-full z-10"
           >
             <X size={20} />
@@ -260,7 +268,7 @@ export const SocialPanel: React.FC = () => {
                     style={{ borderWidth: '2px' }}
                   />
                 </div>
-                <button onClick={handleSearch} className="hand-drawn-btn px-4 py-2">
+                <button onClick={() => { AudioSystem.playClick(); handleSearch(); }} className="hand-drawn-btn px-4 py-2">
                   <Search size={16} />
                 </button>
               </div>
@@ -276,7 +284,7 @@ export const SocialPanel: React.FC = () => {
                         <span className="font-bold text-slate-800 text-sm">{user.username}</span>
                       </div>
                       <button
-                        onClick={() => handleSendFriendRequest(user.id)}
+                        onClick={() => { AudioSystem.playConfirm(); handleSendFriendRequest(user.id); }}
                         className="hand-drawn-btn flex items-center gap-1 px-3 py-1 text-xs"
                       >
                         <UserPlus size={12} /> 加好友
@@ -297,10 +305,10 @@ export const SocialPanel: React.FC = () => {
                         <span className="font-bold text-slate-800 text-sm">{req.username}</span>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => handleAcceptRequest(req.id)} className="hand-drawn-btn p-1.5 text-emerald-600">
+                        <button onClick={() => { AudioSystem.playConfirm(); handleAcceptRequest(req.id); }} className="hand-drawn-btn p-1.5 text-emerald-600">
                           <Check size={14} />
                         </button>
-                        <button onClick={() => handleRejectRequest(req.id)} className="hand-drawn-btn p-1.5 text-red-500">
+                        <button onClick={() => { AudioSystem.playClose(); handleRejectRequest(req.id); }} className="hand-drawn-btn p-1.5 text-red-500">
                           <X size={14} />
                         </button>
                       </div>
@@ -347,7 +355,7 @@ export const SocialPanel: React.FC = () => {
                 <>
                   {/* Chat Header */}
                   <div className="flex items-center gap-3 px-8 py-4 border-b-2 border-slate-800">
-                    <button onClick={() => { setChatTarget(null); setChatMessages([]); }} className="hand-drawn-btn p-1">
+                    <button onClick={() => { AudioSystem.playClose(); setChatTarget(null); setChatMessages([]); }} className="hand-drawn-btn p-1">
                       <ArrowLeft size={16} />
                     </button>
                     <img src={chatTarget.avatar} alt="" className="w-8 h-8 rounded-full border border-slate-800" />
@@ -384,7 +392,7 @@ export const SocialPanel: React.FC = () => {
                         className="flex-1 px-4 py-2.5 hand-drawn-panel text-slate-800 placeholder:text-slate-400 focus:outline-none text-sm"
                         style={{ borderWidth: '2px' }}
                       />
-                      <button onClick={handleSendMessage} className="hand-drawn-btn px-4 py-2">
+                      <button onClick={() => { AudioSystem.playConfirm(); handleSendMessage(); }} className="hand-drawn-btn px-4 py-2">
                         <Send size={16} />
                       </button>
                     </div>
@@ -436,7 +444,7 @@ export const SocialPanel: React.FC = () => {
                   {islands.filter(i => i.owner_id !== authUser?.id).map(island => (
                     <div key={island.id} className="hand-drawn-panel p-4 cursor-pointer hover:bg-amber-50 transition-all hover:-translate-y-1 hover:scale-[1.02]"
                       style={{ borderWidth: '2px' }}
-                      onClick={() => emitIslandVisit(island.id)}
+                      onClick={() => { AudioSystem.playClick(); emitIslandVisit(island.id); }}
                     >
                       <div className="flex items-center gap-3 mb-2">
                         <img src={island.owner_avatar} alt="" className="w-6 h-6 rounded-full border border-slate-800" />

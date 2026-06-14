@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
+import { AudioSystem } from '../lib/audio';
 import { emitIslandVisit } from '../lib/socket';
 import {
   X, Compass, MessageSquare, Globe, Send, Waves,
@@ -21,7 +22,7 @@ export const SocialPlaza: React.FC<{ onClose: () => void; embedded?: boolean }> 
           <Compass size={24} className="text-cyan-600" />
           <h2 className="text-3xl hand-drawn-title -rotate-1">漂流广场</h2>
         </div>
-        <button onClick={onClose} className="hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200">
+        <button onClick={() => { AudioSystem.playClose(); onClose(); }} className="hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200">
           <X size={24} strokeWidth={3} className="text-slate-800" />
         </button>
       </div>
@@ -31,19 +32,19 @@ export const SocialPlaza: React.FC<{ onClose: () => void; embedded?: boolean }> 
       {/* Section Tabs */}
       <div className="flex gap-2 px-8 py-3 border-b border-slate-200">
         <button
-          onClick={() => setActiveSection('board')}
+          onClick={() => { AudioSystem.playTap(); setActiveSection('board'); }}
           className={`hand-drawn-btn px-5 py-2 text-sm font-bold tracking-wider flex items-center gap-2 ${activeSection === 'board' ? 'hand-drawn-btn-active' : ''}`}
         >
           <MessageSquare size={14} /> 公告板
         </button>
         <button
-          onClick={() => setActiveSection('bottle')}
+          onClick={() => { AudioSystem.playTap(); setActiveSection('bottle'); }}
           className={`hand-drawn-btn px-5 py-2 text-sm font-bold tracking-wider flex items-center gap-2 ${activeSection === 'bottle' ? 'hand-drawn-btn-active' : ''}`}
         >
           <Waves size={14} /> 漂流瓶
         </button>
         <button
-          onClick={() => setActiveSection('showcase')}
+          onClick={() => { AudioSystem.playTap(); setActiveSection('showcase'); }}
           className={`hand-drawn-btn px-5 py-2 text-sm font-bold tracking-wider flex items-center gap-2 ${activeSection === 'showcase' ? 'hand-drawn-btn-active' : ''}`}
         >
           <Globe size={14} /> 岛屿橱窗
@@ -112,6 +113,7 @@ const BottleSection: React.FC = () => {
   ];
 
   const handleThrowBottle = async () => {
+    AudioSystem.playConfirm();
     if (!bottleContent.trim()) return;
     try {
       await api.throwBottle(bottleContent.trim(), bottleMood);
@@ -122,6 +124,7 @@ const BottleSection: React.FC = () => {
   };
 
   const handleFishBottle = async () => {
+    AudioSystem.playClick();
     setIsFishing(true);
     setFoundBottle(null);
     try {
@@ -138,6 +141,7 @@ const BottleSection: React.FC = () => {
   };
 
   const handleReplyBottle = async () => {
+    AudioSystem.playConfirm();
     if (!foundBottle || !replyText.trim()) return;
     try {
       await api.replyBottle(foundBottle.id, replyText.trim());
@@ -150,6 +154,7 @@ const BottleSection: React.FC = () => {
   };
 
   const loadSentBottles = async () => {
+    AudioSystem.playClick();
     try {
       const res = await api.getSentBottles();
       setSentBottles(res.bottles);
@@ -162,7 +167,7 @@ const BottleSection: React.FC = () => {
   if (view === 'found' && foundBottle) {
     return (
       <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4">
-        <button onClick={() => { setView('main'); setFoundBottle(null); }} className="hand-drawn-btn p-2 self-start">
+        <button onClick={() => { AudioSystem.playClose(); setView('main'); setFoundBottle(null); }} className="hand-drawn-btn p-2 self-start">
           <ArrowLeft size={16} />
         </button>
 
@@ -206,7 +211,7 @@ const BottleSection: React.FC = () => {
   if (view === 'sent') {
     return (
       <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4">
-        <button onClick={() => setView('main')} className="hand-drawn-btn p-2 self-start">
+        <button onClick={() => { AudioSystem.playClose(); setView('main'); }} className="hand-drawn-btn p-2 self-start">
           <ArrowLeft size={16} />
         </button>
 
@@ -255,7 +260,7 @@ const BottleSection: React.FC = () => {
           {moods.map(m => (
             <button
               key={m.id}
-              onClick={() => setBottleMood(m.id)}
+              onClick={() => { AudioSystem.playTap(); setBottleMood(m.id); }}
               className={`hand-drawn-btn px-3 py-1 text-xs ${bottleMood === m.id ? 'hand-drawn-btn-active' : ''} ${m.color}`}
             >
               {m.label}
@@ -356,7 +361,7 @@ const IslandShowcase: React.FC = () => {
               key={island.id}
               className="hand-drawn-panel p-5 cursor-pointer hover:bg-amber-50/50 transition-all hover:-translate-y-0.5 hover:shadow-lg group"
               style={{ borderWidth: '2px' }}
-              onClick={() => emitIslandVisit(island.id)}
+              onClick={() => { AudioSystem.playClick(); emitIslandVisit(island.id); }}
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-slate-800 shrink-0 flex items-center justify-center bg-gradient-to-br from-emerald-100 to-emerald-50">

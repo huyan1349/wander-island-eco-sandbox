@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createGiftLink, fetchGift, applyIslandData, captureScreenshot, GiftPayload } from '../utils/islandIO';
+import { AudioSystem } from '../lib/audio';
 import QRCode from 'qrcode';
 
 // 真 3D 礼物卡：鼠标视差倾斜(rotateX/Y 跟随) + 跟随高光 + 翻面 + 漂浮 + 光环绽放。
@@ -35,6 +36,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
   }, [mode, giftId]);
 
   const handleGenerate = async () => {
+    AudioSystem.playConfirm();
     setBusy(true);
     try {
       const l = await createGiftLink({ fromName: fromName || '匿名', toName, message, screenshot: shot });
@@ -47,6 +49,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
     }
   };
   const copy = () => {
+    AudioSystem.playClick();
     navigator.clipboard.writeText(link).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
@@ -54,6 +57,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
 
   // 把礼物卡渲染成一张带游戏水印+链接的图片下载（用于宣传/分享）
   const downloadCard = async () => {
+    AudioSystem.playClick();
     try { await (document as any).fonts.load("900 50px 'ZCOOL KuaiLe'"); } catch { /* ignore */ }
     const W = 640, H = 900, imgH = Math.round(H * 0.64);
     const c = document.createElement('canvas');
@@ -152,6 +156,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
     render(bgImg || undefined, qrImg || undefined);
   };
   const enter = () => {
+    AudioSystem.playConfirm();
     if (!gift) return;
     const n = gift.fromName ? `${gift.name || '小岛'} (来自 ${gift.fromName})` : (gift.name || '礼物小岛');
     applyIslandData(gift.data, n);
@@ -242,7 +247,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
                   </div>
                   {mode === 'create' && !link && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); setFlipped(true); }}
+                      onClick={(e) => { e.stopPropagation(); AudioSystem.playTap(); setFlipped(true); }}
                       className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-white/90 text-slate-800 text-[11px] font-bold shadow-lg hover:bg-white transition-colors animate-pulse"
                     >
                       ✍ 翻面写寄语
@@ -271,7 +276,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
                         <p className="text-slate-800 font-bold">{fromName || '匿名'}</p>
                       </div>
                       <button
-                        onClick={(e) => { e.stopPropagation(); setFlipped(false); }}
+                        onClick={(e) => { e.stopPropagation(); AudioSystem.playTap(); setFlipped(false); }}
                         className="absolute top-4 left-4 text-slate-400 text-[11px] font-bold hover:text-slate-700"
                       >← 看正面</button>
                     </>
@@ -312,14 +317,14 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
                 <button onClick={downloadCard} className="hand-drawn-btn px-5 py-3 font-bold bg-white">⬇ 下载礼物卡图片（含链接）</button>
               </>
             )}
-            <button onClick={onClose} className="text-white/50 text-sm py-1">关闭</button>
+            <button onClick={() => { AudioSystem.playClose(); onClose(); }} className="text-white/50 text-sm py-1">关闭</button>
           </div>
         ) : (
           <div className="w-64 flex flex-col gap-2">
             {err
               ? <p className="text-rose-300 text-center font-bold">{err}</p>
-              : <button onClick={enter} disabled={!gift} className="hand-drawn-btn px-5 py-3 font-bold bg-white">{gift ? '🏝 收下并进入小岛' : '加载中…'}</button>}
-            <button onClick={onClose} className="text-white/50 text-sm py-1">以后再说</button>
+              : <button onClick={() => { AudioSystem.playConfirm(); enter(); }} disabled={!gift} className="hand-drawn-btn px-5 py-3 font-bold bg-white">{gift ? '🏝 收下并进入小岛' : '加载中…'}</button>}
+            <button onClick={() => { AudioSystem.playClose(); onClose(); }} className="text-white/50 text-sm py-1">以后再说</button>
           </div>
         )}
       </div>
