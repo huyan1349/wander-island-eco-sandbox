@@ -8,6 +8,7 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
   const [progress, setProgress] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [hovered, setHovered] = useState<number | null>(null);
   const [flipped, setFlipped] = useState(false);
   const RARITY = [64, 78, 41, 53, 29];
   const obtainedDate = (url: string) => {
@@ -63,12 +64,14 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
             <div
               key={i}
               className="absolute w-44 h-64"
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered(null)}
               style={{
                 transform: mounted
                   ? `translateX(${off * 148}px) translateY(${Math.abs(off) * 16}px) rotate(${off * 7}deg)`
                   : 'translateX(0px) translateY(130px) rotate(0deg) scale(0.7)',
                 opacity: mounted ? 1 : 0,
-                zIndex: 30 - Math.abs(off),
+                zIndex: hovered === i ? 60 : 30 - Math.abs(off),
                 willChange: 'transform, opacity',
                 transition: `transform 0.65s cubic-bezier(0.34,1.45,0.64,1) ${i * 0.07}s, opacity 0.45s ease ${i * 0.07}s`,
               }}
@@ -76,8 +79,15 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
               {/* 内层：纯 CSS hover，不与外层定位冲突 */}
               <div
                 onClick={() => openDetail(i)}
-                className="group relative w-full h-full rounded-2xl overflow-hidden hand-drawn-panel cursor-pointer transition-transform duration-300 hover:scale-[1.06] hover:-translate-y-3"
-                style={{ boxShadow: isPlaying ? '0 0 0 3px #15803d, 0 14px 38px rgba(0,0,0,0.55)' : '0 10px 28px rgba(0,0,0,0.4)', opacity: (selected === i && detailOpen) ? 0 : 1, transition: 'opacity 0.4s ease' }}
+                className="relative w-full h-full rounded-2xl overflow-hidden hand-drawn-panel cursor-pointer"
+                style={{
+                  boxShadow: isPlaying
+                    ? '0 0 0 3px #15803d, 0 18px 42px rgba(0,0,0,0.55)'
+                    : (hovered === i ? '0 20px 44px rgba(0,0,0,0.55)' : '0 10px 28px rgba(0,0,0,0.4)'),
+                  opacity: (selected === i && detailOpen) ? 0 : 1,
+                  transform: hovered === i ? 'translateY(-16px) scale(1.07)' : 'translateY(0px) scale(1)',
+                  transition: 'transform 0.35s cubic-bezier(0.22,1,0.36,1), box-shadow 0.35s ease, opacity 0.4s ease',
+                }}
               >
                 <div className="absolute inset-0" style={{ background: t.bg }} />
                 {renderTrackTexture(i)}

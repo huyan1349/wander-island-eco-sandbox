@@ -302,7 +302,9 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
               </button>
             ) : (
               <>
-                {qrUrl && <img src={qrUrl} alt="扫码收下" className="w-32 h-32 mx-auto rounded-xl bg-white p-1 border-2 border-slate-300" />}
+                {qrUrl
+                  ? <img src={qrUrl} alt="扫码收下" className="w-32 h-32 mx-auto rounded-xl bg-white p-1 border-2 border-slate-300" />
+                  : <p className="text-center text-[11px] text-slate-400 px-4 py-3">离线礼物链接较长，暂无法生成二维码 — 请用下方按钮复制链接发送（连上服务器后会生成可扫码的短链接）</p>}
                 <div className="px-3 py-2 rounded-xl bg-white/95 border-2 border-slate-300 text-[11px] break-all text-slate-600 max-h-20 overflow-auto">{link}</div>
                 <button onClick={copy} className="hand-drawn-btn px-5 py-3 font-bold bg-white">{copied ? '✓ 已复制链接' : '复制链接送给 TA'}</button>
                 <button onClick={downloadCard} className="hand-drawn-btn px-5 py-3 font-bold bg-white">⬇ 下载礼物卡图片（含链接）</button>
