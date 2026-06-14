@@ -77,7 +77,7 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
               <div
                 onClick={() => openDetail(i)}
                 className="group relative w-full h-full rounded-2xl overflow-hidden hand-drawn-panel cursor-pointer transition-transform duration-300 hover:scale-[1.06] hover:-translate-y-3"
-                style={{ boxShadow: isPlaying ? '0 0 0 3px #15803d, 0 14px 38px rgba(0,0,0,0.55)' : '0 10px 28px rgba(0,0,0,0.4)', opacity: (selected === i && detailOpen) ? 0 : 1, transition: 'opacity 0.25s ease' }}
+                style={{ boxShadow: isPlaying ? '0 0 0 3px #15803d, 0 14px 38px rgba(0,0,0,0.55)' : '0 10px 28px rgba(0,0,0,0.4)', opacity: (selected === i && detailOpen) ? 0 : 1, transition: 'opacity 0.4s ease' }}
               >
                 <div className="absolute inset-0" style={{ background: t.bg }} />
                 {renderTrackTexture(i)}
@@ -115,7 +115,7 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
                 ? 'translate(0px, 0px) scale(1)'
                 : `translate(${(selected - mid) * 148}px, ${40 + Math.abs(selected - mid) * 16}px) rotate(${(selected - mid) * 7}deg) scale(0.6)`,
               opacity: detailOpen ? 1 : 0,
-              transition: 'transform 0.45s cubic-bezier(0.34,1.45,0.64,1), opacity 0.3s ease',
+              transition: 'transform 0.5s cubic-bezier(0.22,1,0.36,1), opacity 0.45s cubic-bezier(0.22,1,0.36,1)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
