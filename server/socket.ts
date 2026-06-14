@@ -46,6 +46,29 @@ interface AuthenticatedSocket extends Socket {
 // 在线用户映射: userId -> socketId
 const onlineUsers = new Map<string, string>();
 
+// ====== 归隐之岛（多人公共服务器） ======
+import fs from 'fs';
+import path from 'path';
+const HERMIT_ROOM = 'hermit-island';
+const HERMIT_CAP = 20;          // 同时在场人数上限
+const HERMIT_MAX_ASSETS = 3000; // 共享岛物件总数上限
+const HERMIT_FILE = path.join(process.cwd(), 'data', 'hermit-island.json');
+let hermitAssets: any[] = [];
+try { if (fs.existsSync(HERMIT_FILE)) hermitAssets = JSON.parse(fs.readFileSync(HERMIT_FILE, 'utf-8')) || []; } catch { hermitAssets = []; }
+let hermitSaveTimer: NodeJS.Timeout | null = null;
+function saveHermit() {
+  if (hermitSaveTimer) return;
+  hermitSaveTimer = setTimeout(() => {
+    hermitSaveTimer = null;
+    try { fs.writeFileSync(HERMIT_FILE, JSON.stringify(hermitAssets)); } catch (e) { console.error('hermit save fail', e); }
+  }, 1500);
+}
+// socketId -> {userId, username}（仅归隐之岛在场者）
+const hermitMembers = new Map<string, { userId: string; username: string }>();
+function hermitPresence() {
+  return { count: hermitMembers.size, cap: HERMIT_CAP, members: Array.from(hermitMembers.values()) };
+}
+
 export function setupSocket(io: SocketServer) {
   io.use((socket: AuthenticatedSocket, next) => {
     const token = socket.handshake.auth.token;
@@ -232,9 +255,66 @@ export function setupSocket(io: SocketServer) {
       socket.emit('presence:status', statuses);
     });
 
+    // ====== 归隐之岛：进入 ======
+    socket.on('hermit:join', () => {
+      if (!hermitMembers.has(socket.id) && hermitMembers.size >= HERMIT_CAP) {
+        socket.emit('hermit:full', { cap: HERMIT_CAP });
+        return;
+      }
+      socket.join(HERMIT_ROOM);
+      hermitMembers.set(socket.id, { userId, username });
+      socket.emit('hermit:state', { assets: hermitAssets });          // 当前岛全貌
+      io.to(HERMIT_ROOM).emit('hermit:presence', hermitPresence());   // 广播在场
+      io.to(HERMIT_ROOM).emit('hermit:chat', { id: crypto.randomUUID(), system: true, text: `${username} 登上了归隐之岛` });
+    });
+
+    // ====== 归隐之岛：离开 ======
+    socket.on('hermit:leave', () => {
+      if (hermitMembers.delete(socket.id)) {
+        socket.leave(HERMIT_ROOM);
+        io.to(HERMIT_ROOM).emit('hermit:presence', hermitPresence());
+      }
+    });
+
+    // ====== 归隐之岛：放置 ======
+    socket.on('hermit:place', (asset: any) => {
+      if (!hermitMembers.has(socket.id) || !asset?.type) return;
+      if (hermitAssets.length >= HERMIT_MAX_ASSETS) return;
+      const a = { ...asset, id: crypto.randomUUID(), by: username };
+      hermitAssets.push(a);
+      saveHermit();
+      socket.to(HERMIT_ROOM).emit('hermit:placed', a); // 广播给其他人（放置者本地已有）
+    });
+
+    // ====== 归隐之岛：擦除（按范围） ======
+    socket.on('hermit:remove', (data: { x: number; z: number; radius: number }) => {
+      if (!hermitMembers.has(socket.id) || !data) return;
+      const before = hermitAssets.length;
+      hermitAssets = hermitAssets.filter(a => {
+        const dx = a.position.x - data.x, dz = a.position.z - data.z;
+        return Math.sqrt(dx * dx + dz * dz) > data.radius;
+      });
+      if (hermitAssets.length !== before) {
+        saveHermit();
+        socket.to(HERMIT_ROOM).emit('hermit:remove', data);
+      }
+    });
+
+    // ====== 归隐之岛：聊天 ======
+    socket.on('hermit:chat', (data: { text: string }) => {
+      if (!hermitMembers.has(socket.id) || !data?.text?.trim()) return;
+      io.to(HERMIT_ROOM).emit('hermit:chat', {
+        id: crypto.randomUUID(), from: username, fromId: userId, text: data.text.trim().slice(0, 200),
+      });
+    });
+
     // ====== 断开连接 ======
     socket.on('disconnect', () => {
       onlineUsers.delete(userId);
+      if (hermitMembers.delete(socket.id)) {
+        io.to(HERMIT_ROOM).emit('hermit:presence', hermitPresence());
+        io.to(HERMIT_ROOM).emit('hermit:chat', { id: crypto.randomUUID(), system: true, text: `${username} 离开了归隐之岛` });
+      }
       io.emit('user:offline', { userId, username });
       console.log(`[Socket] ${username} (${userId}) disconnected`);
     });

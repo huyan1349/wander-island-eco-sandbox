@@ -82,6 +82,8 @@ import { OnboardingFlow } from "./components/OnboardingFlow";
 import { WelcomeGuide } from "./components/WelcomeGuide";
 import { SoundLayer } from "./components/SoundLayer";
 import { SignEditorModal } from "./components/SignEditorModal";
+import { HermitOnline } from "./components/HermitOnline";
+import { emitHermitRemove } from "./lib/socket";
 import { SocialPanel } from "./components/SocialPanel";
 import { Toast } from "./components/Toast";
 import { FlourishHUD } from "./components/FlourishHUD";
@@ -98,6 +100,7 @@ import { AudioSystem } from "./lib/audio";
 export default function App() {
   const screen = useGameStore(state => state.screen);
   const showWelcomeGuide = useGameStore(state => state.showWelcomeGuide);
+  const online = useGameStore(state => state.online);
   const mode = useGameStore(state => state.mode);
   const canUndo = useGameStore(state => state._history.length > 0);
   const canRedo = useGameStore(state => state._future.length > 0);
@@ -602,6 +605,10 @@ export default function App() {
           {selectedEntityId ? (
             <button
               onClick={() => {
+                if (useGameStore.getState().online) {
+                  const a = useGameStore.getState().assets.find(x => x.id === selectedEntityId);
+                  if (a) emitHermitRemove(a.position.x, a.position.z, 0.6);
+                }
                 removeAsset(selectedEntityId);
                 setSelectedEntityId(null);
                 AudioSystem.playPop();
@@ -1069,6 +1076,7 @@ export default function App() {
       {screen === 'PLAYING' && <Toast />}
       {screen === 'PLAYING' && showWelcomeGuide && <WelcomeGuide />}
       {screen === 'PLAYING' && <SignEditorModal />}
+      {screen === 'PLAYING' && online && <HermitOnline />}
       <FlourishHUD />
       {giftClaimId && (
         <GiftModal mode="claim" giftId={giftClaimId} onClose={() => { setGiftClaimId(null); history.replaceState({}, '', location.pathname); }} />

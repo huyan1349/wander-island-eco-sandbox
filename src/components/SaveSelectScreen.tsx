@@ -44,6 +44,15 @@ export const SaveSelectScreen: React.FC = () => {
         }
     };
 
+    const enterHermit = () => {
+        if (!authUser) { AudioSystem.playClick(); store.setScreen('LOGIN'); return; }
+        AudioSystem.playConfirm();
+        store.clearAll();
+        store.setOnline(true);
+        store.setIslandInfo('hermit', '归隐之岛');
+        store.setScreen('PLAYING');
+    };
+
     const handleDelete = (id: string, e: React.MouseEvent) => {
         AudioSystem.playConfirm();
         e.stopPropagation();
@@ -114,7 +123,21 @@ export const SaveSelectScreen: React.FC = () => {
             {/* Cards Grid */}
             <div className="w-full max-w-6xl px-8 flex-1 overflow-y-auto no-scrollbar pb-24">
                 <div className={`grid gap-8 ${isTouch ? 'grid-cols-1 max-w-md mx-auto' : 'grid-cols-3'}`}>
-                    
+
+                    {/* 归隐之岛（联机公共服务器） */}
+                    <button
+                        onClick={enterHermit}
+                        className="group h-64 flex flex-col items-center justify-center gap-5 cursor-pointer rounded-2xl transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] shadow-lg shadow-black/20 border-2 border-slate-800 relative overflow-hidden"
+                        style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(110,231,183,0.35), transparent 60%), linear-gradient(160deg, #1e3a5f, #0f2438)' }}
+                    >
+                        <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-emerald-500/90 text-white text-[10px] font-bold tracking-widest">联机</div>
+                        <Globe size={48} className="text-emerald-300 group-hover:scale-110 transition-transform" strokeWidth={1.5} />
+                        <div className="text-center px-4">
+                            <span className="block text-xl font-bold tracking-[0.15em] text-white hand-drawn-title">归隐之岛</span>
+                            <span className="block text-[11px] text-emerald-200/70 mt-1 tracking-wider">与最多 20 位漫游者一同建造</span>
+                        </div>
+                    </button>
+
                     {/* Create New Card */}
                     <button 
                         onClick={handleCreateNew}

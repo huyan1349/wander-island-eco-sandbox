@@ -197,6 +197,8 @@ interface GameState {
   setSelectedEntityId: (id: string | null) => void;
   editingSignId: string | null;
   setEditingSignId: (id: string | null) => void;
+  online: boolean; // 是否在归隐之岛(联机公共服务器)
+  setOnline: (v: boolean) => void;
   
   aiNarration: string | null;
   setAiNarration: (narration: string | null) => void;
@@ -355,6 +357,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   setSelectedEntityId: (id) => set({ selectedEntityId: id }),
   editingSignId: null,
   setEditingSignId: (id) => set({ editingSignId: id }),
+  online: false,
+  setOnline: (v) => set({ online: v }),
   
   aiNarration: null,
   setAiNarration: (narration) => set({ aiNarration: narration }),

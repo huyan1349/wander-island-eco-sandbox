@@ -112,3 +112,17 @@ export function emitFriendAccepted(toId: string) {
 export function emitPresenceCheck(userIds: string[]) {
   socket?.emit('presence:check', { userIds });
 }
+
+// ====== 归隐之岛（多人公共服务器） ======
+export function emitHermitJoin() { socket?.emit('hermit:join'); }
+export function emitHermitLeave() { socket?.emit('hermit:leave'); }
+export function emitHermitPlace(asset: any) { socket?.emit('hermit:place', asset); }
+export function emitHermitRemove(x: number, z: number, radius: number) { socket?.emit('hermit:remove', { x, z, radius }); }
+export function emitHermitChat(text: string) { socket?.emit('hermit:chat', { text }); }
+
+export function onHermitState(cb: (d: { assets: any[] }) => void) { socket?.on('hermit:state', cb); return () => socket?.off('hermit:state', cb); }
+export function onHermitPlaced(cb: (a: any) => void) { socket?.on('hermit:placed', cb); return () => socket?.off('hermit:placed', cb); }
+export function onHermitRemove(cb: (d: { x: number; z: number; radius: number }) => void) { socket?.on('hermit:remove', cb); return () => socket?.off('hermit:remove', cb); }
+export function onHermitPresence(cb: (d: { count: number; cap: number; members: any[] }) => void) { socket?.on('hermit:presence', cb); return () => socket?.off('hermit:presence', cb); }
+export function onHermitChat(cb: (m: any) => void) { socket?.on('hermit:chat', cb); return () => socket?.off('hermit:chat', cb); }
+export function onHermitFull(cb: (d: { cap: number }) => void) { socket?.on('hermit:full', cb); return () => socket?.off('hermit:full', cb); }

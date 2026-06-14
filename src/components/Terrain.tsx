@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore, ToolType } from '../store';
 import { AudioSystem } from '../lib/audio';
+import { emitHermitPlace } from '../lib/socket';
 
 const noise2D = createNoise2D();
 
@@ -652,13 +653,15 @@ export function Terrain() {
         if (selectedTool === 'seed_wheat') assetType = 'crop_wheat';
         if (selectedTool === 'seed_carrot') assetType = 'crop_carrot';
 
-        addAsset({
+        const placed = {
             type: assetType as any,
             position: { x: point.x, y: Math.max(point.y, 0), z: point.z },
             rotation: { x: rx, y: targetRotY, z: rz },
             scale: targetScale,
             customState: String(selectedTool).startsWith('balloon') ? useGameStore.getState().balloonColor : undefined
-        });
+        };
+        addAsset(placed);
+        if (useGameStore.getState().online) emitHermitPlace(placed); // 联机：广播放置
     }
   };
 
