@@ -21,6 +21,16 @@ const TRACKS = [
     url: '/The_Architecture_of_Leaves.mp3',
     bg: 'radial-gradient(ellipse at 72% 8%, rgba(132,204,22,0.42), transparent 60%), linear-gradient(160deg, rgba(22,101,52,0.16), rgba(20,83,45,0.05))',
   },
+  {
+    title: 'Sakura Drifting Down',
+    url: '/Sakura_Drifting_Down.mp3',
+    bg: 'radial-gradient(ellipse at 50% 0%, rgba(251,207,232,0.55), transparent 65%), linear-gradient(160deg, rgba(244,114,182,0.18), rgba(219,39,119,0.05))',
+  },
+  {
+    title: 'Lighthouse Beam',
+    url: '/Lighthouse_Beam.mp3',
+    bg: 'radial-gradient(circle at 50% 18%, rgba(254,240,138,0.5), transparent 60%), linear-gradient(180deg, rgba(248,250,252,0.15), rgba(30,58,138,0.12))',
+  },
 ];
 
 export function WeatherForecast() {
@@ -94,16 +104,50 @@ export function WeatherForecast() {
         </svg>
       );
     }
-    // 叶之建筑：对称叶脉
+    if (idx === 2) {
+      // 叶之建筑：对称叶脉
+      return (
+        <svg viewBox="0 0 100 120" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+          <path d="M50,8 L50,116" stroke="#3f6212" strokeWidth="1" fill="none" opacity="0.4" />
+          {[20, 35, 50, 65, 80, 98].map((y, i) => (
+            <g key={i} opacity={0.34}>
+              <path d={`M50,${y} L${50 - 28},${y + 14}`} stroke="#4d7c0f" strokeWidth="0.8" fill="none" />
+              <path d={`M50,${y} L${50 + 28},${y + 14}`} stroke="#4d7c0f" strokeWidth="0.8" fill="none" />
+            </g>
+          ))}
+        </svg>
+      );
+    }
+    if (idx === 3) {
+      // 樱花飘落：散落的五瓣樱花
+      const flower = (cx: number, cy: number, s: number, key: number) => (
+        <g key={key} opacity={0.5}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <ellipse key={i} cx={cx} cy={cy - s} rx={s * 0.45} ry={s * 0.75} fill="#f9a8d4" transform={`rotate(${i * 72} ${cx} ${cy})`} />
+          ))}
+          <circle cx={cx} cy={cy} r={s * 0.3} fill="#fbcfe8" />
+        </g>
+      );
+      return (
+        <svg viewBox="0 0 100 120" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+          {flower(26, 28, 6, 1)}
+          {flower(72, 50, 5, 2)}
+          {flower(44, 82, 6.5, 3)}
+          {flower(82, 104, 4.5, 4)}
+          {flower(16, 70, 4, 5)}
+        </svg>
+      );
+    }
+    // 灯塔之光：灯塔剪影 + 放射光束
     return (
       <svg viewBox="0 0 100 120" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
-        <path d="M50,8 L50,116" stroke="#3f6212" strokeWidth="1" fill="none" opacity="0.4" />
-        {[20, 35, 50, 65, 80, 98].map((y, i) => (
-          <g key={i} opacity={0.34}>
-            <path d={`M50,${y} L${50 - 28},${y + 14}`} stroke="#4d7c0f" strokeWidth="0.8" fill="none" />
-            <path d={`M50,${y} L${50 + 28},${y + 14}`} stroke="#4d7c0f" strokeWidth="0.8" fill="none" />
-          </g>
-        ))}
+        {Array.from({ length: 7 }).map((_, i) => {
+          const ang = (-50 + i * 17) * Math.PI / 180;
+          return <line key={i} x1="50" y1="44" x2={50 + Math.sin(ang) * 90} y2={44 - Math.cos(ang) * 72} stroke="#fde047" strokeWidth="0.8" opacity="0.35" />;
+        })}
+        <path d="M44,116 L46,54 L54,54 L56,116 Z" fill="#475569" opacity="0.5" />
+        <rect x="45" y="42" width="10" height="13" rx="1" fill="#64748b" opacity="0.55" />
+        <circle cx="50" cy="48" r="3" fill="#fde047" opacity="0.75" />
       </svg>
     );
   };
