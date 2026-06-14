@@ -147,6 +147,10 @@ interface GameState {
   updateAsset: (id: string, updater: (asset: PlacedAsset) => PlacedAsset) => void;
   removeAsset: (id: string) => void;
   removeAssetAt: (position: Vector3Data, radius: number) => void;
+  _history: PlacedAsset[][];
+  _future: PlacedAsset[][];
+  undo: () => void;
+  redo: () => void;
   
   grassHealth: number; // 0-100
   setGrassHealth: (health: number) => void;
@@ -362,6 +366,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   })),
 
   assets: [],
+  _history: [],
+  _future: [],
   updateAsset: (id, updater) => set((state) => ({
     assets: state.assets.map((asset) => asset.id === id ? updater(asset) : asset)
   })),
@@ -398,22 +404,24 @@ export const useGameStore = create<GameState>((set, get) => ({
         newVfxQueue.push({ id: Date.now() + Math.random(), type: 'dust', position: asset.position });
     }
 
-    return { 
-      assets: newAssets, 
-      deerCount, 
-      wolfCount, 
-      playerXP: newXP, 
+    return {
+      assets: newAssets,
+      deerCount,
+      wolfCount,
+      playerXP: newXP,
       playerLevel: newLevel,
       lastPlacedSynergy: synergy,
       vfxQueue: newVfxQueue,
-      stats: { ...state.stats, itemsPlaced: state.stats.itemsPlaced + 1 } 
+      stats: { ...state.stats, itemsPlaced: state.stats.itemsPlaced + 1 },
+      _history: [...state._history, state.assets].slice(-40),
+      _future: [],
     };
   }),
   removeAsset: (id) => set((state) => {
     const newAssets = state.assets.filter(a => a.id !== id);
     const deerCount = newAssets.filter(a => a.type === 'deer').length;
     const wolfCount = newAssets.filter(a => a.type === 'wolf').length;
-    return { assets: newAssets, deerCount, wolfCount };
+    return { assets: newAssets, deerCount, wolfCount, _history: [...state._history, state.assets].slice(-40), _future: [] };
   }),
   removeAssetAt: (position, radius) => set((state) => {
     const newAssets = state.assets.filter(a => {
@@ -422,9 +430,32 @@ export const useGameStore = create<GameState>((set, get) => ({
         const dist = Math.sqrt(dx*dx + dz*dz);
         return dist > radius;
     });
+    if (newAssets.length === state.assets.length) return {}; // 没擦到任何东西，不记历史
     const deerCount = newAssets.filter(a => a.type === 'deer').length;
     const wolfCount = newAssets.filter(a => a.type === 'wolf').length;
-    return { assets: newAssets, deerCount, wolfCount };
+    return { assets: newAssets, deerCount, wolfCount, _history: [...state._history, state.assets].slice(-40), _future: [] };
+  }),
+  undo: () => set((state) => {
+    if (!state._history.length) return {};
+    const prev = state._history[state._history.length - 1];
+    return {
+      assets: prev,
+      _history: state._history.slice(0, -1),
+      _future: [...state._future, state.assets].slice(-40),
+      deerCount: prev.filter(a => a.type === 'deer').length,
+      wolfCount: prev.filter(a => a.type === 'wolf').length,
+    };
+  }),
+  redo: () => set((state) => {
+    if (!state._future.length) return {};
+    const next = state._future[state._future.length - 1];
+    return {
+      assets: next,
+      _future: state._future.slice(0, -1),
+      _history: [...state._history, state.assets].slice(-40),
+      deerCount: next.filter(a => a.type === 'deer').length,
+      wolfCount: next.filter(a => a.type === 'wolf').length,
+    };
   }),
   
   grassHealth: 100,

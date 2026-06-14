@@ -70,7 +70,9 @@ import {
   Maximize2,
   Flower2,
   Sprout,
-  Clover
+  Clover,
+  Undo2,
+  Redo2
 } from "lucide-react";
 
 import { PlayerPanel } from "./components/PlayerPanel";
@@ -94,6 +96,11 @@ import { AudioSystem } from "./lib/audio";
 export default function App() {
   const screen = useGameStore(state => state.screen);
   const showWelcomeGuide = useGameStore(state => state.showWelcomeGuide);
+  const mode = useGameStore(state => state.mode);
+  const canUndo = useGameStore(state => state._history.length > 0);
+  const canRedo = useGameStore(state => state._future.length > 0);
+  const undo = useGameStore(state => state.undo);
+  const redo = useGameStore(state => state.redo);
   const timeOfDay = useGameStore(state => state.timeOfDay);
   const setTimeOfDay = useGameStore(state => state.setTimeOfDay);
   const setIsTimeScrubbing = useGameStore(state => state.setIsTimeScrubbing);
@@ -352,6 +359,23 @@ export default function App() {
     } else if (screen === 'TITLE' || screen === 'LOGIN' || screen === 'ONBOARD' || screen === 'SAVE_SELECT') {
       AudioSystem.switchBGM('/Tides_of_Mahogany.mp3');
     }
+  }, [screen]);
+
+  // 撤销 / 重做快捷键（仅游戏内）
+  useEffect(() => {
+    if (screen !== 'PLAYING') return;
+    const h = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) useGameStore.getState().redo(); else useGameStore.getState().undo();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault(); useGameStore.getState().redo();
+      }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
   }, [screen]);
 
   // 触屏检测 + tooltip 状态
@@ -779,7 +803,7 @@ export default function App() {
                 const Icon = t.icon;
                 const isActive = selectedTool === t.id;
                 const isSystemTool = t.id === 'save' || t.id === 'load' || t.id === 'clear';
-                const isUnlocked = t.cost === 0 || isSystemTool || unlockedAssets.includes(t.id);
+                const isUnlocked = mode === 'creative' ? true : (t.cost === 0 || isSystemTool || unlockedAssets.includes(t.id));
                 const canAfford = ecoPoints >= t.cost;
 
                 return (
@@ -819,6 +843,26 @@ export default function App() {
 
           {/* Bottom Dock：常驻模式区 + 分类区（合并为单一面板，避免错位） */}
           <div className="hand-drawn-panel flex items-center gap-2 pointer-events-auto max-w-[97vw] px-3 py-2">
+
+          {/* 撤销 / 重做 */}
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={() => { AudioSystem.playTap(); undo(); }}
+              disabled={!canUndo}
+              title="撤销 (Ctrl+Z)"
+              className={`hand-drawn-btn relative shrink-0 w-12 h-12 ${!canUndo ? 'opacity-40' : ''}`}
+            >
+              <Undo2 size={20} className="text-slate-800 mx-auto" />
+            </button>
+            <button
+              onClick={() => { AudioSystem.playTap(); redo(); }}
+              disabled={!canRedo}
+              title="重做 (Ctrl+Shift+Z)"
+              className={`hand-drawn-btn relative shrink-0 w-12 h-12 ${!canRedo ? 'opacity-40' : ''}`}
+            >
+              <Redo2 size={20} className="text-slate-800 mx-auto" />
+            </button>
+          </div>
 
           {/* 常驻模式：选择 / 橡皮擦（始终显示） */}
           <div id="guide-modes" className="flex gap-2 shrink-0">
