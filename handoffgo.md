@@ -1,16 +1,20 @@
 # Handoff
 
 ## 已完成任务
-- 为6个组件的所有交互元素添加了点击音效（AudioSystem）
-  - PlayerPanel.tsx: playClick(打开面板/搜索/导出/礼物), playTap(标签切换/社交子标签), playConfirm(保存/发送消息/加好友/接受/退出登录), playClose(关闭/返回/拒绝)
-  - SocialPanel.tsx: 同上模式
-  - MusicLibrary.tsx: playClick(卡片点击), playTap(播放/翻面), playClose(关闭详情/收起)
-  - GiftModal.tsx: playConfirm(封装/收下), playClick(复制/下载), playTap(翻面), playClose(关闭)
-  - SocialPlaza.tsx: playTap(标签/心情), playClick(捡瓶/访问岛屿), playConfirm(投瓶/回信), playClose(返回/关闭)
-  - VisitorBookModal.tsx: playClose(关闭)
-- SettingsPanel.tsx 不存在（跳过）
-- TypeScript 编译通过
-- PR #7 已合并到 main
+- 完成游戏世界观与叙事全书文档（docs/narrative/世界观与叙事全书.md）
+  - 12章完整叙事体系：创世（叙述）→ 大遗忘 → 碎片（岛屿）→ 潮语者（玩家）→ 回声（音乐）→ 物件志 → 碎片系统 → 社交叙事 → 生生不息 → AI岛灵 → 创新叙事机制 → 术语表
+  - 5首回声完整重写（红木潮汐/钟琴日印/叶之建筑/樱落/灯塔之光）
+  - 碎片系统设计（表层回声/中层残句/深层遗书三级）
+  - 碎片发现机制（共鸣/生态/时间/天气/季节触发）
+  - 所有物件的叙事意义映射表
+  - 碎片文本示例（表层10条+中层10条+深层3篇完整遗书）
+  - 核心创新：叙事即玩法、环境叙事、遗忘主题、选择与代价
 
 ## 未完成任务
-- 无
+- 碎片系统的代码实现（在游戏中加入可收集的叙事碎片）
+- 碎片文本的完整编写（目前只有示例，需要大量扩充）
+- 叙事图谱UI（收集碎片后的拼合地图）
+- 生态影响音乐清晰度的代码实现
+- 生态影响AI岛灵语言能力的代码实现
+- 跨岛碎片（串门时触发的特殊碎片）
+- 版本号更新与设置页面更新
