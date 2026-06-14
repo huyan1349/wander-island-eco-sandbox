@@ -10,7 +10,7 @@ const STARTER = TRACKS.filter(t => !MAIL_CARD_URLS.includes(t.url));
 import { Camera, User, ArrowRight, Sparkles, Globe } from 'lucide-react';
 
 // 居民证主题配色（呼应 5 段记忆的色调）
-const THEMES = [
+export const THEMES = [
   { key: 'terracotta', name: '赤陶', bg: 'linear-gradient(135deg,#fbe9dd 0%,#f3c9ab 45%,#e6a378 100%)', accent: '#b5563a', ink: '#7c2d12' },
   { key: 'gold',       name: '晴金', bg: 'linear-gradient(135deg,#fef9ec 0%,#fdeecb 45%,#f7dca0 100%)', accent: '#b45309', ink: '#78350f' },
   { key: 'leaf',       name: '叶绿', bg: 'linear-gradient(135deg,#e9f6ea 0%,#c4e8c9 45%,#9bd6a6 100%)', accent: '#15803d', ink: '#14532d' },
@@ -118,6 +118,13 @@ export const OnboardingFlow: React.FC = () => {
     setShowWelcomeGuide(true);
     setFlyOut(true);
     const finalIsland = islandName.trim() || `${name.trim() || authUser?.username || '漫游者'}的岛`;
+    // 持久化居民证，供游戏内重复查看
+    try {
+      localStorage.setItem('resident_card', JSON.stringify({
+        name: name.trim() || authUser?.username || '漫游者',
+        islandName: finalIsland, motto: motto.trim(), themeIdx, memberNo, joinDate, uid,
+      }));
+    } catch {}
     setTimeout(() => createSaveSlot(finalIsland), 650); // 等飞出动画再建岛(内部 set screen=PLAYING)
   };
 

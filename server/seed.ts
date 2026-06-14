@@ -20,7 +20,7 @@ async function seedDatabase() {
       CI_USER_ID,
       '辞',
       ciPasswordHash,
-      'https://api.dicebear.com/7.x/notionists/svg?seed=ci-deepseek&backgroundColor=d1d4f9',
+      '/ci-avatar.png',
       '岛屿的守望者，风的低语者'
     );
 

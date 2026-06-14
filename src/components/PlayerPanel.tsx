@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { exportIslandFile, applyIslandData } from '../utils/islandIO';
 import { GiftModal } from './GiftModal';
+import { IslandHubModal } from './IslandHubModal';
 
 type Tab = 'stats' | 'ecology' | 'unlocks' | 'social' | 'system';
 type SocialTab = 'friends' | 'chat' | 'mailbox' | 'visitors' | 'plaza';
@@ -35,6 +36,7 @@ export const PlayerPanel: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('stats');
   const [showGift, setShowGift] = useState(false);
+  const [showHub, setShowHub] = useState(false);
   const [activeSocialTab, setActiveSocialTab] = useState<SocialTab>('friends');
 
   const [isEditing, setIsEditing] = useState(false);
@@ -206,38 +208,34 @@ export const PlayerPanel: React.FC = () => {
       <div
         id="guide-avatar"
         onClick={() => { AudioSystem.playClick(); setIsOpen(true); }}
-        className="group flex items-center gap-4 px-3 pr-6 py-2 rounded-2xl bg-slate-900/55 backdrop-blur-md border border-white/10 shadow-[0_8px_24px_rgba(0,0,0,0.35)] hover:bg-slate-900/70 transition-colors cursor-pointer"
+        className="group flex items-center gap-4 cursor-pointer"
       >
-        <div className="relative group">
-          <div className="w-12 h-12 bg-gradient-to-tr from-emerald-500 to-cyan-500 rounded-full flex items-center justify-center border-2 border-slate-800 shadow-inner overflow-hidden">
+        <div className="relative group shrink-0">
+          <div className="w-12 h-12 bg-gradient-to-tr from-emerald-500 to-cyan-500 rounded-full flex items-center justify-center border-2 border-slate-800 shadow-md overflow-hidden">
             {(authUser ? authUser.avatar : playerAvatar) ? (
               <img src={authUser ? authUser.avatar : playerAvatar} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
               <User className="text-slate-700" size={24} />
             )}
           </div>
-          <div className="absolute -bottom-1 -right-1 bg-slate-900 border text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded-md min-w-[20px] text-center shadow-lg">
+          <div className="absolute -bottom-1 -right-1 bg-slate-900 text-emerald-400 text-[10px] font-bold px-1.5 py-0.5 rounded-md min-w-[20px] text-center shadow-lg border border-slate-700">
             {playerLevel}
           </div>
           {authUser && (
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-800 animate-pulse" title="在线" />
           )}
           {authUser && (
-            <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+            <label onClick={(e) => e.stopPropagation()} className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
               <Camera size={16} className="text-white" />
               <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
             </label>
           )}
         </div>
-        <div className="flex flex-col gap-1 min-w-[120px]">
-          <span className="text-sm font-bold text-white tracking-wide">
+        {/* 无背景：仅名字 */}
+        <div className="flex flex-col min-w-[80px]">
+          <span className="text-sm font-bold text-white tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
             {authUser ? authUser.username : playerName}
           </span>
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full" style={{ width: `${xpPercentage}%` }} />
-            </div>
-          </div>
         </div>
       </div>
 
@@ -601,6 +599,7 @@ export const PlayerPanel: React.FC = () => {
                         </div>
                       )}
                     </div>
+                    <button onClick={() => { AudioSystem.playClick(); setShowHub(true); }} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Globe size={18} /> 小岛面板（概况·居民证·明信片）</button>
                     <button onClick={() => { AudioSystem.playConfirm(); saveGame(); alert("Game Saved Successfully!"); }} className="hand-drawn-btn px-8 py-4 text-xl font-bold w-full">保存进度</button>
                     <div className="grid grid-cols-2 gap-3 w-full">
                       <button onClick={() => { AudioSystem.playClick(); exportIslandFile(); }} className="hand-drawn-btn px-4 py-4 text-sm font-bold flex items-center justify-center gap-2"><Download size={16} /> 导出文件</button>
@@ -634,6 +633,7 @@ export const PlayerPanel: React.FC = () => {
           onClose={() => setShowGift(false)}
         />
       )}
+      {showHub && <IslandHubModal onClose={() => setShowHub(false)} />}
     </>
   );
 };
