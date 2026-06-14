@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { GameCanvas } from "./components/GameCanvas";
 import { TitleScreen } from "./components/TitleScreen";
 import { SaveSelectScreen } from "./components/SaveSelectScreen";
-import { LoadingScreen } from "./components/LoadingScreen";
+import { LoadingScreen, hasVisitedBefore } from "./components/LoadingScreen";
 import { useGameStore, ToolType } from "./store";
 import {
   TreePine,
@@ -334,7 +334,7 @@ export default function App() {
   const [giftClaimId, setGiftClaimId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [envMenuOpen, setEnvMenuOpen] = useState(false);
-  const [appLoaded, setAppLoaded] = useState(false);
+  const [appLoaded, setAppLoaded] = useState(() => hasVisitedBefore());
   const lastToolRef = useRef<ToolType>('none');
   const lastCategoryRef = useRef<string | null>(null);
 
