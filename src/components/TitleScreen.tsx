@@ -306,6 +306,20 @@ export const TitleScreen: React.FC = () => {
                                         <button onClick={() => setTitleTheme('blue')} className={`hand-drawn-btn px-6 py-2 text-sm text-slate-800 font-bold ${titleTheme === 'blue' ? 'hand-drawn-btn-active' : ''}`}>深蓝 (Blue)</button>
                                     </div>
                                 </div>
+                                <div className="flex flex-col gap-4">
+                                    <span className="text-lg font-bold text-slate-800">数据管理</span>
+                                    <button
+                                        onClick={() => {
+                                            if (confirm('确定清除所有浏览器数据？这将重置加载界面状态，刷新后需要重新加载资源。')) {
+                                                localStorage.clear();
+                                                location.reload();
+                                            }
+                                        }}
+                                        className="hand-drawn-btn px-6 py-2 text-sm text-red-700 font-bold border-red-300 hover:bg-red-50"
+                                    >
+                                        清除所有浏览器数据
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
