@@ -28,7 +28,8 @@ export const LoginScreen: React.FC = () => {
       api.setToken(result.token);
       connectSocket(result.token);
       setAuthUser(result.user);
-      setScreen('SAVE_SELECT');
+      // 新注册用户 → 引导设置个人信息 + 居民证；老用户直接进入存档
+      setScreen(mode === 'register' ? 'ONBOARD' : 'SAVE_SELECT');
     } catch (err: any) {
       setError(err.message || '操作失败');
     } finally {

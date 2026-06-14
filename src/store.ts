@@ -35,7 +35,7 @@ export interface VFX {
     position: Vector3Data;
 }
 
-export type GameScreen = 'TITLE' | 'LOGIN' | 'SAVE_SELECT' | 'PLAYING';
+export type GameScreen = 'TITLE' | 'LOGIN' | 'ONBOARD' | 'SAVE_SELECT' | 'PLAYING';
 
 export interface AuthUser {
   id: string;
@@ -43,6 +43,7 @@ export interface AuthUser {
   avatar: string;
   motto: string;
   visitorCount?: number;
+  memberNo?: number;
 }
 
 export interface ToastItem {

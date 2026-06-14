@@ -76,11 +76,19 @@ router.post('/register', (req: AuthRequest, res: Response) => {
     }
   } catch { /* 辞可能还没被seed */ }
 
+  // 加入序号：当前用户总数（含本人）= 第 N 位漫游者
+  let memberNo = 1;
+  try {
+    const row: any = db.prepare('SELECT COUNT(*) as cnt FROM users').get();
+    memberNo = row?.cnt || 1;
+  } catch {}
+
   const token = generateToken(id);
 
   res.json({
     token,
-    user: { id, username, avatar, motto: null }
+    memberNo,
+    user: { id, username, avatar, motto: null, memberNo }
   });
 });
 

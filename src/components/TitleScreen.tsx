@@ -205,12 +205,20 @@ export const TitleScreen: React.FC = () => {
 
                 {/* Cinematic Chinese Menu */}
                 <div className={`pointer-events-auto animate-slide-up ${isTouch ? 'mb-8' : 'mb-16'} flex flex-col items-start gap-4 pl-4 mt-8 w-full ${isTouch ? 'max-w-full' : 'max-w-md'}`}>
+                    {!authUser && (
+                        <div className="flex items-center gap-2 -mb-1 pl-1 animate-pulse">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 border border-slate-800" />
+                            <span className={`text-sm font-bold tracking-wide ${titleTheme === 'white' ? 'text-white/80' : 'text-slate-500'}`}>
+                                首次来到漫游岛？登录领取你的居民证 ↓
+                            </span>
+                        </div>
+                    )}
                     <button
                         onClick={() => { AudioSystem.playConfirm(); authUser ? setScreen('SAVE_SELECT') : setScreen('LOGIN'); }}
-                        className={`hand-drawn-btn flex items-center justify-center gap-3 w-full ${isTouch ? 'py-4 text-lg' : 'py-3 text-lg'}`}
+                        className={`hand-drawn-btn flex items-center justify-center gap-3 w-full ${isTouch ? 'py-4 text-lg' : 'py-3 text-lg'} ${!authUser ? 'hand-drawn-btn-active' : ''}`}
                     >
                         <Globe size={isTouch ? 24 : 20} />
-                        联机模式
+                        {authUser ? '联机模式' : '登录 · 开启漫游'}
                         {authUser && <span className="text-sm font-normal text-emerald-600 ml-1">({authUser.username})</span>}
                     </button>
                     <button

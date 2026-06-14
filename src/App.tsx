@@ -75,6 +75,7 @@ import {
 
 import { PlayerPanel } from "./components/PlayerPanel";
 import { LoginScreen } from "./components/LoginScreen";
+import { OnboardingFlow } from "./components/OnboardingFlow";
 import { SocialPanel } from "./components/SocialPanel";
 import { Toast } from "./components/Toast";
 import { FlourishHUD } from "./components/FlourishHUD";
@@ -345,7 +346,7 @@ export default function App() {
   useEffect(() => {
     if (screen === 'PLAYING') {
       AudioSystem.switchBGM('/Glockenspiel_Sunprint.mp3');
-    } else if (screen === 'TITLE' || screen === 'LOGIN' || screen === 'SAVE_SELECT') {
+    } else if (screen === 'TITLE' || screen === 'LOGIN' || screen === 'ONBOARD' || screen === 'SAVE_SELECT') {
       AudioSystem.switchBGM('/Tides_of_Mahogany.mp3');
     }
   }, [screen]);
@@ -564,6 +565,7 @@ export default function App() {
 
       {appLoaded && screen === 'TITLE' && <TitleScreen />}
       {appLoaded && screen === 'LOGIN' && <LoginScreen />}
+      {appLoaded && screen === 'ONBOARD' && <OnboardingFlow />}
       {appLoaded && screen === 'SAVE_SELECT' && <SaveSelectScreen />}
 
       {screen === 'PLAYING' && selectedTool === 'eraser' && (
