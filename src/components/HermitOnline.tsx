@@ -5,9 +5,9 @@ import {
   emitHermitJoin, emitHermitLeave, emitHermitChat,
   onHermitState, onHermitPlaced, onHermitRemove, onHermitPresence, onHermitChat, onHermitFull,
 } from '../lib/socket';
-import { Users, Send, LogOut, Globe } from 'lucide-react';
+import { Users, Send, LogOut, MessageCircle, X } from 'lucide-react';
 
-// 归隐之岛联机控制器 + HUD：进入即同步共享岛，实时收发放置/擦除/聊天/在场
+// 归隐之岛联机控制器 + HUD（沿用游戏手绘高级风）
 export const HermitOnline: React.FC = () => {
   const setOnline = useGameStore(s => s.setOnline);
   const setScreen = useGameStore(s => s.setScreen);
@@ -18,86 +18,85 @@ export const HermitOnline: React.FC = () => {
   const [presence, setPresence] = useState<{ count: number; cap: number; members: any[] }>({ count: 1, cap: 20, members: [] });
   const [chat, setChat] = useState<any[]>([]);
   const [input, setInput] = useState('');
-  const [chatOpen, setChatOpen] = useState(true);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     emitHermitJoin();
     const offs = [
-      onHermitState((d) => { useGameStore.setState({ assets: d.assets || [], _history: [], _future: [] }); }),
+      // 叠加到本地预置底图（辞的隐者之岛）之上，而非替换
+      onHermitState((d) => {
+        const extra = d.assets || [];
+        if (extra.length) useGameStore.setState((s) => ({ assets: [...s.assets, ...extra] }));
+      }),
       onHermitPlaced((a) => addAsset(a)),
       onHermitRemove((d) => removeAssetAt({ x: d.x, y: 0, z: d.z }, d.radius)),
       onHermitPresence((p) => setPresence(p)),
-      onHermitChat((m) => setChat(prev => [...prev.slice(-49), m])),
-      onHermitFull((d) => {
-        addToast(`归隐之岛已满（${d.cap} 人），稍后再来`, 'info');
-        setOnline(false);
-        setScreen('SAVE_SELECT');
-      }),
+      onHermitChat((m) => { setChat(prev => [...prev.slice(-49), m]); setUnread(u => (chatOpen ? 0 : u + 1)); }),
+      onHermitFull((d) => { addToast(`归隐之岛已满（${d.cap} 人），稍后再来`, 'info'); setOnline(false); setScreen('SAVE_SELECT'); }),
     ];
     return () => { offs.forEach(off => off && off()); emitHermitLeave(); };
-  }, []);
+  }, []); // eslint-disable-line
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chat]);
+  useEffect(() => { if (chatOpen) { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); setUnread(0); } }, [chat, chatOpen]);
 
-  const send = () => {
-    if (!input.trim()) return;
-    emitHermitChat(input.trim());
-    setInput('');
-  };
-
-  const leave = () => {
-    AudioSystem.playClose();
-    setOnline(false);
-    setScreen('SAVE_SELECT');
-  };
+  const send = () => { if (!input.trim()) return; emitHermitChat(input.trim()); setInput(''); };
+  const leave = () => { AudioSystem.playClose(); setOnline(false); setScreen('SAVE_SELECT'); };
 
   return (
     <>
-      {/* 顶部：归隐之岛标识 + 在场 + 退出 */}
+      {/* 顶部：归隐之岛铭牌（手绘高级风） */}
       <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[70] pointer-events-auto flex items-center gap-3">
-        <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-900/60 backdrop-blur-md border border-white/10 shadow-lg">
-          <Globe size={16} className="text-emerald-400" />
-          <span className="text-white text-sm font-bold tracking-wide">归隐之岛</span>
-          <span className="flex items-center gap-1 text-emerald-300 text-xs font-bold ml-1"><Users size={13} /> {presence.count}/{presence.cap}</span>
+        <div className="hand-drawn-panel px-5 py-2.5 flex items-center gap-3">
+          <span className="hand-drawn-title text-lg text-slate-800 -rotate-1 leading-none">归隐之岛</span>
+          <span className="w-px h-5 bg-slate-300" />
+          <span className="flex items-center gap-1.5 text-emerald-700 text-sm font-bold">
+            <Users size={15} /> {presence.count}<span className="text-slate-400 font-normal">/{presence.cap}</span>
+          </span>
         </div>
-        <button onClick={leave} className="px-3 py-2 rounded-2xl bg-slate-900/60 backdrop-blur-md border border-white/10 text-white/80 hover:text-white text-xs font-bold flex items-center gap-1.5 shadow-lg">
-          <LogOut size={13} /> 离岛
+        <button onClick={leave} className="hand-drawn-btn px-4 py-2.5 text-sm font-bold text-red-600 flex items-center gap-2">
+          <LogOut size={15} /> 离岛
         </button>
       </div>
 
-      {/* 右下：聊天 */}
-      <div className="absolute bottom-6 right-6 z-[70] pointer-events-auto w-72">
-        <button onClick={() => setChatOpen(o => !o)} className="mb-2 px-3 py-1.5 rounded-xl bg-slate-900/60 backdrop-blur-md border border-white/10 text-white/80 text-xs font-bold shadow-lg">
-          {chatOpen ? '收起聊天 ▾' : `展开聊天 ▴ ${chat.length ? `(${chat.length})` : ''}`}
-        </button>
+      {/* 右下：聊天（手绘卡片） */}
+      <div className="absolute bottom-6 right-6 z-[70] pointer-events-auto flex flex-col items-end gap-2">
         {chatOpen && (
-          <div className="rounded-2xl bg-slate-900/60 backdrop-blur-md border border-white/10 shadow-xl overflow-hidden flex flex-col" style={{ height: 280 }}>
+          <div className="hand-drawn-panel w-72 flex flex-col overflow-hidden" style={{ height: 300 }}>
+            <div className="flex items-center justify-between px-4 py-2.5 border-b-2 border-slate-800/15">
+              <span className="text-sm font-bold text-slate-800 flex items-center gap-2"><MessageCircle size={15} className="text-emerald-600" /> 岛上对话</span>
+              <button onClick={() => setChatOpen(false)} className="text-slate-400 hover:text-slate-700"><X size={16} /></button>
+            </div>
             <div className="flex-1 overflow-y-auto custom-scrollbar p-3 flex flex-col gap-1.5">
-              {chat.length === 0 && <p className="text-white/30 text-xs text-center mt-4">岛上很安静……打个招呼吧</p>}
+              {chat.length === 0 && <p className="text-slate-400 text-xs text-center mt-6">岛上很安静……打个招呼吧 🌿</p>}
               {chat.map((m) => (
                 <div key={m.id} className="text-xs leading-snug">
-                  {m.system ? (
-                    <span className="text-amber-300/70 italic">— {m.text} —</span>
-                  ) : (
-                    <span className="text-white/90"><span className="text-emerald-300 font-bold">{m.from}</span><span className="text-white/40">：</span>{m.text}</span>
-                  )}
+                  {m.system
+                    ? <span className="text-amber-600/80 italic">— {m.text} —</span>
+                    : <span className="text-slate-700"><span className="text-emerald-700 font-bold">{m.from}</span><span className="text-slate-400">：</span>{m.text}</span>}
                 </div>
               ))}
               <div ref={chatEndRef} />
             </div>
-            <div className="flex items-center gap-2 p-2 border-t border-white/10">
+            <div className="flex items-center gap-2 p-2 border-t-2 border-slate-800/15">
               <input
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') send(); }}
                 placeholder="说点什么…"
                 maxLength={200}
-                className="flex-1 bg-white/10 rounded-lg px-3 py-2 text-white text-xs placeholder:text-white/30 focus:outline-none"
+                className="flex-1 px-3 py-2 rounded-lg border-2 border-slate-300 bg-white/70 text-slate-800 text-xs placeholder:text-slate-400 focus:outline-none focus:border-emerald-400"
               />
-              <button onClick={send} className="p-2 rounded-lg bg-emerald-500/80 hover:bg-emerald-500 text-white"><Send size={14} /></button>
+              <button onClick={send} className="hand-drawn-btn p-2 text-emerald-700"><Send size={15} /></button>
             </div>
           </div>
+        )}
+        {!chatOpen && (
+          <button onClick={() => setChatOpen(true)} className="hand-drawn-btn px-4 py-2.5 text-sm font-bold text-slate-800 flex items-center gap-2 relative">
+            <MessageCircle size={16} className="text-emerald-600" /> 对话
+            {unread > 0 && <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-white">{unread > 9 ? '9+' : unread}</span>}
+          </button>
         )}
       </div>
     </>

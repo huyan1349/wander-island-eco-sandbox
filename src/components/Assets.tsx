@@ -3026,6 +3026,50 @@ export function Sign(props: any) {
   );
 }
 
+export function Mailbox(props: any) {
+  const ref = usePopIn(props.scale || 1);
+  const setMailboxOpen = useGameStore(s => s.setMailboxOpen);
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+      {/* 柱 */}
+      <mesh position={[0, 0.45, 0]} castShadow>
+        <boxGeometry args={[0.12, 0.9, 0.12]} />
+        <meshStandardMaterial color="#5c3d22" flatShading />
+      </mesh>
+      {/* 箱体（点击打开信箱，仅选择模式） */}
+      <group
+        onClick={(e: any) => {
+          if (useGameStore.getState().selectedTool !== 'none') return;
+          e.stopPropagation();
+          AudioSystem.playClick();
+          setMailboxOpen(true);
+        }}
+        onPointerOver={() => { if (useGameStore.getState().selectedTool === 'none') document.body.style.cursor = 'pointer'; }}
+        onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+      >
+        <mesh position={[0, 1.0, 0]} castShadow>
+          <boxGeometry args={[0.5, 0.4, 0.7]} />
+          <meshStandardMaterial color="#15803d" flatShading />
+        </mesh>
+        {/* 半圆顶 */}
+        <mesh position={[0, 1.2, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+          <cylinderGeometry args={[0.25, 0.25, 0.5, 12, 1, false, 0, Math.PI]} />
+          <meshStandardMaterial color="#16a34a" flatShading />
+        </mesh>
+        {/* 红色小旗 */}
+        <mesh position={[0.28, 1.15, 0.1]} castShadow>
+          <boxGeometry args={[0.04, 0.3, 0.04]} />
+          <meshStandardMaterial color="#7f1d1d" flatShading />
+        </mesh>
+        <mesh position={[0.36, 1.22, 0.1]} castShadow>
+          <boxGeometry args={[0.16, 0.12, 0.02]} />
+          <meshStandardMaterial color="#dc2626" flatShading />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
 export function Bench(props: any) {
   const ref = usePopIn(props.scale || 1);
   return (
@@ -3533,6 +3577,7 @@ export function Assets() {
           case 'willow_tree': content = <WillowTree {...asset} />; break;
           case 'bush': content = <Bush {...asset} />; break;
           case 'sign': content = <Sign {...asset} assetId={asset.id} />; break;
+          case 'mailbox': content = <Mailbox {...asset} assetId={asset.id} />; break;
           default: content = null;
         }
 

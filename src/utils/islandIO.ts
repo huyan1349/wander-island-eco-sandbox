@@ -1,5 +1,33 @@
 import { useGameStore } from '../store';
 
+// 直接把一份岛屿快照应用到 store（临时、不建存档）。用于开屏 demo / 归隐之岛预置底图。
+export function applyIslandSnapshot(d: any) {
+  const cur = useGameStore.getState().terrainData;
+  useGameStore.setState({
+    assets: d.assets ?? [],
+    grassHealth: d.grassHealth ?? 100,
+    deerCount: d.deerCount ?? 0,
+    wolfCount: d.wolfCount ?? 0,
+    timeOfDay: d.timeOfDay ?? 8,
+    weather: d.weather ?? 'sunny',
+    season: d.season ?? useGameStore.getState().season,
+    biome: d.biome ?? useGameStore.getState().biome,
+    _history: [],
+    _future: [],
+    terrainData: {
+      ...cur,
+      positions: d.terrainPositions ? new Float32Array(d.terrainPositions) : null,
+      types: d.terrainTypes ? new Uint8Array(d.terrainTypes) : null,
+    },
+  } as any);
+}
+
+export async function loadPresetIsland(url: string) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('preset fetch failed');
+  applyIslandSnapshot(await res.json());
+}
+
 // 把当前小岛序列化成游戏可读取的数据对象（与存档格式一致）
 export function serializeIsland() {
   const s = useGameStore.getState();

@@ -83,6 +83,7 @@ import { WelcomeGuide } from "./components/WelcomeGuide";
 import { SoundLayer } from "./components/SoundLayer";
 import { SignEditorModal } from "./components/SignEditorModal";
 import { HermitOnline } from "./components/HermitOnline";
+import { MailboxModal } from "./components/MailboxModal";
 import { emitHermitRemove } from "./lib/socket";
 import { SocialPanel } from "./components/SocialPanel";
 import { Toast } from "./components/Toast";
@@ -101,6 +102,8 @@ export default function App() {
   const screen = useGameStore(state => state.screen);
   const showWelcomeGuide = useGameStore(state => state.showWelcomeGuide);
   const online = useGameStore(state => state.online);
+  const mailboxOpen = useGameStore(state => state.mailboxOpen);
+  const setMailboxOpen = useGameStore(state => state.setMailboxOpen);
   const mode = useGameStore(state => state.mode);
   const canUndo = useGameStore(state => state._history.length > 0);
   const canRedo = useGameStore(state => state._future.length > 0);
@@ -357,6 +360,16 @@ export default function App() {
     return removeUnlock;
   }, [appLoaded]);
 
+  // 首次打开：载入「开屏 demo 小岛」作为标题背景（空岛时才载入，不覆盖玩家存档）
+  const demoLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!appLoaded || demoLoadedRef.current) return;
+    const s = useGameStore.getState();
+    if (s.online || s.assets.length > 0) return;
+    demoLoadedRef.current = true;
+    import('./utils/islandIO').then(m => m.loadPresetIsland('/preset-demo.json').catch(() => {}));
+  }, [appLoaded]);
+
   // Switch BGM based on screen
   useEffect(() => {
     if (screen === 'PLAYING') {
@@ -526,6 +539,7 @@ export default function App() {
         { id: "well", icon: Droplet, label: "水井", cost: 150 },
         { id: "bench", icon: Armchair, label: "长椅", cost: 40 },
         { id: "sign", icon: Signpost, label: "牌子（可写字）", cost: 0 },
+        { id: "mailbox", icon: Mailbox, label: "信箱（点击查看）", cost: 0 },
         { id: "streetlamp", icon: Lamp, label: "路灯", cost: 200 },
         { id: "observatory", icon: Telescope, label: "观星台", cost: 1500 },
         { id: "ruins_arch", icon: Castle, label: "遗迹石门", cost: 2000 },
@@ -1077,6 +1091,13 @@ export default function App() {
       {screen === 'PLAYING' && showWelcomeGuide && <WelcomeGuide />}
       {screen === 'PLAYING' && <SignEditorModal />}
       {screen === 'PLAYING' && online && <HermitOnline />}
+      {screen === 'PLAYING' && mailboxOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/55 backdrop-blur-sm" onClick={() => setMailboxOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <MailboxModal onClose={() => setMailboxOpen(false)} />
+          </div>
+        </div>
+      )}
       <FlourishHUD />
       {giftClaimId && (
         <GiftModal mode="claim" giftId={giftClaimId} onClose={() => { setGiftClaimId(null); history.replaceState({}, '', location.pathname); }} />

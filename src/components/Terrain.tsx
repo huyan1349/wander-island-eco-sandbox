@@ -630,7 +630,7 @@ export function Terrain() {
         let targetScale = 0.8 + Math.random() * 0.4;
         let targetRotY = Math.random() * Math.PI * 2;
         
-        if (selectedTool === 'bridge_pillar' || selectedTool === 'tent' || selectedTool === 'campfire' || selectedTool === 'well' || selectedTool === 'bench' || selectedTool === 'sign' || selectedTool === 'hoe' || selectedTool === 'seed_wheat' || selectedTool === 'seed_carrot' || selectedTool === 'observatory' || selectedTool === 'ruins_arch' || selectedTool === 'waterwheel') {
+        if (selectedTool === 'bridge_pillar' || selectedTool === 'tent' || selectedTool === 'campfire' || selectedTool === 'well' || selectedTool === 'bench' || selectedTool === 'sign' || selectedTool === 'mailbox' || selectedTool === 'hoe' || selectedTool === 'seed_wheat' || selectedTool === 'seed_carrot' || selectedTool === 'observatory' || selectedTool === 'ruins_arch' || selectedTool === 'waterwheel') {
             targetScale = 1.0;
             targetRotY = 0;
         } else if (selectedTool === 'platform' || selectedTool === 'pier') {
