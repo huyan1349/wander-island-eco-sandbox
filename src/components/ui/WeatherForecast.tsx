@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useGameStore, WeatherType } from '../../store';
-import { Sun, CloudRain, Snowflake, Cloud, CloudFog, CloudLightning, Music, CloudSun } from 'lucide-react';
+import { Sun, CloudRain, Snowflake, Cloud, CloudFog, CloudLightning, Music, CloudSun, LayoutGrid } from 'lucide-react';
 import { AudioSystem } from '../../lib/audio';
+import { MusicLibrary } from './MusicLibrary';
 
 // 曲目列表：以后拖更多歌进来，只需往 public 放 mp3 并在此加一行。
 // bg = 结合曲风的高级叠底背景（多层渐变）。
@@ -38,6 +39,7 @@ export function WeatherForecast() {
   const forecast = useGameStore(state => state.forecast);
 
   const [mode, setMode] = useState<'weather' | 'music'>('weather');
+  const [showLibrary, setShowLibrary] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
   const [isDragging, setIsDragging] = useState(false);
@@ -257,7 +259,18 @@ export function WeatherForecast() {
         >
           <Music size={16} />
         </button>
+        {mode === 'music' && (
+          <button
+            onClick={() => setShowLibrary(true)}
+            className="p-2 rounded-full text-slate-400 hover:text-slate-700 transition-all"
+            title="展开音乐收藏库"
+          >
+            <LayoutGrid size={16} />
+          </button>
+        )}
       </div>
+
+      {showLibrary && <MusicLibrary onClose={() => setShowLibrary(false)} />}
 
       {/* 堆叠卡片牌组 */}
       <div className="relative w-32 h-40">
