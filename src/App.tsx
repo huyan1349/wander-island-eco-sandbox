@@ -178,13 +178,19 @@ export default function App() {
     setIsGeneratingAi(false);
   };
 
-  // Unlock audio on first user gesture (browsers block autoplay without interaction)
+  // Try to play BGM immediately — <audio> element may autoplay based on MEI
+  // If autoplay is blocked, ensureResumed() will retry on user gesture
   useEffect(() => {
+    const initAudio = async () => {
+      AudioSystem.init();
+      await AudioSystem.loadBGM('/Tides_of_Mahogany.mp3');
+      AudioSystem.playBGM(); // Will autoplay if browser allows, otherwise marks as blocked
+    };
+    initAudio();
+
+    // Fallback: if autoplay was blocked, retry on first user gesture
     const unlock = () => {
       AudioSystem.ensureResumed();
-      if (!AudioSystem['isBgmPlaying']) {
-        AudioSystem.playBGM();
-      }
       window.removeEventListener('click', unlock);
       window.removeEventListener('touchstart', unlock);
       window.removeEventListener('keydown', unlock);
@@ -200,13 +206,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const initAudio = async () => {
-      AudioSystem.init();
-      await AudioSystem.loadBGM('/Tides_of_Mahogany.mp3');
-      AudioSystem.playBGM();
-    };
-    initAudio();
-
+    // Load Save 1 as Title Screen Background if it exists
     const slots = useGameStore.getState().getSavedSlots();
     if (slots.length > 0) {
         useGameStore.getState().loadGame(slots[0].id, true);

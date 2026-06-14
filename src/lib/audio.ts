@@ -1,5 +1,5 @@
 // Procedural Zen Audio System
-// Powered by Web Audio API
+// Powered by Web Audio API + HTML Audio Element for BGM
 
 export class AudioSystem {
     private static ctx: AudioContext | null = null;
@@ -16,18 +16,14 @@ export class AudioSystem {
     
     private static windFilter: BiquadFilterNode | null = null;
 
-    // BGM Nodes
-    private static bgmGain: GainNode | null = null;
-    private static bgmSource: AudioBufferSourceNode | null = null;
-    private static bgmBuffer: AudioBuffer | null = null;
+    // BGM — uses <audio> element for better autoplay support (MEI-based)
+    private static bgmEl: HTMLAudioElement | null = null;
     private static isBgmPlaying = false;
-    private static bgmLoadedUrl: string | null = null;
     private static currentBgmUrl: string | null = null;
     private static bgmVolumeTarget = 0.5;
-    private static bgmCache = new Map<string, AudioBuffer>();
     private static bgmSwitchToken = 0;
-    private static bgmStartTime = 0;
-    private static bgmDuration = 0;
+    private static bgmFadeRAF: number | null = null;
+    private static bgmAutoplayBlocked = false;
 
     static init() {
         if (!this.ctx) {
@@ -39,16 +35,22 @@ export class AudioSystem {
                 console.error("Audio init failed", e);
             }
         }
-        // Always try to resume — browsers require user gesture for autoplay
         if (this.ctx && this.ctx.state === 'suspended') {
             this.ctx.resume().catch(() => {});
         }
     }
 
-    /** Call this on the first user gesture (click/touch/keydown) to unlock audio */
+    /** Call this on user gesture to unlock AudioContext */
     static ensureResumed() {
         if (this.ctx && this.ctx.state === 'suspended') {
             this.ctx.resume().catch(() => {});
+        }
+        // Also try to play BGM if it was blocked
+        if (this.bgmAutoplayBlocked && this.bgmEl) {
+            this.bgmEl.play().then(() => {
+                this.bgmAutoplayBlocked = false;
+                this.fadeBGMIN();
+            }).catch(() => {});
         }
     }
 
@@ -61,132 +63,143 @@ export class AudioSystem {
 
     static setBGMVolume(volume: number) {
         this.bgmVolumeTarget = volume;
-        if (!this.ctx || !this.bgmGain) return;
-        const t = this.ctx.currentTime;
-        this.bgmGain.gain.cancelScheduledValues(t);
-        this.bgmGain.gain.linearRampToValueAtTime(volume, t + 0.5);
+        if (this.bgmEl) {
+            this.bgmEl.volume = Math.min(1, volume);
+        }
     }
 
     static async loadBGM(url: string) {
-        this.init();
-        if (!this.ctx) return;
+        // Pre-create <audio> element if needed
+        if (!this.bgmEl) {
+            this.bgmEl = new Audio();
+            this.bgmEl.loop = true;
+            this.bgmEl.volume = 0; // Start silent, fade in on play
+            this.bgmEl.preload = 'auto';
+        }
 
-        if (this.bgmCache.has(url)) {
-            this.bgmBuffer = this.bgmCache.get(url)!;
-            this.bgmLoadedUrl = url;
-            return;
-        }
-        
-        try {
-            const response = await fetch(url);
-            const arrayBuffer = await response.arrayBuffer();
-            this.bgmBuffer = await this.ctx.decodeAudioData(arrayBuffer);
-            this.bgmLoadedUrl = url;
-            this.bgmCache.set(url, this.bgmBuffer);
-        } catch (e) {
-            console.error("Failed to load BGM", e);
-        }
+        // If same URL already loaded, skip
+        if (this.bgmEl.src.endsWith(url)) return;
+
+        this.bgmEl.src = url;
+        this.bgmEl.load();
     }
 
     static playBGM() {
-        this.init();
-        if (!this.ctx || !this.bgmBuffer || this.isBgmPlaying) return;
-        
-        if (!this.bgmGain) {
-            this.bgmGain = this.ctx.createGain();
-            this.bgmGain.gain.value = 0;
-            this.bgmGain.connect(this.masterGain!);
-        }
+        if (!this.bgmEl || this.isBgmPlaying) return;
 
-        this.bgmSource = this.ctx.createBufferSource();
-        this.bgmSource.buffer = this.bgmBuffer;
-        this.bgmSource.loop = true;
-        this.bgmSource.connect(this.bgmGain);
-        this.bgmSource.start();
-        this.isBgmPlaying = true;
-        this.currentBgmUrl = this.bgmLoadedUrl;
-        this.bgmStartTime = this.ctx.currentTime;
-        this.bgmDuration = this.bgmBuffer.duration;
-        
-        // Fade in
-        const t = this.ctx.currentTime;
-        this.bgmGain.gain.linearRampToValueAtTime(this.bgmVolumeTarget, t + 4.0);
+        this.bgmEl.volume = 0;
+        const playPromise = this.bgmEl.play();
+
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                // Autoplay allowed!
+                this.isBgmPlaying = true;
+                this.bgmAutoplayBlocked = false;
+                this.currentBgmUrl = this.bgmEl!.src;
+                this.fadeBGMIN();
+            }).catch(() => {
+                // Autoplay blocked — will retry on user gesture
+                this.bgmAutoplayBlocked = true;
+            });
+        } else {
+            // Older browsers — assume playing
+            this.isBgmPlaying = true;
+            this.currentBgmUrl = this.bgmEl.src;
+            this.fadeBGMIN();
+        }
+    }
+
+    private static fadeBGMIN() {
+        if (this.bgmFadeRAF) cancelAnimationFrame(this.bgmFadeRAF);
+        const target = this.bgmVolumeTarget;
+        const step = () => {
+            if (!this.bgmEl) return;
+            const current = this.bgmEl.volume;
+            if (current < target - 0.01) {
+                this.bgmEl.volume = Math.min(target, current + 0.01);
+                this.bgmFadeRAF = requestAnimationFrame(step);
+            } else {
+                this.bgmEl.volume = target;
+                this.bgmFadeRAF = null;
+            }
+        };
+        this.bgmFadeRAF = requestAnimationFrame(step);
+    }
+
+    private static fadeBGMOUT(): Promise<void> {
+        return new Promise((resolve) => {
+            if (this.bgmFadeRAF) cancelAnimationFrame(this.bgmFadeRAF);
+            const step = () => {
+                if (!this.bgmEl) { resolve(); return; }
+                const current = this.bgmEl.volume;
+                if (current > 0.01) {
+                    this.bgmEl.volume = Math.max(0, current - 0.015);
+                    this.bgmFadeRAF = requestAnimationFrame(step);
+                } else {
+                    this.bgmEl.volume = 0;
+                    this.bgmFadeRAF = null;
+                    resolve();
+                }
+            };
+            this.bgmFadeRAF = requestAnimationFrame(step);
+        });
     }
 
     static stopBGM() {
-        if (!this.ctx || !this.bgmGain || !this.isBgmPlaying) return;
+        if (!this.bgmEl || !this.isBgmPlaying) return;
         
-        const t = this.ctx.currentTime;
-        // Fade out
-        this.bgmGain.gain.cancelScheduledValues(t);
-        this.bgmGain.gain.linearRampToValueAtTime(0, t + 2.0);
-        
-        // Stop after fade out
-        setTimeout(() => {
-            if (this.bgmSource) {
-                try { this.bgmSource.stop(); } catch {}
-                this.bgmSource = null;
-            }
+        this.fadeBGMOUT().then(() => {
+            this.bgmEl!.pause();
+            this.bgmEl!.currentTime = 0;
             this.isBgmPlaying = false;
             this.currentBgmUrl = null;
-        }, 2200);
+        });
     }
 
     static async switchBGM(url: string) {
-        this.init();
-        if (!this.ctx || !this.masterGain) return;
         if (this.currentBgmUrl === url && this.isBgmPlaying) return;
 
         const switchToken = ++this.bgmSwitchToken;
-        await this.loadBGM(url);
-        if (!this.ctx || !this.masterGain || !this.bgmBuffer) return;
-        if (switchToken !== this.bgmSwitchToken) return;
 
-        const nextGain = this.ctx.createGain();
-        nextGain.gain.value = 0;
-        nextGain.connect(this.masterGain);
-
-        const nextSource = this.ctx.createBufferSource();
-        nextSource.buffer = this.bgmBuffer;
-        nextSource.loop = true;
-        nextSource.connect(nextGain);
-        nextSource.start();
-
-        const prevGain = this.bgmGain;
-        const prevSource = this.bgmSource;
-        const t = this.ctx.currentTime;
-
-        nextGain.gain.cancelScheduledValues(t);
-        nextGain.gain.linearRampToValueAtTime(this.bgmVolumeTarget, t + 2.2);
-
-        if (prevGain) {
-            prevGain.gain.cancelScheduledValues(t);
-            prevGain.gain.linearRampToValueAtTime(0, t + 2.2);
+        if (this.isBgmPlaying) {
+            await this.fadeBGMOUT();
+            if (switchToken !== this.bgmSwitchToken) return;
+            this.bgmEl!.pause();
         }
 
-        this.bgmGain = nextGain;
-        this.bgmSource = nextSource;
-        this.isBgmPlaying = true;
-        this.currentBgmUrl = url;
-        this.bgmStartTime = this.ctx.currentTime;
-        this.bgmDuration = this.bgmBuffer.duration;
+        this.bgmEl!.src = url;
+        this.bgmEl!.volume = 0;
+        this.bgmEl!.load();
 
-        if (prevSource) {
-            window.setTimeout(() => {
-                try { prevSource.stop(); } catch {}
-                try { prevSource.disconnect(); } catch {}
-                try { prevGain?.disconnect(); } catch {}
-            }, 2400);
+        const playPromise = this.bgmEl!.play();
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                if (switchToken !== this.bgmSwitchToken) return;
+                this.isBgmPlaying = true;
+                this.bgmAutoplayBlocked = false;
+                this.currentBgmUrl = url;
+                this.fadeBGMIN();
+            }).catch(() => {
+                this.bgmAutoplayBlocked = true;
+            });
+        } else {
+            this.isBgmPlaying = true;
+            this.currentBgmUrl = url;
+            this.fadeBGMIN();
         }
     }
 
     static getBGMProgress(): number {
-        if (!this.ctx || !this.isBgmPlaying || !this.bgmDuration) return 0;
-        return ((this.ctx.currentTime - this.bgmStartTime) % this.bgmDuration) / this.bgmDuration;
+        if (!this.bgmEl || !this.isBgmPlaying || !this.bgmEl.duration) return 0;
+        return this.bgmEl.currentTime / this.bgmEl.duration;
     }
 
     static getCurrentBGMUrl(): string | null {
         return this.currentBgmUrl;
+    }
+
+    static isBGMAutoplayBlocked(): boolean {
+        return this.bgmAutoplayBlocked;
     }
 
     private static setupEffectsChain() {
@@ -196,18 +209,16 @@ export class AudioSystem {
         this.masterGain.gain.value = 0.6;
         this.masterGain.connect(this.ctx.destination);
 
-        // Ping-pong or standard Delay for spaciousness
         this.delayNode = this.ctx.createDelay(3.0);
         this.delayNode.delayTime.value = 0.75;
         
         this.delayFeedback = this.ctx.createGain();
-        this.delayFeedback.gain.value = 0.4; // Delay decay
+        this.delayFeedback.gain.value = 0.4;
 
         const delayFilter = this.ctx.createBiquadFilter();
         delayFilter.type = 'lowpass';
         delayFilter.frequency.value = 2000;
 
-        // Routing
         this.delayNode.connect(delayFilter);
         delayFilter.connect(this.delayFeedback);
         this.delayFeedback.connect(this.delayNode);
@@ -218,8 +229,7 @@ export class AudioSystem {
     private static setupEnvAudio() {
         if (!this.ctx || !this.masterGain) return;
         
-        // Generate pure white noise buffer once
-        const bufferSize = this.ctx.sampleRate * 5; // 5 seconds
+        const bufferSize = this.ctx.sampleRate * 5;
         this.noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
         const data = this.noiseBuffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
@@ -243,7 +253,7 @@ export class AudioSystem {
 
         // --- WIND ---
         this.windGain = this.ctx.createGain();
-        this.windGain.gain.value = 0.05; // Base wind always present
+        this.windGain.gain.value = 0.05;
         this.windFilter = this.ctx.createBiquadFilter();
         this.windFilter.type = 'bandpass';
         this.windFilter.frequency.value = 400;
@@ -257,10 +267,9 @@ export class AudioSystem {
         windSource.connect(this.windGain);
         windSource.start();
 
-        // Animate Wind Filter (Howling)
         this.animateWind();
 
-        // --- WATER (Springs) ---
+        // --- WATER ---
         this.waterGain = this.ctx.createGain();
         this.waterGain.gain.value = 0;
         const waterFilter = this.ctx.createBiquadFilter();
@@ -279,21 +288,17 @@ export class AudioSystem {
 
     private static animateWind() {
         if (!this.ctx || !this.windFilter) return;
-        // Slowly sweep the bandpass frequency to create howling wind
         const targetFreq = 300 + Math.random() * 400;
         const time = 2 + Math.random() * 3;
         this.windFilter.frequency.linearRampToValueAtTime(targetFreq, this.ctx.currentTime + time);
-        
         setTimeout(() => this.animateWind(), time * 1000);
     }
 
-    // Dynamic Ecology Soundscape Mixer
     static updateEcologyState(springCount: number, windmillCount: number, weather: string) {
         if (!this.ctx || !this.rainGain || !this.windGain || !this.waterGain) return;
         
         const t = this.ctx.currentTime;
         
-        // Rain
         if (weather === 'rainy') {
             this.rainGain.gain.cancelScheduledValues(t);
             this.rainGain.gain.linearRampToValueAtTime(0.08, t + 1.0);
@@ -302,14 +307,12 @@ export class AudioSystem {
             this.rainGain.gain.linearRampToValueAtTime(0, t + 1.0);
         }
 
-        // Wind (Increases with windmills and rain)
         let targetWind = 0.05 + (windmillCount * 0.02);
         if (weather === 'rainy') targetWind += 0.05;
         targetWind = Math.min(0.2, targetWind);
         this.windGain.gain.cancelScheduledValues(t);
         this.windGain.gain.linearRampToValueAtTime(targetWind, t + 2.0);
 
-        // Water (Increases with Springs)
         let targetWater = Math.min(0.15, springCount * 0.03);
         this.waterGain.gain.cancelScheduledValues(t);
         this.waterGain.gain.linearRampToValueAtTime(targetWater, t + 2.0);
@@ -322,17 +325,14 @@ export class AudioSystem {
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         
-        osc.type = 'sine'; // Very soft, pure tone
+        osc.type = 'sine';
         osc.frequency.value = freq;
         
-        // Very slow envelope for Zen feel
         gain.gain.setValueAtTime(0, t);
         gain.gain.linearRampToValueAtTime(peakVol, t + attack);
         gain.gain.exponentialRampToValueAtTime(0.001, t + attack + release);
         
         osc.connect(gain);
-        
-        // Route to dry (Master) and wet (Delay)
         gain.connect(this.masterGain);
         gain.connect(this.delayNode);
         
@@ -340,20 +340,17 @@ export class AudioSystem {
         osc.stop(t + attack + release + 1.0);
     }
 
-    // Play a beautiful C Major 7th Chord for Synergy (C, E, G, B)
     static playSynergyChord() {
         this.init();
         if (!this.ctx) return;
-        const notes = [261.63, 329.63, 392.00, 493.88]; // C4, E4, G4, B4
+        const notes = [261.63, 329.63, 392.00, 493.88];
         notes.forEach((freq, i) => {
-            // Stagger the notes slightly like a harp strum
             setTimeout(() => {
                 this.playSynthNote(freq, 0.2, 0.5, 4.0);
             }, i * 150);
         });
     }
 
-    // Classic UI Pop
     static playPop() {
         this.init();
         if (!this.ctx) return;
@@ -374,7 +371,6 @@ export class AudioSystem {
         o.stop(t + 0.15);
     }
     
-    // Classic UI Dig
     static playDig() {
         this.init();
         if (!this.ctx) return;
