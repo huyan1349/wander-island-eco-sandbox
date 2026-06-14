@@ -2,7 +2,7 @@ import { useGameStore, PlacedAsset } from '../store';
 import { useRef, useMemo, useState, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { AudioSystem } from '../lib/audio';
-import { SpotLight } from '@react-three/drei';
+import { SpotLight, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
@@ -2985,6 +2985,47 @@ export function Well(props: any) {
   );
 }
 
+export function Sign(props: any) {
+  const ref = usePopIn(props.scale || 1);
+  const setEditingSignId = useGameStore(s => s.setEditingSignId);
+  const text: string = props.text || '';
+  return (
+    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+      {/* 柱子 */}
+      <mesh position={[0, 0.6, 0]} castShadow>
+        <boxGeometry args={[0.14, 1.2, 0.14]} />
+        <meshStandardMaterial color="#6b4423" flatShading />
+      </mesh>
+      {/* 牌面（点击编辑，仅选择模式下） */}
+      <mesh
+        position={[0, 1.4, 0]}
+        castShadow
+        onClick={(e: any) => {
+          if (useGameStore.getState().selectedTool !== 'none') return;
+          e.stopPropagation();
+          setEditingSignId(props.assetId);
+        }}
+        onPointerOver={() => { if (useGameStore.getState().selectedTool === 'none') document.body.style.cursor = 'pointer'; }}
+        onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+      >
+        <boxGeometry args={[1.7, 1.0, 0.12]} />
+        <meshStandardMaterial color="#b08147" flatShading />
+      </mesh>
+      {/* 边框 */}
+      <mesh position={[0, 1.4, 0]}>
+        <boxGeometry args={[1.82, 1.12, 0.08]} />
+        <meshStandardMaterial color="#5c3d22" flatShading />
+      </mesh>
+      {/* 文字（HTML，支持中文） */}
+      <Html position={[0, 1.4, 0.08]} center transform distanceFactor={5} style={{ pointerEvents: 'none' }}>
+        <div style={{ width: 150, textAlign: 'center', fontFamily: "'ZCOOL KuaiLe', cursive", color: text ? '#3b2410' : '#8a6a45', fontWeight: 700, fontSize: 15, lineHeight: 1.25, whiteSpace: 'pre-wrap', wordBreak: 'break-word', userSelect: 'none' }}>
+          {text || '点击写字'}
+        </div>
+      </Html>
+    </group>
+  );
+}
+
 export function Bench(props: any) {
   const ref = usePopIn(props.scale || 1);
   return (
@@ -3491,6 +3532,7 @@ export function Assets() {
           case 'pine_tree': content = <PineTree {...asset} />; break;
           case 'willow_tree': content = <WillowTree {...asset} />; break;
           case 'bush': content = <Bush {...asset} />; break;
+          case 'sign': content = <Sign {...asset} assetId={asset.id} />; break;
           default: content = null;
         }
 

@@ -72,7 +72,8 @@ import {
   Sprout,
   Clover,
   Undo2,
-  Redo2
+  Redo2,
+  Signpost
 } from "lucide-react";
 
 import { PlayerPanel } from "./components/PlayerPanel";
@@ -80,6 +81,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import { OnboardingFlow } from "./components/OnboardingFlow";
 import { WelcomeGuide } from "./components/WelcomeGuide";
 import { SoundLayer } from "./components/SoundLayer";
+import { SignEditorModal } from "./components/SignEditorModal";
 import { SocialPanel } from "./components/SocialPanel";
 import { Toast } from "./components/Toast";
 import { FlourishHUD } from "./components/FlourishHUD";
@@ -520,6 +522,7 @@ export default function App() {
         { id: "fence", icon: Fence, label: "木栅栏", cost: 20 },
         { id: "well", icon: Droplet, label: "水井", cost: 150 },
         { id: "bench", icon: Armchair, label: "长椅", cost: 40 },
+        { id: "sign", icon: Signpost, label: "牌子（可写字）", cost: 0 },
         { id: "streetlamp", icon: Lamp, label: "路灯", cost: 200 },
         { id: "observatory", icon: Telescope, label: "观星台", cost: 1500 },
         { id: "ruins_arch", icon: Castle, label: "遗迹石门", cost: 2000 },
@@ -1065,6 +1068,7 @@ export default function App() {
       )}
       {screen === 'PLAYING' && <Toast />}
       {screen === 'PLAYING' && showWelcomeGuide && <WelcomeGuide />}
+      {screen === 'PLAYING' && <SignEditorModal />}
       <FlourishHUD />
       {giftClaimId && (
         <GiftModal mode="claim" giftId={giftClaimId} onClose={() => { setGiftClaimId(null); history.replaceState({}, '', location.pathname); }} />
