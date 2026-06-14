@@ -70,7 +70,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       ctx.fillText(line, x, yy);
     };
 
-    const render = (img?: HTMLImageElement, qr?: HTMLImageElement, logo?: HTMLImageElement) => {
+    const render = (img?: HTMLImageElement, qr?: HTMLImageElement) => {
       // 顶部图片（cover 裁切）
       if (img) {
         const tar = W / imgH, ar = img.width / img.height;
@@ -106,10 +106,19 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       ctx.fillStyle = '#94a3b8'; ctx.font = '11px monospace';
       ctx.fillText(link.length > 40 ? link.slice(0, 40) + '…' : link, 44, H - 98);
 
-      // 游戏 LOGO（splash 的小岛图标）+ 游戏字体水印
-      if (logo) ctx.drawImage(logo, 40, H - 74, 46, 46);
+      // 游戏 LOGO（splash 小岛图标 path，绿色描边——白色在米底不可见）
+      ctx.save();
+      ctx.translate(40, H - 80);
+      ctx.scale(0.2, 0.2);
+      ctx.strokeStyle = '#15803d'; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.stroke(new Path2D('M24 138L52 120L78 119L105 104L122 74L128 26L140 16L152 27L149 72L171 62L172 88L188 99L200 123L222 125L236 136L211 142L187 135L120 154L86 136L47 138L24 138Z'));
+      ctx.stroke(new Path2D('M57 118L63 95L69 118'));
+      ctx.stroke(new Path2D('M140 72L142 46L149 72'));
+      ctx.stroke(new Path2D('M188 123L193 101L200 123'));
+      ctx.stroke(new Path2D('M112 119L117 101L123 119'));
+      ctx.restore();
       ctx.fillStyle = '#15803d'; ctx.font = "900 28px 'ZCOOL KuaiLe', sans-serif";
-      ctx.fillText('Wander Island', 96, H - 38);
+      ctx.fillText('Wander Island', 96, H - 40);
       ctx.fillStyle = '#cbd5e1'; ctx.font = '11px monospace'; ctx.textAlign = 'right';
       ctx.fillText('漫游岛 · 生态沙盒', W - 44, H - 42); ctx.textAlign = 'left';
 
@@ -128,12 +137,11 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       im.onerror = () => res(null);
       im.src = src;
     });
-    const [bgImg, qrImg, logoImg] = await Promise.all([
+    const [bgImg, qrImg] = await Promise.all([
       shot ? loadImg(shot) : Promise.resolve(null),
       qrUrl ? loadImg(qrUrl) : Promise.resolve(null),
-      loadImg('/title/island-outline.svg'),
     ]);
-    render(bgImg || undefined, qrImg || undefined, logoImg || undefined);
+    render(bgImg || undefined, qrImg || undefined);
   };
   const enter = () => {
     if (!gift) return;
