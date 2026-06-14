@@ -160,7 +160,7 @@ export const TitleScreen: React.FC = () => {
                 <span className="text-xs font-bold text-slate-600">流浪岛 . v2.2.0 Touch</span>
                 {authUser && (
                   <div
-                    onClick={() => setActiveModal('PROFILE')}
+                    onClick={() => { AudioSystem.playClick(); setActiveModal('PROFILE'); }}
                     className="group flex items-center gap-4 hand-drawn-btn hand-drawn-ghost p-3 pr-6 mt-3 pointer-events-auto cursor-pointer"
                   >
                     <div className="relative group">
@@ -206,7 +206,7 @@ export const TitleScreen: React.FC = () => {
                 {/* Cinematic Chinese Menu */}
                 <div className={`pointer-events-auto animate-slide-up ${isTouch ? 'mb-8' : 'mb-16'} flex flex-col items-start gap-4 pl-4 mt-8 w-full ${isTouch ? 'max-w-full' : 'max-w-md'}`}>
                     <button
-                        onClick={() => authUser ? setScreen('SAVE_SELECT') : setScreen('LOGIN')}
+                        onClick={() => { AudioSystem.playConfirm(); authUser ? setScreen('SAVE_SELECT') : setScreen('LOGIN'); }}
                         className={`hand-drawn-btn flex items-center justify-center gap-3 w-full ${isTouch ? 'py-4 text-lg' : 'py-3 text-lg'}`}
                     >
                         <Globe size={isTouch ? 24 : 20} />
@@ -214,7 +214,7 @@ export const TitleScreen: React.FC = () => {
                         {authUser && <span className="text-sm font-normal text-emerald-600 ml-1">({authUser.username})</span>}
                     </button>
                     <button
-                        onClick={() => setScreen('SAVE_SELECT')}
+                        onClick={() => { AudioSystem.playConfirm(); setScreen('SAVE_SELECT'); }}
                         className={`group flex justify-center items-center hand-drawn-btn hand-drawn-ghost ${isTouch ? 'w-full py-4' : 'w-56 px-5 py-3'} -rotate-2`}
                     >
                         <span className={`${isTouch ? 'text-xl' : 'text-xl'} font-bold group-hover:text-slate-900 transition-colors ` + (titleTheme === 'white' ? "text-white/90" : "text-slate-400")}>
@@ -223,7 +223,7 @@ export const TitleScreen: React.FC = () => {
                     </button>
 
                     <button
-                        onClick={() => setActiveModal('SETTINGS')}
+                        onClick={() => { AudioSystem.playClick(); setActiveModal('SETTINGS'); }}
                         className={`group flex justify-center items-center hand-drawn-btn hand-drawn-ghost ${isTouch ? 'w-full py-4' : 'w-56 px-5 py-3'} rotate-1`}
                     >
                         <span className={`${isTouch ? 'text-xl' : 'text-xl'} font-bold group-hover:text-slate-900 transition-colors ` + (titleTheme === 'white' ? "text-white/90" : "text-slate-400")}>
@@ -232,7 +232,7 @@ export const TitleScreen: React.FC = () => {
                     </button>
 
                     <button
-                        onClick={() => setActiveModal('CREDITS')}
+                        onClick={() => { AudioSystem.playClick(); setActiveModal('CREDITS'); }}
                         className={`group flex justify-center items-center hand-drawn-btn hand-drawn-ghost ${isTouch ? 'w-full py-4' : 'w-56 px-5 py-3'} -rotate-1`}
                     >
                         <span className={`${isTouch ? 'text-xl' : 'text-xl'} font-bold group-hover:text-slate-900 transition-colors ` + (titleTheme === 'white' ? "text-white/90" : "text-slate-400")}>
@@ -267,7 +267,7 @@ export const TitleScreen: React.FC = () => {
                         <div className={`hand-drawn-panel p-12 flex flex-col gap-10 animate-slide-up ring-1 ring-slate-800/10 ${isTouch ? 'touch-modal-full touch-safe-bottom overflow-y-auto' : 'w-[600px]'}`}>
                             <div className="flex justify-between items-center border-b-2 border-slate-800 pb-6">
                                 <h2 className="text-3xl hand-drawn-title">游戏设置</h2>
-                                <button onClick={() => setActiveModal('NONE')} className={`hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200 ${isTouch ? 'w-12 h-12' : ''}`}>
+                                <button onClick={() => { AudioSystem.playClose(); setActiveModal('NONE'); }} className={`hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200 ${isTouch ? 'w-12 h-12' : ''}`}>
                                     <X size={24} strokeWidth={3} className="text-slate-800" />
                                 </button>
                             </div>
@@ -302,14 +302,15 @@ export const TitleScreen: React.FC = () => {
                                 <div className="flex flex-col gap-4">
                                     <span className="text-lg font-bold text-slate-800">主页配色</span>
                                     <div className="flex gap-4">
-                                        <button onClick={() => setTitleTheme('white')} className={`hand-drawn-btn px-6 py-2 text-sm text-slate-800 font-bold ${titleTheme === 'white' ? 'hand-drawn-btn-active' : ''}`}>纸白 (White)</button>
-                                        <button onClick={() => setTitleTheme('blue')} className={`hand-drawn-btn px-6 py-2 text-sm text-slate-800 font-bold ${titleTheme === 'blue' ? 'hand-drawn-btn-active' : ''}`}>深蓝 (Blue)</button>
+                                        <button onClick={() => { AudioSystem.playTap(); setTitleTheme('white'); }} className={`hand-drawn-btn px-6 py-2 text-sm text-slate-800 font-bold ${titleTheme === 'white' ? 'hand-drawn-btn-active' : ''}`}>纸白 (White)</button>
+                                        <button onClick={() => { AudioSystem.playTap(); setTitleTheme('blue'); }} className={`hand-drawn-btn px-6 py-2 text-sm text-slate-800 font-bold ${titleTheme === 'blue' ? 'hand-drawn-btn-active' : ''}`}>深蓝 (Blue)</button>
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4">
                                     <span className="text-lg font-bold text-slate-800">数据管理</span>
                                     <button
                                         onClick={() => {
+                                            AudioSystem.playClick();
                                             if (confirm('确定清除所有浏览器数据？这将重置加载界面状态，刷新后需要重新加载资源。')) {
                                                 localStorage.clear();
                                                 location.reload();
@@ -328,7 +329,7 @@ export const TitleScreen: React.FC = () => {
                     {activeModal === 'CREDITS' && (
                         <div className={`hand-drawn-panel p-12 flex flex-col items-center gap-10 animate-slide-up text-center ring-1 ring-slate-800/10 ${isTouch ? 'touch-modal-full touch-safe-bottom overflow-y-auto' : 'w-[500px]'}`}>
                             <div className="w-full flex justify-end">
-                                <button onClick={() => setActiveModal('NONE')} className={`hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200 ${isTouch ? 'w-12 h-12' : ''}`}>
+                                <button onClick={() => { AudioSystem.playClose(); setActiveModal('NONE'); }} className={`hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200 ${isTouch ? 'w-12 h-12' : ''}`}>
                                     <X size={24} strokeWidth={3} className="text-slate-800" />
                                 </button>
                             </div>
@@ -395,7 +396,7 @@ export const TitleScreen: React.FC = () => {
                             {/* Header */}
                             <div className="flex justify-between items-center border-b-2 border-slate-800 p-8 pb-6">
                                 <h2 className="text-3xl hand-drawn-title -rotate-1">岛民卡</h2>
-                                <button onClick={() => setActiveModal('NONE')} className={`hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200 ${isTouch ? 'w-12 h-12' : ''}`}>
+                                <button onClick={() => { AudioSystem.playClose(); setActiveModal('NONE'); }} className={`hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200 ${isTouch ? 'w-12 h-12' : ''}`}>
                                     <X size={24} strokeWidth={3} className="text-slate-800" />
                                 </button>
                             </div>
@@ -432,17 +433,17 @@ export const TitleScreen: React.FC = () => {
                                                     style={{ borderWidth: '2px' }}
                                                     autoFocus
                                                 />
-                                                <button onClick={handleSaveName} className="hand-drawn-btn p-2 text-emerald-600">
+                                                <button onClick={() => { AudioSystem.playConfirm(); handleSaveName(); }} className="hand-drawn-btn p-2 text-emerald-600">
                                                     <Edit2 size={14} />
                                                 </button>
-                                                <button onClick={() => setIsEditingName(false)} className="hand-drawn-btn p-2 text-red-400">
+                                                <button onClick={() => { AudioSystem.playClose(); setIsEditingName(false); }} className="hand-drawn-btn p-2 text-red-400">
                                                     <X size={14} />
                                                 </button>
                                             </div>
                                         ) : (
                                             <div className="flex items-center gap-3">
                                                 <h3 className="text-3xl font-bold text-slate-800 tracking-wide">{authUser.username}</h3>
-                                                <button onClick={() => { setTempName(authUser.username); setIsEditingName(true); }} className="hand-drawn-btn p-1.5 text-slate-400 hover:text-slate-700">
+                                                <button onClick={() => { AudioSystem.playTap(); setTempName(authUser.username); setIsEditingName(true); }} className="hand-drawn-btn p-1.5 text-slate-400 hover:text-slate-700">
                                                     <Edit2 size={14} />
                                                 </button>
                                             </div>
@@ -462,14 +463,14 @@ export const TitleScreen: React.FC = () => {
                                                     style={{ borderWidth: '2px' }}
                                                     autoFocus
                                                 />
-                                                <button onClick={handleSaveMotto} className="hand-drawn-btn p-1.5 text-emerald-600">
+                                                <button onClick={() => { AudioSystem.playConfirm(); handleSaveMotto(); }} className="hand-drawn-btn p-1.5 text-emerald-600">
                                                     <Edit2 size={12} />
                                                 </button>
                                             </div>
                                         ) : (
                                             <div
                                                 className="bg-amber-50 border-2 border-dashed border-amber-300 rounded-xl px-4 py-2 -rotate-1 cursor-pointer hover:bg-amber-100 transition-colors"
-                                                onClick={() => { setTempMotto(authUser.motto || ''); setIsEditingMotto(true); }}
+                                                onClick={() => { AudioSystem.playTap(); setTempMotto(authUser.motto || ''); setIsEditingMotto(true); }}
                                             >
                                                 <p className="text-sm italic text-slate-600" style={{ fontFamily: "'ZCOOL KuaiLe', cursive" }}>
                                                     {authUser.motto || '点击设置座右铭...'}
@@ -522,7 +523,7 @@ export const TitleScreen: React.FC = () => {
                                 {/* Quick Access Buttons */}
                                 <div className="grid grid-cols-3 gap-3">
                                     <button
-                                        onClick={() => setActiveModal('MAILBOX')}
+                                        onClick={() => { AudioSystem.playClick(); setActiveModal('MAILBOX'); }}
                                         className="hand-drawn-btn p-4 flex flex-col items-center gap-2 relative"
                                     >
                                         <Mail size={24} className="text-amber-600" />
@@ -534,14 +535,14 @@ export const TitleScreen: React.FC = () => {
                                         )}
                                     </button>
                                     <button
-                                        onClick={() => setActiveModal('VISITORS')}
+                                        onClick={() => { AudioSystem.playClick(); setActiveModal('VISITORS'); }}
                                         className="hand-drawn-btn p-4 flex flex-col items-center gap-2"
                                     >
                                         <BookOpen size={24} className="text-violet-600" />
                                         <span className="text-xs font-bold text-slate-700 tracking-wider">访客簿</span>
                                     </button>
                                     <button
-                                        onClick={() => setActiveModal('PLAZA')}
+                                        onClick={() => { AudioSystem.playClick(); setActiveModal('PLAZA'); }}
                                         className="hand-drawn-btn p-4 flex flex-col items-center gap-2"
                                     >
                                         <Compass size={24} className="text-cyan-600" />
@@ -553,7 +554,7 @@ export const TitleScreen: React.FC = () => {
 
                                 {/* Logout */}
                                 <button
-                                    onClick={handleLogout}
+                                    onClick={() => { AudioSystem.playClick(); handleLogout(); }}
                                     className="w-full hand-drawn-btn px-8 py-3 text-red-600 font-bold flex items-center justify-center gap-3"
                                 >
                                     <LogOut size={16} /> 退出登录

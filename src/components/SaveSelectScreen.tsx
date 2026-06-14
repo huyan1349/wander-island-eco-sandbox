@@ -45,6 +45,7 @@ export const SaveSelectScreen: React.FC = () => {
     };
 
     const handleDelete = (id: string, e: React.MouseEvent) => {
+        AudioSystem.playConfirm();
         e.stopPropagation();
         if (confirm("Are you sure you want to delete this island? This cannot be undone.")) {
             const newSaves = saves.filter(s => s.id !== id);
@@ -55,6 +56,7 @@ export const SaveSelectScreen: React.FC = () => {
     };
 
     const handleDeploy = async (saveId: string, saveName: string, e: React.MouseEvent) => {
+        AudioSystem.playConfirm();
         e.stopPropagation();
         if (!authUser) return;
 
@@ -85,6 +87,7 @@ export const SaveSelectScreen: React.FC = () => {
     };
 
     const handleLoad = (id: string) => {
+        AudioSystem.playConfirm();
         store.loadGame(id, true);
         store.setScreen('PLAYING');
     };
@@ -96,7 +99,7 @@ export const SaveSelectScreen: React.FC = () => {
             <div className="w-full max-w-6xl px-8 mb-12">
                 <div className="hand-drawn-panel px-8 py-4 flex items-center justify-between shadow-lg shadow-black/10">
                     <button 
-                        onClick={() => store.setScreen('TITLE')}
+                        onClick={() => { AudioSystem.playClose(); store.setScreen('TITLE'); }}
                         className="group flex items-center gap-4 text-slate-600 hover:text-slate-900 transition-colors"
                     >
                         <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
@@ -134,7 +137,7 @@ export const SaveSelectScreen: React.FC = () => {
                         return (
                         <div 
                             key={save.id}
-                            onClick={() => handleLoad(save.id)}
+                            onClick={() => { AudioSystem.playClick(); handleLoad(save.id); }}
                             className="hand-drawn-panel group h-64 flex flex-col p-6 cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] shadow-md hover:shadow-xl shadow-black/10 relative overflow-hidden"
                         >
                             {/* Random Doodle Watermark (Bottom Right, partially hidden) */}
