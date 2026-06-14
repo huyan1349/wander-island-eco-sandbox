@@ -26,6 +26,14 @@ export class AudioSystem {
     private static bgmFadeRAF: number | null = null;
     private static bgmAutoplayBlocked = false;
 
+    // 交互音效去重：记录最近一次"点击类"音效时间，全局监听据此避免与组件内调用重复发声
+    static lastPlayAt = 0;
+    private static touch() { this.lastPlayAt = (typeof performance !== 'undefined' ? performance.now() : Date.now()); }
+    static recentlyPlayed(ms = 160) {
+        const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        return now - this.lastPlayAt < ms;
+    }
+
     static init() {
         if (!this.ctx) {
             try {
@@ -394,6 +402,7 @@ export class AudioSystem {
     static playClick() {
         this.init();
         if (!this.ctx) return;
+        this.touch();
         const t = this.ctx.currentTime;
 
         // Wood tap — short noise burst through bandpass filter
@@ -426,6 +435,7 @@ export class AudioSystem {
     static playTap() {
         this.init();
         if (!this.ctx) return;
+        this.touch();
         const t = this.ctx.currentTime;
 
         const bufferSize = this.ctx.sampleRate * 0.025;
@@ -457,6 +467,7 @@ export class AudioSystem {
     static playConfirm() {
         this.init();
         if (!this.ctx) return;
+        this.touch();
         const t = this.ctx.currentTime;
 
         // Low thud component
@@ -502,6 +513,7 @@ export class AudioSystem {
     static playToggle() {
         this.init();
         if (!this.ctx) return;
+        this.touch();
         const t = this.ctx.currentTime;
 
         const o = this.ctx.createOscillator();
@@ -523,6 +535,7 @@ export class AudioSystem {
     static playClose() {
         this.init();
         if (!this.ctx) return;
+        this.touch();
         const t = this.ctx.currentTime;
 
         const bufferSize = this.ctx.sampleRate * 0.03;
@@ -554,6 +567,7 @@ export class AudioSystem {
     static playPop() {
         this.init();
         if (!this.ctx) return;
+        this.touch();
         const t = this.ctx.currentTime;
         const o = this.ctx.createOscillator();
         const g = this.ctx.createGain();
@@ -574,6 +588,7 @@ export class AudioSystem {
     static playDig() {
         this.init();
         if (!this.ctx) return;
+        this.touch();
         const t = this.ctx.currentTime;
         const o = this.ctx.createOscillator();
         const g = this.ctx.createGain();
@@ -586,8 +601,30 @@ export class AudioSystem {
         
         o.connect(g);
         if (this.masterGain) g.connect(this.masterGain);
-        
+
         o.start();
         o.stop(t + 0.1);
+    }
+
+    /** Hover — 极轻的高频 tick，用于鼠标悬停交互。不计入 lastPlayAt（不抑制点击音） */
+    static playHover() {
+        this.init();
+        if (!this.ctx) return;
+        const t = this.ctx.currentTime;
+
+        const o = this.ctx.createOscillator();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(2050, t);
+        o.frequency.exponentialRampToValueAtTime(2650, t + 0.03);
+
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.03, t + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+
+        o.connect(g);
+        if (this.masterGain) g.connect(this.masterGain);
+        o.start(t);
+        o.stop(t + 0.06);
     }
 }

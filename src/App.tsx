@@ -77,6 +77,7 @@ import { PlayerPanel } from "./components/PlayerPanel";
 import { LoginScreen } from "./components/LoginScreen";
 import { OnboardingFlow } from "./components/OnboardingFlow";
 import { WelcomeGuide } from "./components/WelcomeGuide";
+import { SoundLayer } from "./components/SoundLayer";
 import { SocialPanel } from "./components/SocialPanel";
 import { Toast } from "./components/Toast";
 import { FlourishHUD } from "./components/FlourishHUD";
@@ -553,6 +554,9 @@ export default function App() {
       className="w-full h-screen relative bg-slate-950 overflow-hidden font-sans text-slate-100 flex"
       style={isFloating ? { position: 'fixed', top: 16, right: 16, width: '100vw', height: '100vh', transform: 'scale(0.32)', transformOrigin: 'top right', borderRadius: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', zIndex: 100 } : undefined}
     >
+      {/* 全局交互音效层（hover / click） */}
+      <SoundLayer />
+
       {/* Loading Screen — shows before everything else */}
       {!appLoaded && <LoadingScreen onReady={() => setAppLoaded(true)} />}
 
