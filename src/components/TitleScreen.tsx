@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store';
 import { X, Globe, Wifi, User, Camera, Edit2, Mail, BookOpen, Compass, LogOut } from 'lucide-react';
 import { AudioSystem } from '../lib/audio';
@@ -36,6 +36,18 @@ export const TitleScreen: React.FC = () => {
 
     const [masterVol, setMasterVol] = useState(0.6);
     const [bgmVol, setBgmVol] = useState(0.5);
+
+    // 已登录玩家进入标题时的「欢迎回来」通知
+    const [welcomeBack, setWelcomeBack] = useState(false);
+    const welcomeShownRef = useRef(false);
+    useEffect(() => {
+        if (splashPhase === 'DONE' && authUser && !welcomeShownRef.current) {
+            welcomeShownRef.current = true;
+            const t1 = setTimeout(() => { setWelcomeBack(true); AudioSystem.playPop(); }, 400);
+            const t2 = setTimeout(() => setWelcomeBack(false), 5000);
+            return () => { clearTimeout(t1); clearTimeout(t2); };
+        }
+    }, [splashPhase, authUser]);
 
     // 触屏检测
     const [isTouch, setIsTouch] = useState(false);
@@ -147,6 +159,24 @@ export const TitleScreen: React.FC = () => {
                                 <span className="text-slate-300 text-xl tracking-[0.5em] hand-drawn-title">流 浪 岛</span>
                             </>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* 欢迎回来 通知（已登录玩家，开场动画后弹出） */}
+            {authUser && splashPhase === 'DONE' && (
+                <div
+                    className="absolute top-10 left-1/2 z-[90] pointer-events-none transition-all duration-500"
+                    style={{ opacity: welcomeBack ? 1 : 0, transform: welcomeBack ? 'translate(-50%, 0)' : 'translate(-50%, -16px)' }}
+                >
+                    <div className="hand-drawn-panel px-5 py-3 flex items-center gap-3 shadow-lg">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-500 to-cyan-500 border-2 border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
+                            {authUser.avatar ? <img src={authUser.avatar} alt="" className="w-full h-full object-cover" /> : <User size={20} className="text-slate-700" />}
+                        </div>
+                        <div className="leading-tight pr-1">
+                            <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-emerald-600">欢迎回来</p>
+                            <p className="text-base font-bold text-slate-800">{authUser.username}</p>
+                        </div>
                     </div>
                 </div>
             )}
