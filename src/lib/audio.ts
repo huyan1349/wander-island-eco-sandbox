@@ -101,29 +101,32 @@ export class AudioSystem {
         this.bgmCache.set(url, audio);
     }
 
-    static playBGM() {
-        if (!this.bgmEl || this.isBgmPlaying) return;
+    static playBGM(): Promise<boolean> {
+        return new Promise((resolve) => {
+            if (!this.bgmEl) { resolve(false); return; }
+            if (this.isBgmPlaying) { resolve(true); return; }
 
-        this.bgmEl.volume = 0;
-        const playPromise = this.bgmEl.play();
+            this.bgmEl.volume = 0;
+            const playPromise = this.bgmEl.play();
 
-        if (playPromise !== undefined) {
-            playPromise.then(() => {
-                // Autoplay allowed!
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    this.isBgmPlaying = true;
+                    this.bgmAutoplayBlocked = false;
+                    this.currentBgmUrl = this.bgmEl!.src;
+                    this.fadeBGMIN();
+                    resolve(true);
+                }).catch(() => {
+                    this.bgmAutoplayBlocked = true;
+                    resolve(false);
+                });
+            } else {
                 this.isBgmPlaying = true;
-                this.bgmAutoplayBlocked = false;
-                this.currentBgmUrl = this.bgmEl!.src;
+                this.currentBgmUrl = this.bgmEl.src;
                 this.fadeBGMIN();
-            }).catch(() => {
-                // Autoplay blocked — will retry on user gesture
-                this.bgmAutoplayBlocked = true;
-            });
-        } else {
-            // Older browsers — assume playing
-            this.isBgmPlaying = true;
-            this.currentBgmUrl = this.bgmEl.src;
-            this.fadeBGMIN();
-        }
+                resolve(true);
+            }
+        });
     }
 
     private static fadeBGMIN() {
@@ -218,6 +221,10 @@ export class AudioSystem {
 
     static isBGMAutoplayBlocked(): boolean {
         return this.bgmAutoplayBlocked;
+    }
+
+    static isBGMActuallyPlaying(): boolean {
+        return this.isBgmPlaying && this.bgmEl !== null && !this.bgmEl.paused;
     }
 
     private static setupEffectsChain() {

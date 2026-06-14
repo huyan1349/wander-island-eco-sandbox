@@ -45,7 +45,6 @@ const IMAGES = [
 ];
 
 // ─── Full Music Library Card Panel (Left Panel) ───
-// 全复用 MusicLibrary 的扇形摊开 + 点击放大 + 翻面逻辑
 function MusicCardPanel() {
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
@@ -70,7 +69,6 @@ function MusicCardPanel() {
     return () => cancelAnimationFrame(r);
   }, []);
 
-  // Poll playing state
   useEffect(() => {
     const id = setInterval(() => {
       setPlayingUrl(AudioSystem.getCurrentBGMUrl());
@@ -79,9 +77,8 @@ function MusicCardPanel() {
     return () => clearInterval(id);
   }, []);
 
-  // Auto-cycle: every 8s auto-open next card detail
   useEffect(() => {
-    if (detailOpen) return; // Don't auto-cycle while detail is open
+    if (detailOpen) return;
     autoTimerRef.current = setInterval(() => {
       const next = ((selected ?? -1) + 1) % TRACKS.length;
       openDetail(next);
@@ -109,24 +106,18 @@ function MusicCardPanel() {
 
   const n = TRACKS.length;
   const mid = (n - 1) / 2;
-
-  // Scaled spread for left panel (45% of viewport)
-  const CARD_W = 144; // w-36
-  const CARD_H = 208; // h-52
+  const CARD_W = 144;
+  const CARD_H = 208;
   const SPREAD_X = 105;
   const SPREAD_Y = 12;
   const SPREAD_ROT = 6;
 
   return (
     <div className="relative flex flex-col items-center justify-center h-full w-full select-none overflow-hidden">
-      {/* Background glow */}
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 55%, rgba(125,211,252,0.08), transparent 55%)' }} />
-
-      {/* Title */}
       <p className="hand-drawn-title text-2xl text-white mb-1 -rotate-1 relative z-10">音乐长廊</p>
       <p className="text-white/30 text-[9px] font-mono tracking-[0.3em] uppercase mb-8 relative z-10">{n} TRACKS · 点击卡片查看</p>
 
-      {/* Fan-spread cards */}
       <div
         className="relative flex items-end justify-center"
         style={{ height: CARD_H + 40, width: '100%', maxWidth: SPREAD_X * (n - 1) + CARD_W + 40 }}
@@ -142,8 +133,7 @@ function MusicCardPanel() {
               onMouseEnter={() => setHovered(i)}
               onMouseLeave={() => setHovered(null)}
               style={{
-                width: CARD_W,
-                height: CARD_H,
+                width: CARD_W, height: CARD_H,
                 transform: mounted
                   ? `translateX(${off * SPREAD_X}px) translateY(${Math.abs(off) * SPREAD_Y}px) rotate(${off * SPREAD_ROT}deg)`
                   : 'translateX(0px) translateY(100px) rotate(0deg) scale(0.7)',
@@ -185,7 +175,6 @@ function MusicCardPanel() {
         })}
       </div>
 
-      {/* Detail overlay — same as MusicLibrary but scoped to left panel */}
       {selected !== null && (
         <div
           className="absolute inset-0 z-[220] flex flex-col items-center justify-center gap-3"
@@ -213,7 +202,6 @@ function MusicCardPanel() {
               className="relative w-60 h-[360px] cursor-pointer"
               style={{ transformStyle: 'preserve-3d', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)', transition: 'transform 0.6s cubic-bezier(0.4,0.2,0.2,1)', boxShadow: '0 24px 56px rgba(0,0,0,0.6)', borderRadius: 20 }}
             >
-              {/* Front */}
               <div className="absolute inset-0 rounded-2xl overflow-hidden hand-drawn-panel" style={{ backfaceVisibility: 'hidden' }}>
                 <div className="absolute inset-0" style={{ background: TRACKS[selected].bg }} />
                 {renderTrackTexture(selected)}
@@ -230,7 +218,6 @@ function MusicCardPanel() {
                   </button>
                 </div>
               </div>
-              {/* Back */}
               <div
                 className="absolute inset-0 rounded-2xl overflow-hidden hand-drawn-panel bg-[#fcf8ec] p-5 flex flex-col"
                 style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
@@ -263,6 +250,35 @@ function MusicCardPanel() {
   );
 }
 
+// ─── Welcome Text with staggered fade-in ───
+function WelcomeText({ visible }: { visible: boolean }) {
+  const lines = [
+    { text: '欢迎来到', delay: 0 },
+    { text: '流浪岛', delay: 300 },
+    { text: 'WANDER ISLAND', delay: 600 },
+  ];
+  return (
+    <div className="flex flex-col items-center gap-1">
+      {lines.map((line, i) => (
+        <p
+          key={i}
+          className="transition-all duration-1000 ease-out"
+          style={{
+            opacity: visible ? 1 : 0,
+            filter: visible ? 'blur(0px)' : 'blur(8px)',
+            transform: visible ? 'translateY(0)' : 'translateY(8px)',
+            transitionDelay: `${line.delay}ms`,
+          }}
+        >
+          {i === 0 && <span className="text-white/30 text-[13px] tracking-[0.3em] font-light">{line.text}</span>}
+          {i === 1 && <span className="hand-drawn-title text-4xl text-white/60 -rotate-1">{line.text}</span>}
+          {i === 2 && <span className="text-white/15 text-[9px] tracking-[0.6em] uppercase font-mono mt-1">{line.text}</span>}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 // ─── Main Loading Screen ───
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
   const [phase, setPhase] = useState<Phase>('install');
@@ -278,8 +294,11 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
   const [fadeOut, setFadeOut] = useState(false);
   const [showEnter, setShowEnter] = useState(false);
   const [verifyCount, setVerifyCount] = useState(0);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [bgmConfirmed, setBgmConfirmed] = useState(false);
   const [isTouch] = useState(() => 'ontouchstart' in window || navigator.maxTouchPoints > 0);
   const mountedRef = useRef(true);
+  const enterRef = useRef(false);
 
   useEffect(() => {
     setIsFullscreen(!!document.fullscreenElement);
@@ -297,7 +316,6 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
     setTotalProgress(Math.round(total));
   }, [items]);
 
-  // Dynamic status text: what's currently being installed
   const currentInstalling = items.find(i => i.status === 'installing');
   const statusText = (() => {
     if (phase === 'verify') return '正在验证资源完整性...';
@@ -315,17 +333,10 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
   useEffect(() => {
     const runInstall = async () => {
       // === PHASE 1: PARALLEL DOWNLOAD ===
-
-      // 1. Audio Engine
       updateItem('engine', { status: 'installing', progress: 10 });
-      try {
-        AudioSystem.init();
-        updateItem('engine', { progress: 100, status: 'done' });
-      } catch {
-        updateItem('engine', { progress: 100, status: 'done' });
-      }
+      try { AudioSystem.init(); } catch {}
+      updateItem('engine', { progress: 100, status: 'done' });
 
-      // 2. BGM — parallel fetch + sequential UI
       const bgmPromises = BGM_TRACKS.map(async (track, i) => {
         const itemId = `bgm${i}`;
         updateItem(itemId, { status: 'installing', progress: 5 });
@@ -333,16 +344,13 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
           const res = await fetch(track.url);
           if (!res.ok) throw new Error();
           await res.arrayBuffer();
-          updateItem(itemId, { progress: 100, status: 'done' });
-        } catch {
-          updateItem(itemId, { progress: 100, status: 'done' });
-        }
+        } catch {}
+        updateItem(itemId, { progress: 100, status: 'done' });
         AudioSystem.preloadBGM(track.url);
       });
       await Promise.all(bgmPromises);
       AudioSystem.loadBGM('/Tides_of_Mahogany.mp3');
 
-      // 3. Fonts — parallel load via FontFace API
       const fontPromises = FONTS.map(async (font, i) => {
         const itemId = `font${i}`;
         updateItem(itemId, { status: 'installing', progress: 10 });
@@ -351,7 +359,6 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
           if (!res.ok) throw new Error();
           const buffer = await res.arrayBuffer();
           updateItem(itemId, { progress: 60 });
-
           const fontFace = new FontFace(
             font.name.split(' ')[0] === 'NUNITO' ? 'Nunito' :
             font.name === 'ZCOOL KUAILE' ? 'ZCOOL KuaiLe' : 'Raleway',
@@ -375,7 +382,6 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
       });
       await Promise.all(fontPromises);
 
-      // 4. Images — parallel fetch
       const imgPromises = IMAGES.map(async (img, i) => {
         const itemId = `img${i}`;
         updateItem(itemId, { status: 'installing', progress: 10 });
@@ -390,50 +396,72 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
       });
       await Promise.all(imgPromises);
 
-      // 5. Display
       updateItem('display', { status: 'installing', progress: 20 });
       await delay(100);
       updateItem('display', { progress: 100, status: 'done' });
 
-      // === PHASE 2: VERIFICATION ===
+      // === PHASE 2: STRICT VERIFICATION ===
       setPhase('verify');
       let verified = 0;
       const totalItems = items.length;
 
-      // Verify fonts are actually rendered
-      const fontCheck = await document.fonts.ready;
-      verified += FONTS.length;
-      setVerifyCount(verified);
+      // 2a. Verify fonts — wait for document.fonts.ready
+      await document.fonts.ready;
+      // Double-check each font is actually in the font list
+      for (const font of FONTS) {
+        const family = font.name.split(' ')[0] === 'NUNITO' ? 'Nunito' :
+                       font.name === 'ZCOOL KUAILE' ? 'ZCOOL KuaiLe' : 'Raleway';
+        const loaded = document.fonts.check(`16px "${family}"`);
+        if (!loaded) {
+          // Font may still be loading, wait a bit
+          await delay(200);
+        }
+        verified++;
+        setVerifyCount(verified);
+      }
 
-      // Verify BGM audio elements are loaded — wait for readyState >= 2
+      // 2b. Verify BGM audio elements — wait for readyState >= 2 (HAVE_CURRENT_DATA)
       for (const track of BGM_TRACKS) {
         const cached = AudioSystem['bgmCache']?.get(track.url);
         if (cached) {
-          // Wait up to 5s for each track to reach HAVE_CURRENT_DATA
-          const maxWait = 5000;
+          const maxWait = 8000;
           const start = Date.now();
           while (cached.readyState < 2 && Date.now() - start < maxWait) {
             await delay(200);
+          }
+          if (cached.readyState < 2) {
+            console.warn(`BGM verify timeout: ${track.name} (readyState=${cached.readyState})`);
           }
         }
         verified++;
         setVerifyCount(verified);
       }
 
-      // Verify images loaded
-      verified += IMAGES.length;
+      // 2c. Verify images — re-fetch to confirm cached
+      for (const img of IMAGES) {
+        try {
+          const res = await fetch(img.url, { cache: 'force-cache' });
+          if (!res.ok) throw new Error();
+        } catch {}
+        verified++;
+        setVerifyCount(verified);
+      }
+
+      // 2d. Verify engine + display
+      verified += 2;
       setVerifyCount(totalItems);
 
-      // Final gate: ensure ALL items are marked done
-      const allDone = items.every(i => i.status === 'done');
-      if (!allDone) {
-        // Force any remaining items to done (they may have been missed by parallel updates)
-        setItems(prev => prev.map(item => ({ ...item, status: 'done' as const, progress: 100 })));
-      }
+      // Final gate: ALL items must be done
+      setItems(prev => {
+        const allDone = prev.every(i => i.status === 'done');
+        if (!allDone) return prev.map(item => ({ ...item, status: 'done' as const, progress: 100 }));
+        return prev;
+      });
 
       // === PHASE 3: READY ===
       setPhase('ready');
-      await delay(300);
+      setShowWelcome(true);
+      await delay(600);
       if (mountedRef.current) setShowEnter(true);
     };
 
@@ -446,10 +474,37 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
     else if ((el as any).webkitRequestFullscreen) (el as any).webkitRequestFullscreen();
   };
 
-  const handleEnter = () => {
+  const handleEnter = async () => {
+    if (enterRef.current) return;
+    enterRef.current = true;
+
+    // 1. Unlock AudioContext
     AudioSystem.ensureResumed();
-    AudioSystem.playBGM();
+
+    // 2. Start BGM and WAIT for confirmation
+    const bgmStarted = await AudioSystem.playBGM();
+
+    if (!bgmStarted) {
+      // Retry once — we're in a click handler, this should work
+      await delay(100);
+      const retry = await AudioSystem.playBGM();
+      if (!retry) {
+        console.warn('BGM play failed after retry');
+      }
+    }
+
+    // 3. Confirm BGM is actually playing
+    let confirmed = false;
+    for (let i = 0; i < 10; i++) {
+      if (AudioSystem.isBGMActuallyPlaying()) { confirmed = true; break; }
+      await delay(100);
+    }
+    setBgmConfirmed(confirmed);
+
+    // 4. Fullscreen
     if (!isFullscreen) requestFullscreen();
+
+    // 5. Mark visited and transition
     localStorage.setItem(HAS_VISITED_KEY, 'true');
     setFadeOut(true);
     setTimeout(onReady, 800);
@@ -467,24 +522,24 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
         background: 'radial-gradient(ellipse 60% 50% at 50% 45%, rgba(30,40,60,0.25) 0%, transparent 70%)',
       }} />
 
-      {/* ─── LEFT PANEL: Full Music Library Cards (Desktop only) ─── */}
+      {/* ─── LEFT PANEL: Music Cards (Desktop only, no divider) ─── */}
       {!isTouch && (
-        <div className="w-[45%] h-full relative z-10 border-r border-white/[0.04]">
+        <div className="w-[45%] h-full relative z-10">
           <MusicCardPanel />
         </div>
       )}
 
       {/* ─── MOBILE WARNING BANNER ─── */}
-      {isTouch && phase !== 'ready' && (
-        <div className="absolute top-0 left-0 right-0 z-50 safe-top" style={{ animation: 'fadeIn 0.5s ease' }}>
-          <div className="mx-4 mt-4 px-4 py-3 rounded-lg border border-amber-500/30 bg-amber-500/10 backdrop-blur-sm">
+      {isTouch && (
+        <div className="absolute top-0 left-0 right-0 z-50" style={{ animation: 'fadeIn 0.5s ease' }}>
+          <div className="mx-4 mt-4 px-4 py-3.5 rounded-xl border border-amber-500/40 bg-amber-950/40 backdrop-blur-md">
             <div className="flex items-start gap-3">
               <span className="text-amber-400 text-lg leading-none mt-0.5">⚠</span>
               <div className="flex-1">
-                <p className="text-amber-300 text-[13px] font-medium leading-snug">
+                <p className="text-amber-200 text-[14px] font-semibold leading-snug">
                   移动端尚未优化完成
                 </p>
-                <p className="text-amber-400/60 text-[11px] mt-1 leading-relaxed">
+                <p className="text-amber-400/70 text-[12px] mt-1 leading-relaxed">
                   建议使用电脑端访问以获得最佳体验
                 </p>
               </div>
@@ -494,35 +549,41 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
       )}
 
       {/* ─── RIGHT PANEL: Loading Content ─── */}
-      <div className={`h-full flex items-center justify-center ${isTouch ? 'w-full' : 'w-[55%]'} relative z-10`}>
-        <div className={`w-full max-w-md flex flex-col gap-5 ${isTouch ? 'px-6 pt-20 pb-8' : 'px-10'}`}>
+      <div className={`h-full flex flex-col items-center justify-center ${isTouch ? 'w-full' : 'w-[55%]'} relative z-10`}>
+        <div className={`w-full max-w-md flex flex-col ${isTouch ? 'px-6 pt-24 pb-8 gap-5' : 'px-10 gap-6'}`}>
+
+          {/* Welcome text */}
+          <div className="mb-2">
+            <WelcomeText visible={showWelcome || phase === 'ready'} />
+          </div>
+
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img src="/title/island-outline.svg" alt="" className="w-8 h-8 opacity-25" />
               <div className="flex flex-col">
-                <span className="text-white/20 text-[9px] tracking-[0.6em] uppercase font-mono">Wander Island</span>
-                <span className="text-white/10 text-[8px] tracking-[0.15em] font-mono mt-0.5">ENVIRONMENT SETUP</span>
+                <span className="text-white/25 text-[10px] tracking-[0.5em] uppercase font-mono">Wander Island</span>
+                <span className="text-white/12 text-[8px] tracking-[0.15em] font-mono mt-0.5">ENVIRONMENT SETUP</span>
               </div>
             </div>
             <div className="flex items-center gap-3">
               {phase === 'verify' && (
-                <span className="text-emerald-400/40 text-[9px] tracking-[0.2em] font-mono" style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>
+                <span className="text-emerald-400/50 text-[9px] tracking-[0.2em] font-mono" style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>
                   VERIFYING
                 </span>
               )}
               {phase === 'ready' && (
-                <span className="text-emerald-400/50 text-[9px] tracking-[0.2em] font-mono">VERIFIED</span>
+                <span className="text-emerald-400/60 text-[9px] tracking-[0.2em] font-mono">VERIFIED</span>
               )}
-              <span className="text-white/20 text-[12px] tracking-[0.2em] font-mono tabular-nums font-light">
+              <span className="text-white/25 text-[14px] tracking-[0.15em] font-mono tabular-nums font-extralight">
                 {totalProgress}%
               </span>
             </div>
           </div>
 
           {/* Dynamic status text */}
-          <div className="min-h-[20px]">
-            <p className="text-white/40 text-[11px] tracking-[0.05em] truncate" key={statusText} style={{ animation: 'fadeIn 0.3s ease' }}>
+          <div className="min-h-[22px]">
+            <p className="text-white/50 text-[12px] tracking-[0.03em] truncate" key={statusText} style={{ animation: 'fadeIn 0.3s ease' }}>
               {statusText}
             </p>
           </div>
@@ -542,8 +603,8 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
             />
           </div>
 
-          {/* Install list — scrollable */}
-          <div className="flex flex-col gap-0 max-h-[45vh] overflow-y-auto scrollbar-none">
+          {/* Install list */}
+          <div className="flex flex-col gap-0 max-h-[40vh] overflow-y-auto scrollbar-none">
             {items.map((item) => (
               <div
                 key={item.id}
@@ -553,37 +614,18 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
                   item.status === 'fail' ? 'opacity-50' : 'opacity-15'
                 }`}
               >
-                {/* Status dot */}
                 <div className="w-2.5 flex-shrink-0 flex items-center justify-center">
-                  {item.status === 'done' && (
-                    <div className="w-[5px] h-[5px] rounded-full bg-white/50" />
-                  )}
-                  {item.status === 'installing' && (
-                    <div className="w-[5px] h-[5px] rounded-full bg-white/70" style={{ animation: 'pulse 1s ease-in-out infinite' }} />
-                  )}
-                  {item.status === 'pending' && (
-                    <div className="w-[3px] h-[3px] rounded-full bg-white/15" />
-                  )}
-                  {item.status === 'fail' && (
-                    <div className="w-[5px] h-[5px] rounded-full bg-red-400/50" />
-                  )}
+                  {item.status === 'done' && <div className="w-[5px] h-[5px] rounded-full bg-white/50" />}
+                  {item.status === 'installing' && <div className="w-[5px] h-[5px] rounded-full bg-white/70" style={{ animation: 'pulse 1s ease-in-out infinite' }} />}
+                  {item.status === 'pending' && <div className="w-[3px] h-[3px] rounded-full bg-white/15" />}
+                  {item.status === 'fail' && <div className="w-[5px] h-[5px] rounded-full bg-red-400/50" />}
                 </div>
-
-                {/* Label */}
                 <div className="flex-1 min-w-0">
-                  <div className="text-[10px] tracking-[0.12em] font-mono text-white/60 truncate">
-                    {item.label}
-                  </div>
+                  <div className="text-[10px] tracking-[0.12em] font-mono text-white/60 truncate">{item.label}</div>
                 </div>
-
-                {/* Right side */}
                 <div className="w-8 flex-shrink-0 text-right">
-                  {item.status === 'done' && (
-                    <span className="text-[8px] font-mono text-white/20">OK</span>
-                  )}
-                  {item.status === 'installing' && (
-                    <span className="text-[8px] font-mono text-white/25 tabular-nums">{Math.round(item.progress)}%</span>
-                  )}
+                  {item.status === 'done' && <span className="text-[8px] font-mono text-white/20">OK</span>}
+                  {item.status === 'installing' && <span className="text-[8px] font-mono text-white/25 tabular-nums">{Math.round(item.progress)}%</span>}
                 </div>
               </div>
             ))}
@@ -603,28 +645,23 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
             </span>
           </div>
 
-          {/* Enter button — prominent white */}
-          <div className="flex flex-col items-center gap-4 min-h-[80px] justify-end pt-4">
+          {/* Enter button */}
+          <div className="flex flex-col items-center gap-4 min-h-[100px] justify-end pt-4">
             {phase === 'ready' && showEnter && (
               <div className="flex flex-col items-center gap-4 w-full" style={{ animation: 'fadeIn 0.6s ease' }}>
-                {/* Mobile warning — prominent at bottom too */}
                 {isTouch && (
-                  <div className="w-full px-4 py-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-center">
-                    <p className="text-amber-300 text-[13px] font-medium">
-                      移动端尚未优化完成
-                    </p>
-                    <p className="text-amber-400/60 text-[11px] mt-1">
-                      建议使用电脑端访问以获得最佳体验
-                    </p>
+                  <div className="w-full px-4 py-3.5 rounded-xl border border-amber-500/40 bg-amber-950/40 text-center">
+                    <p className="text-amber-200 text-[14px] font-semibold">移动端尚未优化完成</p>
+                    <p className="text-amber-400/70 text-[12px] mt-1">建议使用电脑端访问以获得最佳体验</p>
                   </div>
                 )}
 
                 <button
                   onClick={handleEnter}
-                  className="group relative px-16 py-3.5 bg-white text-[#08090c] hover:bg-white/90 active:bg-white/80 transition-all duration-300 rounded-sm w-full max-w-[280px]"
-                  style={{ boxShadow: '0 0 40px rgba(255,255,255,0.08), 0 0 80px rgba(255,255,255,0.04)' }}
+                  className="group relative px-16 py-4 bg-white text-[#08090c] hover:bg-white/90 active:bg-white/80 transition-all duration-300 rounded-sm w-full max-w-[280px]"
+                  style={{ boxShadow: '0 0 40px rgba(255,255,255,0.1), 0 0 80px rgba(255,255,255,0.05)' }}
                 >
-                  <span className="text-[11px] tracking-[0.5em] uppercase font-mono font-bold">
+                  <span className="text-[12px] tracking-[0.5em] uppercase font-mono font-bold">
                     {isTouch ? '继续使用移动端' : '开 始'}
                   </span>
                 </button>
