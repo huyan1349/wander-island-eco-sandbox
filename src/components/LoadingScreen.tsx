@@ -44,6 +44,11 @@ const IMAGES = [
   { url: '/title/island-mark-cut.png', name: 'ISLAND MARK', sub: 'Brand asset' },
 ];
 
+// Subtle click sound for all interactive elements
+function playClick() {
+  AudioSystem.playClick();
+}
+
 // ─── Full Music Library Card Panel (Left Panel) ───
 function MusicCardPanel() {
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
@@ -87,12 +92,15 @@ function MusicCardPanel() {
   }, [detailOpen, selected]);
 
   const play = (url: string) => {
+    // Unlock audio on user gesture first
+    AudioSystem.ensureResumed();
     if (url === AudioSystem.getCurrentBGMUrl()) return;
     AudioSystem.switchBGM(url);
     setPlayingUrl(url);
   };
 
   const openDetail = (i: number) => {
+    playClick();
     setSelected(i);
     setFlipped(false);
     obtainedDate(TRACKS[i].url);
@@ -100,6 +108,7 @@ function MusicCardPanel() {
   };
 
   const closeDetail = () => {
+    playClick();
     setDetailOpen(false);
     setTimeout(() => setSelected(null), 300);
   };
@@ -198,7 +207,7 @@ function MusicCardPanel() {
             onClick={(e) => e.stopPropagation()}
           >
             <div
-              onClick={() => setFlipped((f) => !f)}
+              onClick={() => { playClick(); setFlipped((f) => !f); }}
               className="relative w-60 h-[360px] cursor-pointer"
               style={{ transformStyle: 'preserve-3d', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)', transition: 'transform 0.6s cubic-bezier(0.4,0.2,0.2,1)', boxShadow: '0 24px 56px rgba(0,0,0,0.6)', borderRadius: 20 }}
             >
@@ -211,7 +220,7 @@ function MusicCardPanel() {
                   <p className="text-white text-xl font-bold drop-shadow-lg mb-1.5 leading-tight">{TRACKS[selected].title}</p>
                   <p className="text-white/75 text-[12px] leading-relaxed mb-3 italic">{(TRACKS[selected] as any).story}</p>
                   <button
-                    onClick={(e) => { e.stopPropagation(); play(TRACKS[selected].url); }}
+                    onClick={(e) => { e.stopPropagation(); playClick(); play(TRACKS[selected].url); }}
                     className="w-full hand-drawn-btn px-4 py-2.5 font-bold bg-white text-sm"
                   >
                     {TRACKS[selected].url === playingUrl ? '♪ 正在播放' : '▶ 播放这首'}
@@ -250,35 +259,6 @@ function MusicCardPanel() {
   );
 }
 
-// ─── Welcome Text with staggered fade-in ───
-function WelcomeText({ visible }: { visible: boolean }) {
-  const lines = [
-    { text: '欢迎来到', delay: 0 },
-    { text: '流浪岛', delay: 300 },
-    { text: 'WANDER ISLAND', delay: 600 },
-  ];
-  return (
-    <div className="flex flex-col items-center gap-1">
-      {lines.map((line, i) => (
-        <p
-          key={i}
-          className="transition-all duration-1000 ease-out"
-          style={{
-            opacity: visible ? 1 : 0,
-            filter: visible ? 'blur(0px)' : 'blur(8px)',
-            transform: visible ? 'translateY(0)' : 'translateY(8px)',
-            transitionDelay: `${line.delay}ms`,
-          }}
-        >
-          {i === 0 && <span className="text-white/30 text-[13px] tracking-[0.3em] font-light">{line.text}</span>}
-          {i === 1 && <span className="hand-drawn-title text-4xl text-white/60 -rotate-1">{line.text}</span>}
-          {i === 2 && <span className="text-white/15 text-[9px] tracking-[0.6em] uppercase font-mono mt-1">{line.text}</span>}
-        </p>
-      ))}
-    </div>
-  );
-}
-
 // ─── Main Loading Screen ───
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
   const [phase, setPhase] = useState<Phase>('install');
@@ -294,11 +274,11 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
   const [fadeOut, setFadeOut] = useState(false);
   const [showEnter, setShowEnter] = useState(false);
   const [verifyCount, setVerifyCount] = useState(0);
-  const [showWelcome, setShowWelcome] = useState(false);
-  const [bgmConfirmed, setBgmConfirmed] = useState(false);
   const [isTouch] = useState(() => 'ontouchstart' in window || navigator.maxTouchPoints > 0);
   const mountedRef = useRef(true);
   const enterRef = useRef(false);
+
+  const isReady = phase === 'ready';
 
   useEffect(() => {
     setIsFullscreen(!!document.fullscreenElement);
@@ -332,7 +312,6 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
 
   useEffect(() => {
     const runInstall = async () => {
-      // === PHASE 1: PARALLEL DOWNLOAD ===
       updateItem('engine', { status: 'installing', progress: 10 });
       try { AudioSystem.init(); } catch {}
       updateItem('engine', { progress: 100, status: 'done' });
@@ -400,68 +379,47 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
       await delay(100);
       updateItem('display', { progress: 100, status: 'done' });
 
-      // === PHASE 2: STRICT VERIFICATION ===
+      // === VERIFICATION ===
       setPhase('verify');
       let verified = 0;
       const totalItems = items.length;
 
-      // 2a. Verify fonts — wait for document.fonts.ready
       await document.fonts.ready;
-      // Double-check each font is actually in the font list
       for (const font of FONTS) {
         const family = font.name.split(' ')[0] === 'NUNITO' ? 'Nunito' :
                        font.name === 'ZCOOL KUAILE' ? 'ZCOOL KuaiLe' : 'Raleway';
-        const loaded = document.fonts.check(`16px "${family}"`);
-        if (!loaded) {
-          // Font may still be loading, wait a bit
-          await delay(200);
-        }
+        document.fonts.check(`16px "${family}"`) || await delay(200);
         verified++;
         setVerifyCount(verified);
       }
 
-      // 2b. Verify BGM audio elements — wait for readyState >= 2 (HAVE_CURRENT_DATA)
       for (const track of BGM_TRACKS) {
         const cached = AudioSystem['bgmCache']?.get(track.url);
         if (cached) {
-          const maxWait = 8000;
           const start = Date.now();
-          while (cached.readyState < 2 && Date.now() - start < maxWait) {
-            await delay(200);
-          }
-          if (cached.readyState < 2) {
-            console.warn(`BGM verify timeout: ${track.name} (readyState=${cached.readyState})`);
-          }
+          while (cached.readyState < 2 && Date.now() - start < 8000) await delay(200);
         }
         verified++;
         setVerifyCount(verified);
       }
 
-      // 2c. Verify images — re-fetch to confirm cached
       for (const img of IMAGES) {
-        try {
-          const res = await fetch(img.url, { cache: 'force-cache' });
-          if (!res.ok) throw new Error();
-        } catch {}
+        try { await fetch(img.url, { cache: 'force-cache' }); } catch {}
         verified++;
         setVerifyCount(verified);
       }
 
-      // 2d. Verify engine + display
       verified += 2;
       setVerifyCount(totalItems);
 
-      // Final gate: ALL items must be done
       setItems(prev => {
-        const allDone = prev.every(i => i.status === 'done');
-        if (!allDone) return prev.map(item => ({ ...item, status: 'done' as const, progress: 100 }));
+        if (!prev.every(i => i.status === 'done')) return prev.map(item => ({ ...item, status: 'done' as const, progress: 100 }));
         return prev;
       });
 
-      // === PHASE 3: READY ===
+      // === READY ===
       setPhase('ready');
-      setShowWelcome(true);
-      await delay(600);
+      await delay(800);
       if (mountedRef.current) setShowEnter(true);
     };
 
@@ -477,34 +435,21 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
   const handleEnter = async () => {
     if (enterRef.current) return;
     enterRef.current = true;
+    playClick();
 
-    // 1. Unlock AudioContext
     AudioSystem.ensureResumed();
-
-    // 2. Start BGM and WAIT for confirmation
     const bgmStarted = await AudioSystem.playBGM();
-
     if (!bgmStarted) {
-      // Retry once — we're in a click handler, this should work
       await delay(100);
-      const retry = await AudioSystem.playBGM();
-      if (!retry) {
-        console.warn('BGM play failed after retry');
-      }
+      await AudioSystem.playBGM();
     }
 
-    // 3. Confirm BGM is actually playing
-    let confirmed = false;
     for (let i = 0; i < 10; i++) {
-      if (AudioSystem.isBGMActuallyPlaying()) { confirmed = true; break; }
+      if (AudioSystem.isBGMActuallyPlaying()) break;
       await delay(100);
     }
-    setBgmConfirmed(confirmed);
 
-    // 4. Fullscreen
     if (!isFullscreen) requestFullscreen();
-
-    // 5. Mark visited and transition
     localStorage.setItem(HAS_VISITED_KEY, 'true');
     setFadeOut(true);
     setTimeout(onReady, 800);
@@ -522,7 +467,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
         background: 'radial-gradient(ellipse 60% 50% at 50% 45%, rgba(30,40,60,0.25) 0%, transparent 70%)',
       }} />
 
-      {/* ─── LEFT PANEL: Music Cards (Desktop only, no divider) ─── */}
+      {/* ─── LEFT PANEL: Music Cards (Desktop only) ─── */}
       {!isTouch && (
         <div className="w-[45%] h-full relative z-10">
           <MusicCardPanel />
@@ -536,121 +481,47 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
             <div className="flex items-start gap-3">
               <span className="text-amber-400 text-lg leading-none mt-0.5">⚠</span>
               <div className="flex-1">
-                <p className="text-amber-200 text-[14px] font-semibold leading-snug">
-                  移动端尚未优化完成
-                </p>
-                <p className="text-amber-400/70 text-[12px] mt-1 leading-relaxed">
-                  建议使用电脑端访问以获得最佳体验
-                </p>
+                <p className="text-amber-200 text-[14px] font-semibold leading-snug">移动端尚未优化完成</p>
+                <p className="text-amber-400/70 text-[12px] mt-1 leading-relaxed">建议使用电脑端访问以获得最佳体验</p>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ─── RIGHT PANEL: Loading Content ─── */}
+      {/* ─── RIGHT PANEL ─── */}
       <div className={`h-full flex flex-col items-center justify-center ${isTouch ? 'w-full' : 'w-[55%]'} relative z-10`}>
-        <div className={`w-full max-w-md flex flex-col ${isTouch ? 'px-6 pt-24 pb-8 gap-5' : 'px-10 gap-6'}`}>
 
-          {/* Welcome text */}
-          <div className="mb-2">
-            <WelcomeText visible={showWelcome || phase === 'ready'} />
-          </div>
-
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <img src="/title/island-outline.svg" alt="" className="w-8 h-8 opacity-25" />
-              <div className="flex flex-col">
-                <span className="text-white/25 text-[10px] tracking-[0.5em] uppercase font-mono">Wander Island</span>
-                <span className="text-white/12 text-[8px] tracking-[0.15em] font-mono mt-0.5">ENVIRONMENT SETUP</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {phase === 'verify' && (
-                <span className="text-emerald-400/50 text-[9px] tracking-[0.2em] font-mono" style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>
-                  VERIFYING
-                </span>
-              )}
-              {phase === 'ready' && (
-                <span className="text-emerald-400/60 text-[9px] tracking-[0.2em] font-mono">VERIFIED</span>
-              )}
-              <span className="text-white/25 text-[14px] tracking-[0.15em] font-mono tabular-nums font-extralight">
-                {totalProgress}%
-              </span>
-            </div>
-          </div>
-
-          {/* Dynamic status text */}
-          <div className="min-h-[22px]">
-            <p className="text-white/50 text-[12px] tracking-[0.03em] truncate" key={statusText} style={{ animation: 'fadeIn 0.3s ease' }}>
-              {statusText}
-            </p>
-          </div>
-
-          {/* Progress bar */}
-          <div className="w-full h-[2px] bg-white/[0.06] rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-500 ease-out"
-              style={{
-                width: `${totalProgress}%`,
-                background: phase === 'ready'
-                  ? 'linear-gradient(90deg, rgba(52,211,153,0.5), rgba(52,211,153,0.7))'
-                  : phase === 'verify'
-                  ? 'linear-gradient(90deg, rgba(52,211,153,0.4), rgba(52,211,153,0.6))'
-                  : 'rgba(255,255,255,0.25)',
-              }}
-            />
-          </div>
-
-          {/* Install list */}
-          <div className="flex flex-col gap-0 max-h-[40vh] overflow-y-auto scrollbar-none">
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className={`flex items-center gap-3 py-[5px] transition-all duration-200 ${
-                  item.status === 'done' ? 'opacity-30' :
-                  item.status === 'installing' ? 'opacity-100' :
-                  item.status === 'fail' ? 'opacity-50' : 'opacity-15'
-                }`}
+        {/* === READY STATE: Centered welcome === */}
+        {isReady ? (
+          <div className="flex flex-col items-center gap-8 px-10" style={{ animation: 'fadeIn 0.8s ease' }}>
+            {/* Welcome text — blur fade in */}
+            <div className="flex flex-col items-center gap-2">
+              <p
+                className="text-white/25 text-[14px] tracking-[0.4em] font-light"
+                style={{ animation: 'welcomeBlur 1s ease 0s both' }}
               >
-                <div className="w-2.5 flex-shrink-0 flex items-center justify-center">
-                  {item.status === 'done' && <div className="w-[5px] h-[5px] rounded-full bg-white/50" />}
-                  {item.status === 'installing' && <div className="w-[5px] h-[5px] rounded-full bg-white/70" style={{ animation: 'pulse 1s ease-in-out infinite' }} />}
-                  {item.status === 'pending' && <div className="w-[3px] h-[3px] rounded-full bg-white/15" />}
-                  {item.status === 'fail' && <div className="w-[5px] h-[5px] rounded-full bg-red-400/50" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[10px] tracking-[0.12em] font-mono text-white/60 truncate">{item.label}</div>
-                </div>
-                <div className="w-8 flex-shrink-0 text-right">
-                  {item.status === 'done' && <span className="text-[8px] font-mono text-white/20">OK</span>}
-                  {item.status === 'installing' && <span className="text-[8px] font-mono text-white/25 tabular-nums">{Math.round(item.progress)}%</span>}
-                </div>
-              </div>
-            ))}
-          </div>
+                欢迎来到
+              </p>
+              <p
+                className="hand-drawn-title text-5xl text-white/70 -rotate-1"
+                style={{ animation: 'welcomeBlur 1s ease 0.3s both' }}
+              >
+                流浪岛
+              </p>
+              <p
+                className="text-white/15 text-[9px] tracking-[0.7em] uppercase font-mono mt-2"
+                style={{ animation: 'welcomeBlur 1s ease 0.6s both' }}
+              >
+                WANDER ISLAND
+              </p>
+            </div>
 
-          {/* Status line */}
-          <div className="flex items-center justify-between text-[9px] font-mono text-white/15 tracking-[0.1em]">
-            <span>
-              {phase === 'install' && `${doneCount}/${items.length} installed`}
-              {phase === 'verify' && `Verifying ${verifyCount}/${items.length}...`}
-              {phase === 'ready' && `${items.length}/${items.length} ready`}
-            </span>
-            <span>
-              {phase === 'install' && 'INSTALLING'}
-              {phase === 'verify' && 'VERIFYING'}
-              {phase === 'ready' && 'READY'}
-            </span>
-          </div>
-
-          {/* Enter button */}
-          <div className="flex flex-col items-center gap-4 min-h-[100px] justify-end pt-4">
-            {phase === 'ready' && showEnter && (
-              <div className="flex flex-col items-center gap-4 w-full" style={{ animation: 'fadeIn 0.6s ease' }}>
+            {/* Enter button */}
+            {showEnter && (
+              <div className="flex flex-col items-center gap-5 w-full" style={{ animation: 'fadeIn 0.6s ease' }}>
                 {isTouch && (
-                  <div className="w-full px-4 py-3.5 rounded-xl border border-amber-500/40 bg-amber-950/40 text-center">
+                  <div className="w-full max-w-[300px] px-4 py-3.5 rounded-xl border border-amber-500/40 bg-amber-950/40 text-center">
                     <p className="text-amber-200 text-[14px] font-semibold">移动端尚未优化完成</p>
                     <p className="text-amber-400/70 text-[12px] mt-1">建议使用电脑端访问以获得最佳体验</p>
                   </div>
@@ -668,7 +539,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
 
                 {!isTouch && !isFullscreen && (
                   <button
-                    onClick={requestFullscreen}
+                    onClick={() => { playClick(); requestFullscreen(); }}
                     className="flex items-center gap-1.5 text-white/15 hover:text-white/35 transition-colors duration-300"
                   >
                     <Maximize2 size={9} />
@@ -678,7 +549,91 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
               </div>
             )}
           </div>
-        </div>
+        ) : (
+          /* === LOADING STATE: Install list === */
+          <div className={`w-full max-w-md flex flex-col ${isTouch ? 'px-6 pt-24 pb-8 gap-5' : 'px-10 gap-5'}`}>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <img src="/title/island-outline.svg" alt="" className="w-8 h-8 opacity-25" />
+                <div className="flex flex-col">
+                  <span className="text-white/25 text-[10px] tracking-[0.5em] uppercase font-mono">Wander Island</span>
+                  <span className="text-white/12 text-[8px] tracking-[0.15em] font-mono mt-0.5">ENVIRONMENT SETUP</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {phase === 'verify' && (
+                  <span className="text-emerald-400/50 text-[9px] tracking-[0.2em] font-mono" style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>
+                    VERIFYING
+                  </span>
+                )}
+                <span className="text-white/25 text-[14px] tracking-[0.15em] font-mono tabular-nums font-extralight">
+                  {totalProgress}%
+                </span>
+              </div>
+            </div>
+
+            {/* Status text */}
+            <div className="min-h-[22px]">
+              <p className="text-white/50 text-[12px] tracking-[0.03em] truncate" key={statusText} style={{ animation: 'fadeIn 0.3s ease' }}>
+                {statusText}
+              </p>
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full h-[2px] bg-white/[0.06] rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500 ease-out"
+                style={{
+                  width: `${totalProgress}%`,
+                  background: phase === 'verify'
+                    ? 'linear-gradient(90deg, rgba(52,211,153,0.4), rgba(52,211,153,0.6))'
+                    : 'rgba(255,255,255,0.25)',
+                }}
+              />
+            </div>
+
+            {/* Install list */}
+            <div className="flex flex-col gap-0 max-h-[40vh] overflow-y-auto scrollbar-none">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-3 py-[5px] transition-all duration-200 ${
+                    item.status === 'done' ? 'opacity-30' :
+                    item.status === 'installing' ? 'opacity-100' :
+                    item.status === 'fail' ? 'opacity-50' : 'opacity-15'
+                  }`}
+                >
+                  <div className="w-2.5 flex-shrink-0 flex items-center justify-center">
+                    {item.status === 'done' && <div className="w-[5px] h-[5px] rounded-full bg-white/50" />}
+                    {item.status === 'installing' && <div className="w-[5px] h-[5px] rounded-full bg-white/70" style={{ animation: 'pulse 1s ease-in-out infinite' }} />}
+                    {item.status === 'pending' && <div className="w-[3px] h-[3px] rounded-full bg-white/15" />}
+                    {item.status === 'fail' && <div className="w-[5px] h-[5px] rounded-full bg-red-400/50" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] tracking-[0.12em] font-mono text-white/60 truncate">{item.label}</div>
+                  </div>
+                  <div className="w-8 flex-shrink-0 text-right">
+                    {item.status === 'done' && <span className="text-[8px] font-mono text-white/20">OK</span>}
+                    {item.status === 'installing' && <span className="text-[8px] font-mono text-white/25 tabular-nums">{Math.round(item.progress)}%</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Status line */}
+            <div className="flex items-center justify-between text-[9px] font-mono text-white/15 tracking-[0.1em]">
+              <span>
+                {phase === 'install' && `${doneCount}/${items.length} installed`}
+                {phase === 'verify' && `Verifying ${verifyCount}/${items.length}...`}
+              </span>
+              <span>
+                {phase === 'install' && 'INSTALLING'}
+                {phase === 'verify' && 'VERIFYING'}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       <style>{`
@@ -689,6 +644,10 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(4px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes welcomeBlur {
+          from { opacity: 0; filter: blur(10px); transform: translateY(12px); }
+          to { opacity: 1; filter: blur(0px); transform: translateY(0); }
         }
         .scrollbar-none::-webkit-scrollbar { display: none; }
         .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }

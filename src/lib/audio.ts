@@ -376,6 +376,24 @@ export class AudioSystem {
         });
     }
 
+    static playClick() {
+        this.init();
+        if (!this.ctx) return;
+        const t = this.ctx.currentTime;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(600, t);
+        o.frequency.exponentialRampToValueAtTime(400, t + 0.06);
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.06, t + 0.005);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+        o.connect(g);
+        if (this.masterGain) g.connect(this.masterGain);
+        o.start();
+        o.stop(t + 0.1);
+    }
+
     static playPop() {
         this.init();
         if (!this.ctx) return;
