@@ -71,6 +71,10 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
     };
 
     const render = (img?: HTMLImageElement, qr?: HTMLImageElement) => {
+      ctx.save();
+      ctx.beginPath();
+      (ctx as any).roundRect(0, 0, W, H, 28);
+      ctx.clip();
       // 顶部图片（cover 裁切）
       if (img) {
         const tar = W / imgH, ar = img.width / img.height;
@@ -104,11 +108,12 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       ctx.fillStyle = '#334155'; ctx.font = 'bold 18px sans-serif';
       ctx.fillText('扫码 · 收下这座小岛', 44, H - 122);
       ctx.fillStyle = '#94a3b8'; ctx.font = '11px monospace';
-      ctx.fillText(link.length > 40 ? link.slice(0, 40) + '…' : link, 44, H - 98);
+      const linkText = link.includes('gift=data:') ? '离线礼物卡 · 扫描二维码即可收下' : (link.length > 44 ? link.slice(0, 44) + '…' : link);
+      ctx.fillText(linkText, 44, H - 98);
 
       // 游戏 LOGO（splash 小岛图标 path，绿色描边——白色在米底不可见）
       ctx.save();
-      ctx.translate(40, H - 76);
+      ctx.translate(40, H - 68);
       ctx.scale(0.2, 0.2);
       ctx.strokeStyle = '#15803d'; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       ctx.stroke(new Path2D('M24 138L52 120L78 119L105 104L122 74L128 26L140 16L152 27L149 72L171 62L172 88L188 99L200 123L222 125L236 136L211 142L187 135L120 154L86 136L47 138L24 138Z'));
@@ -122,6 +127,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       ctx.fillStyle = '#cbd5e1'; ctx.font = '11px monospace'; ctx.textAlign = 'right';
       ctx.fillText('漫游岛 · 生态沙盒', W - 44, H - 42); ctx.textAlign = 'left';
 
+      ctx.restore();
       try {
         const a = document.createElement('a');
         a.href = c.toDataURL('image/png');
