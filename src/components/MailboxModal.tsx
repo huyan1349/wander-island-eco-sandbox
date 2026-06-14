@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
-import { X, Mail, Send, Trash2, ArrowLeft, Pen, User } from 'lucide-react';
+import { X, Mail, Send, Trash2, ArrowLeft, Pen, User, Gift } from 'lucide-react';
+import { AudioSystem } from '../lib/audio';
+import { TRACKS, renderTrackTexture, isCardOwned, grantCard } from './ui/musicData';
 
 export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }> = ({ onClose, embedded }) => {
   const authUser = useGameStore(state => state.authUser);
@@ -13,6 +15,25 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
   const [writeSubject, setWriteSubject] = useState('');
   const [writeContent, setWriteContent] = useState('');
   const [loading, setLoading] = useState(true);
+  const [claimAnim, setClaimAnim] = useState(false);
+  const [, setClaimedTick] = useState(0); // 领取后强制刷新 owned 状态
+
+  // 解析"记忆卡"邮件：gift_type = "music_card:<url>"
+  const cardOf = (mail: any) => {
+    const gt: string = mail?.gift_type || '';
+    if (!gt.startsWith('music_card:')) return null;
+    const url = gt.slice('music_card:'.length);
+    const idx = TRACKS.findIndex(t => t.url === url);
+    return idx >= 0 ? { idx, ...TRACKS[idx] } : null;
+  };
+
+  const claimCard = (url: string) => {
+    grantCard(url);
+    AudioSystem.playSynergyChord();
+    setClaimAnim(true);
+    setClaimedTick(t => t + 1);
+    setTimeout(() => setClaimAnim(false), 1800);
+  };
 
   useEffect(() => {
     loadMails();
@@ -178,6 +199,38 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
             <div className="hand-drawn-panel p-6 bg-amber-50/50" style={{ borderWidth: '2px' }}>
               <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedMail.content}</p>
             </div>
+
+            {/* 记忆卡领取 */}
+            {(() => {
+              const card = cardOf(selectedMail);
+              if (!card) return null;
+              const owned = isCardOwned(card.url);
+              return (
+                <div className="flex flex-col items-center gap-4 py-2">
+                  <div
+                    className="relative w-40 h-56 rounded-2xl overflow-hidden hand-drawn-panel"
+                    style={{
+                      transform: claimAnim ? 'scale(1.07) rotate(-2deg)' : 'scale(1)',
+                      transition: 'transform 0.6s cubic-bezier(0.34,1.45,0.64,1)',
+                      boxShadow: owned ? '0 0 0 3px #15803d, 0 14px 34px rgba(0,0,0,0.4)' : '0 12px 30px rgba(0,0,0,0.35)',
+                    }}
+                  >
+                    <div className="absolute inset-0" style={{ background: card.bg, filter: owned ? 'none' : 'grayscale(0.35) brightness(0.92)' }} />
+                    {renderTrackTexture(card.idx)}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent" />
+                    <p className="absolute bottom-3 left-3 right-3 text-white font-bold text-sm leading-tight drop-shadow">{card.title}</p>
+                    {claimAnim && <div className="absolute inset-0 animate-pulse" style={{ boxShadow: 'inset 0 0 44px rgba(253,224,71,0.85)' }} />}
+                  </div>
+                  {owned ? (
+                    <p className="text-emerald-600 font-bold text-sm flex items-center gap-1">✓ 已收入你的收藏库 ♪</p>
+                  ) : (
+                    <button onClick={() => claimCard(card.url)} className="hand-drawn-btn px-7 py-3 font-bold bg-white flex items-center gap-2">
+                      <Gift size={16} /> 领取这段记忆
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
 
             <button
               onClick={() => handleDeleteMail(selectedMail.id)}

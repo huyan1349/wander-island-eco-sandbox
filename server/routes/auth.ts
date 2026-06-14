@@ -32,6 +32,31 @@ const avatarUpload = multer({
 
 const router = Router();
 
+// —— 新卡邮件补发 ——
+// 新增的记忆卡不在注册赠送之列，统一由「辞」发邮件补发给所有玩家（含老用户）。需与前端 MAIL_CARD_URLS 一致。
+const CI_USER_ID = '00000000-0000-0000-0000-000000000001';
+const NEW_CARD_MAILS = [
+  { url: '/Before_the_First_Snow.mp3', title: 'Before the First Snow' },
+];
+function backfillCardMails(db: any, userId: string) {
+  try {
+    const ci = db.prepare('SELECT id FROM users WHERE id = ?').get(CI_USER_ID);
+    if (!ci) return; // 「辞」尚未 seed
+    for (const card of NEW_CARD_MAILS) {
+      const giftType = `music_card:${card.url}`;
+      const exists = db.prepare('SELECT id FROM mailbox WHERE to_id = ? AND gift_type = ?').get(userId, giftType);
+      if (exists) continue;
+      db.prepare('INSERT INTO mailbox (id, from_id, to_id, subject, content, gift_type) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(
+          crypto.randomUUID(), CI_USER_ID, userId,
+          '一段新的记忆',
+          `云海里又浮现了一座岛——「${card.title}」。这段记忆，「辞」替你存了下来。点击领取，把它收进你的收藏库吧。`,
+          giftType
+        );
+    }
+  } catch { /* 补发失败不阻断登录 */ }
+}
+
 // GET /api/auth/check-username?username=xxx  —— 注册时实时校验用户名是否可用
 router.get('/check-username', (req: AuthRequest, res: Response) => {
   const username = String(req.query.username || '').trim();
@@ -139,6 +164,8 @@ router.post('/login', (req: AuthRequest, res: Response) => {
     }
   } catch {}
 
+  backfillCardMails(db, user.id); // 登录时补发新卡邮件
+
   const token = generateToken(user.id);
 
   res.json({
@@ -156,6 +183,8 @@ router.get('/me', authMiddleware, (req: AuthRequest, res: Response) => {
     res.status(404).json({ error: '用户不存在' });
     return;
   }
+
+  backfillCardMails(db, req.userId!); // 凭 token 进入时也补发新卡邮件
 
   // Ensure friendship with "辞"
   const CI_USER_ID = '00000000-0000-0000-0000-000000000001';

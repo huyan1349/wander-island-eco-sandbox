@@ -16,7 +16,7 @@ router.get('/', authMiddleware, (req: AuthRequest, res: Response) => {
     ORDER BY m.created_at DESC
   `).all(req.userId);
 
-  res.json({ mail });
+  res.json({ mails: mail });
 });
 
 // GET /api/mailbox/unread - Get unread count

@@ -3,7 +3,10 @@ import QRCode from 'qrcode';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { AudioSystem } from '../lib/audio';
-import { TRACKS, renderTrackTexture } from './ui/musicData';
+import { TRACKS, renderTrackTexture, grantCard, MAIL_CARD_URLS } from './ui/musicData';
+
+// 注册赠送的卡（前 5 张，排除走邮件发放的新卡）
+const STARTER = TRACKS.filter(t => !MAIL_CARD_URLS.includes(t.url));
 import { Camera, User, ArrowRight, Sparkles, Globe } from 'lucide-react';
 
 // 居民证主题配色（呼应 5 段记忆的色调）
@@ -103,18 +106,15 @@ export const OnboardingFlow: React.FC = () => {
   useEffect(() => {
     if (phase !== 'GIFT') return;
     const r = requestAnimationFrame(() => setGiftIn(true));
-    const timers = TRACKS.map((_, i) => setTimeout(() => AudioSystem.playPop(), 350 + i * 160));
+    const timers = STARTER.map((_, i) => setTimeout(() => AudioSystem.playPop(), 350 + i * 160));
     return () => { cancelAnimationFrame(r); timers.forEach(clearTimeout); };
   }, [phase]);
 
   // 进入漫游岛：赠 5 张记忆卡 + 卡片飞向左下 + 用岛名建岛 + 触发引导
   const enterGame = () => {
     AudioSystem.playConfirm();
-    TRACKS.forEach(t => {
-      const k = `card_got_${t.url}`;
-      if (!localStorage.getItem(k)) localStorage.setItem(k, Date.now().toString());
-    });
-    addToast(`${TRACKS.length} 段记忆已收入行囊 ♪`, 'info');
+    STARTER.forEach(t => grantCard(t.url));
+    addToast(`${STARTER.length} 段记忆已收入行囊 ♪`, 'info');
     setShowWelcomeGuide(true);
     setFlyOut(true);
     const finalIsland = islandName.trim() || `${name.trim() || authUser?.username || '漫游者'}的岛`;
@@ -286,7 +286,7 @@ export const OnboardingFlow: React.FC = () => {
                   <div>
                     <p className="text-[9px] font-bold tracking-[0.25em] uppercase text-slate-500">专属编号</p>
                     <p className="text-base font-black tracking-[0.1em] font-mono" style={{ color: theme.ink }}>{uid}</p>
-                    <p className="text-[10px] font-bold text-slate-500 mt-1">已收录 {TRACKS.length} 段记忆 ♪</p>
+                    <p className="text-[10px] font-bold text-slate-500 mt-1">已收录 {STARTER.length} 段记忆 ♪</p>
                   </div>
                   <div className="w-14 h-14 rounded-md border-2 border-slate-900 bg-white p-0.5 shrink-0">
                     {qrUrl ? <img src={qrUrl} alt="QR" className="w-full h-full" /> : <div className="w-full h-full bg-slate-100 animate-pulse rounded-sm" />}
@@ -317,13 +317,13 @@ export const OnboardingFlow: React.FC = () => {
         <div className="flex flex-col items-center gap-8 w-full">
           <p className="text-center transition-all duration-700" style={{ opacity: giftIn && !flyOut ? 1 : 0, transform: giftIn ? 'translateY(0)' : 'translateY(-14px)' }}>
             <span className="block text-[11px] font-black tracking-[0.45em] uppercase text-white/50 mb-1">Memories Gifted</span>
-            <span className="hand-drawn-title text-3xl text-white/90">{TRACKS.length} 段记忆，已收入你的行囊</span>
+            <span className="hand-drawn-title text-3xl text-white/90">{STARTER.length} 段记忆，已收入你的行囊</span>
           </p>
 
           {/* 扇形铺开的 5 张记忆卡 */}
           <div className="relative flex items-end justify-center" style={{ height: 240, width: '92vw', maxWidth: 760 }}>
-            {TRACKS.map((t, i) => {
-              const off = i - (TRACKS.length - 1) / 2;
+            {STARTER.map((t, i) => {
+              const off = i - (STARTER.length - 1) / 2;
               return (
                 <div
                   key={i}

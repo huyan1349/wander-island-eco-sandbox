@@ -1,5 +1,26 @@
 // 音乐曲目数据 + 每首针对曲风的卡片纹理。WeatherForecast 与 MusicLibrary 共用。
 
+// 通过邮件发放的卡片（不在注册赠送之列；老玩家也靠邮件补发）。需与后端清单保持一致。
+export const MAIL_CARD_URLS = ['/Before_the_First_Snow.mp3'];
+
+// —— 卡片归属（localStorage）——
+export function isCardOwned(url: string): boolean {
+  return !!localStorage.getItem(`card_got_${url}`);
+}
+// 授予卡片；返回 true 表示本次新获得
+export function grantCard(url: string): boolean {
+  const k = `card_got_${url}`;
+  if (localStorage.getItem(k)) return false;
+  localStorage.setItem(k, Date.now().toString());
+  return true;
+}
+export function cardObtainedDate(url: string): string | null {
+  const v = localStorage.getItem(`card_got_${url}`);
+  if (!v) return null;
+  const d = new Date(+v);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export const TRACKS = [
   {
     title: 'Tides of Mahogany',
