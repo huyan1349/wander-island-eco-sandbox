@@ -88,10 +88,28 @@ export interface GiftPayload {
   data: any;
 }
 
-// 生成礼物分享链接：在线走后端返回短链；离线/失败时降级把礼物打包进链接本身
-export async function createGiftLink(fromName: string, message: string): Promise<string> {
-  const data = serializeIsland();
-  const payload = { name: data.name, fromName, message, data };
+// 截取当前游戏画面（缩放压缩）用作礼物卡片正面底图。需 canvas 开 preserveDrawingBuffer
+export function captureScreenshot(maxW = 640): string {
+  const src = document.querySelector('canvas') as HTMLCanvasElement | null;
+  if (!src) return '';
+  try {
+    const scale = Math.min(1, maxW / src.width);
+    const c = document.createElement('canvas');
+    c.width = Math.round(src.width * scale);
+    c.height = Math.round(src.height * scale);
+    c.getContext('2d')!.drawImage(src, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.75);
+  } catch {
+    return '';
+  }
+}
+
+// 生成礼物分享链接：在线走后端短链；离线/失败降级把礼物编码进链接（去截图控长度）。
+// 截图与接收人存进 data._gift，不改后端 schema。
+export async function createGiftLink(meta: { fromName: string; toName: string; message: string; screenshot: string }): Promise<string> {
+  const island = serializeIsland();
+  const data = { ...island, _gift: { toName: meta.toName, screenshot: meta.screenshot } };
+  const payload = { name: island.name, fromName: meta.fromName, message: meta.message, data };
   try {
     const res = await fetch('/api/gifts', {
       method: 'POST',
@@ -102,8 +120,8 @@ export async function createGiftLink(fromName: string, message: string): Promise
     const { id } = await res.json();
     return `${location.origin}/?gift=${id}`;
   } catch {
-    // 离线降级：礼物数据直接编码进链接（无需服务器）
-    return `${location.origin}/?gift=data:${encodeB64(JSON.stringify(payload))}`;
+    const slim = { ...payload, data: { ...data, _gift: { toName: meta.toName, screenshot: '' } } };
+    return `${location.origin}/?gift=data:${encodeB64(JSON.stringify(slim))}`;
   }
 }
 

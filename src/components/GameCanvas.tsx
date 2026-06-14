@@ -152,6 +152,7 @@ export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = 
         camera={{ position: [50, 4, 50], fov: 45 }}
         gl={{
           antialias: true,
+          preserveDrawingBuffer: true,
           powerPreference: 'high-performance',
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.1

@@ -77,6 +77,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import { SocialPanel } from "./components/SocialPanel";
 import { Toast } from "./components/Toast";
 import { FlourishHUD } from "./components/FlourishHUD";
+import { GiftModal } from "./components/GiftModal";
 import { PomodoroTimer } from "./components/PomodoroTimer";
 import { VisitOverlay } from "./components/VisitOverlay";
 import { TimeWeatherSystem } from "./components/systems/TimeWeatherSystem";
@@ -196,11 +197,7 @@ export default function App() {
   useEffect(() => {
     const giftId = new URLSearchParams(location.search).get('gift');
     if (!giftId) return;
-    import('./utils/islandIO').then(({ claimGift }) => {
-      claimGift(giftId)
-        .then((name) => { alert(`🎁 收到礼物小岛：${name}`); history.replaceState({}, '', location.pathname); })
-        .catch(() => alert('礼物不存在或已失效'));
-    });
+    setGiftClaimId(giftId);
   }, []);
 
   // Auto-login from saved token
@@ -314,6 +311,7 @@ export default function App() {
   const [isFloating, setIsFloating] = useState(false);
   const [timer3D, setTimer3D] = useState(false);
   const [autoRotateOn, setAutoRotateOn] = useState(true);
+  const [giftClaimId, setGiftClaimId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [envMenuOpen, setEnvMenuOpen] = useState(false);
   const lastToolRef = useRef<ToolType>('none');
@@ -962,6 +960,9 @@ export default function App() {
       )}
       {screen === 'PLAYING' && <Toast />}
       <FlourishHUD />
+      {giftClaimId && (
+        <GiftModal mode="claim" giftId={giftClaimId} onClose={() => { setGiftClaimId(null); history.replaceState({}, '', location.pathname); }} />
+      )}
       {visitingIsland && <VisitOverlay />}
     </div>
   );
