@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createGiftLink, fetchGift, applyIslandData, captureScreenshot, GiftPayload } from '../utils/islandIO';
+import QRCode from 'qrcode';
 
 // 真 3D 礼物卡：鼠标视差倾斜(rotateX/Y 跟随) + 跟随高光 + 翻面 + 漂浮 + 光环绽放。
 // 层次：入场(scale)·漂浮(translateY)·倾斜(rotateX/Y 跟随)·翻转(rotateY)，各层独立不冲突。
@@ -21,6 +22,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
   const [gift, setGift] = useState<GiftPayload | null>(null);
   const [err, setErr] = useState('');
   const [tilt, setTilt] = useState({ x: 0, y: 0, gx: 50, gy: 50, active: false });
+  const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
     if (mode === 'create') {
@@ -39,6 +41,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       setLink(l);
       setFlipped(false);
       setPetals(true);
+      QRCode.toDataURL(l, { margin: 1, width: 240 }).then(setQrUrl).catch(() => {});
     } finally {
       setBusy(false);
     }
@@ -50,7 +53,8 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
   };
 
   // 把礼物卡渲染成一张带游戏水印+链接的图片下载（用于宣传/分享）
-  const downloadCard = () => {
+  const downloadCard = async () => {
+    try { await (document as any).fonts.load("900 50px 'ZCOOL KuaiLe'"); } catch { /* ignore */ }
     const W = 640, H = 900, imgH = Math.round(H * 0.64);
     const c = document.createElement('canvas');
     c.width = W; c.height = H;
@@ -84,8 +88,8 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
 
       ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.font = '600 16px monospace';
       ctx.fillText('A GIFT ISLAND', 44, imgH - 80);
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 48px sans-serif';
-      ctx.fillText(cardName, 42, imgH - 34);
+      ctx.fillStyle = '#fff'; ctx.font = "900 52px 'ZCOOL KuaiLe', sans-serif";
+      ctx.fillText(cardName, 42, imgH - 30);
 
       // 底部纸区
       ctx.fillStyle = '#fcf8ec'; ctx.fillRect(0, imgH, W, H - imgH);
@@ -102,11 +106,18 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       ctx.fillStyle = '#94a3b8'; ctx.font = '11px monospace';
       ctx.fillText(link.length > 40 ? link.slice(0, 40) + '…' : link, 44, H - 98);
 
-      // 游戏水印
-      ctx.fillStyle = '#15803d'; ctx.font = 'bold 24px sans-serif';
-      ctx.fillText('🌿 Wander Island', 44, H - 36);
+      // 游戏 LOGO（沿用标题界面航海图标）+ 游戏字体水印
+      ctx.save();
+      ctx.translate(44, H - 66);
+      ctx.scale(0.34, 0.34);
+      ctx.strokeStyle = '#15803d'; ctx.lineWidth = 6; ctx.lineJoin = 'round';
+      ctx.stroke(new Path2D('M15 90 L45 80 L45 10 L15 20 Z'));
+      ctx.stroke(new Path2D('M45 10 L85 20 L85 90 L70 86.25 L70 36.25 L55 32.5 L55 82.5 L45 80 Z'));
+      ctx.restore();
+      ctx.fillStyle = '#15803d'; ctx.font = "900 28px 'ZCOOL KuaiLe', sans-serif";
+      ctx.fillText('Wander Island', 90, H - 34);
       ctx.fillStyle = '#cbd5e1'; ctx.font = '11px monospace'; ctx.textAlign = 'right';
-      ctx.fillText('漫游岛 · 生态沙盒', W - 44, H - 38); ctx.textAlign = 'left';
+      ctx.fillText('漫游岛 · 生态沙盒', W - 44, H - 42); ctx.textAlign = 'left';
 
       try {
         const a = document.createElement('a');
@@ -123,9 +134,11 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       im.onerror = () => res(null);
       im.src = src;
     });
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(link)}`;
-    Promise.all([shot ? loadImg(shot) : Promise.resolve(null), loadImg(qrUrl, true)])
-      .then(([img, qr]) => render(img || undefined, qr || undefined));
+    const [bgImg, qrImg] = await Promise.all([
+      shot ? loadImg(shot) : Promise.resolve(null),
+      qrUrl ? loadImg(qrUrl) : Promise.resolve(null),
+    ]);
+    render(bgImg || undefined, qrImg || undefined);
   };
   const enter = () => {
     if (!gift) return;
@@ -280,7 +293,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
               </button>
             ) : (
               <>
-                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(link)}`} alt="扫码收下" className="w-32 h-32 mx-auto rounded-xl bg-white p-1 border-2 border-slate-300" />
+                {qrUrl && <img src={qrUrl} alt="扫码收下" className="w-32 h-32 mx-auto rounded-xl bg-white p-1 border-2 border-slate-300" />}
                 <div className="px-3 py-2 rounded-xl bg-white/95 border-2 border-slate-300 text-[11px] break-all text-slate-600 max-h-20 overflow-auto">{link}</div>
                 <button onClick={copy} className="hand-drawn-btn px-5 py-3 font-bold bg-white">{copied ? '✓ 已复制链接' : '复制链接送给 TA'}</button>
                 <button onClick={downloadCard} className="hand-drawn-btn px-5 py-3 font-bold bg-white">⬇ 下载礼物卡图片（含链接）</button>
