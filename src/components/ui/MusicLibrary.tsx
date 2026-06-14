@@ -7,7 +7,7 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
   const [playingUrl, setPlayingUrl] = useState<string | null>(AudioSystem.getCurrentBGMUrl());
   const [progress, setProgress] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
-  const [closing, setClosing] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => { const r = requestAnimationFrame(() => setMounted(true)); return () => cancelAnimationFrame(r); }, []);
 
@@ -25,9 +25,13 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
     setPlayingUrl(url);
   };
 
+  const openDetail = (i: number) => {
+    setSelected(i);
+    requestAnimationFrame(() => requestAnimationFrame(() => setDetailOpen(true)));
+  };
   const closeDetail = () => {
-    setClosing(true);
-    setTimeout(() => { setSelected(null); setClosing(false); }, 220);
+    setDetailOpen(false);
+    setTimeout(() => setSelected(null), 300);
   };
   const n = TRACKS.length;
   const mid = (n - 1) / 2;
@@ -60,7 +64,7 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
             >
               {/* 内层：纯 CSS hover，不与外层定位冲突 */}
               <div
-                onClick={() => setSelected(i)}
+                onClick={() => openDetail(i)}
                 className="group relative w-full h-full rounded-2xl overflow-hidden hand-drawn-panel cursor-pointer transition-transform duration-300 hover:scale-[1.06] hover:-translate-y-3"
                 style={{ boxShadow: isPlaying ? '0 0 0 3px #15803d, 0 14px 38px rgba(0,0,0,0.55)' : '0 10px 28px rgba(0,0,0,0.4)' }}
               >
@@ -88,10 +92,19 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
 
       {/* 查看大卡详情 */}
       {selected !== null && (
-        <div className={`fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/70 backdrop-blur-md ${closing ? 'animate-out fade-out duration-200' : 'animate-in fade-in duration-200'}`} onClick={closeDetail}>
+        <div
+          className="fixed inset-0 z-[220] flex items-center justify-center"
+          onClick={(e) => { e.stopPropagation(); closeDetail(); }}
+          style={{ background: `rgba(2,6,23,${detailOpen ? 0.72 : 0})`, backdropFilter: `blur(${detailOpen ? 8 : 0}px)`, WebkitBackdropFilter: `blur(${detailOpen ? 8 : 0}px)`, transition: 'background 0.3s ease, backdrop-filter 0.3s ease' }}
+        >
           <div
-            className={`relative w-72 h-[420px] rounded-3xl overflow-hidden hand-drawn-panel ${closing ? 'animate-out fade-out zoom-out-95 duration-200' : 'animate-in zoom-in-95 duration-300'}`}
-            style={{ boxShadow: '0 30px 70px rgba(0,0,0,0.6)', transition: 'transform 0.3s cubic-bezier(0.34,1.4,0.64,1)' }}
+            className="relative w-72 h-[420px] rounded-3xl overflow-hidden hand-drawn-panel"
+            style={{
+              boxShadow: '0 30px 70px rgba(0,0,0,0.6)',
+              transform: detailOpen ? 'scale(1) translateY(0)' : 'scale(0.72) translateY(28px)',
+              opacity: detailOpen ? 1 : 0,
+              transition: 'transform 0.42s cubic-bezier(0.34,1.45,0.64,1), opacity 0.3s ease',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute inset-0" style={{ background: TRACKS[selected].bg }} />
