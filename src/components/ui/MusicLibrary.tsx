@@ -7,6 +7,7 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
   const [playingUrl, setPlayingUrl] = useState<string | null>(AudioSystem.getCurrentBGMUrl());
   const [progress, setProgress] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -20,6 +21,11 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
     if (url === AudioSystem.getCurrentBGMUrl()) return; // 已在播放，避免对同曲重复切换导致崩溃
     AudioSystem.switchBGM(url);
     setPlayingUrl(url);
+  };
+
+  const closeDetail = () => {
+    setClosing(true);
+    setTimeout(() => { setSelected(null); setClosing(false); }, 220);
   };
   const n = TRACKS.length;
   const mid = (n - 1) / 2;
@@ -76,10 +82,10 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
 
       {/* 查看大卡详情 */}
       {selected !== null && (
-        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setSelected(null)}>
+        <div className={`fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/70 backdrop-blur-md ${closing ? 'animate-out fade-out duration-200' : 'animate-in fade-in duration-200'}`} onClick={closeDetail}>
           <div
-            className="relative w-72 h-[420px] rounded-3xl overflow-hidden hand-drawn-panel animate-in zoom-in-95 duration-300"
-            style={{ boxShadow: '0 30px 70px rgba(0,0,0,0.6)' }}
+            className={`relative w-72 h-[420px] rounded-3xl overflow-hidden hand-drawn-panel ${closing ? 'animate-out fade-out zoom-out-95 duration-200' : 'animate-in zoom-in-95 duration-300'}`}
+            style={{ boxShadow: '0 30px 70px rgba(0,0,0,0.6)', transition: 'transform 0.3s cubic-bezier(0.34,1.4,0.64,1)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute inset-0" style={{ background: TRACKS[selected].bg }} />
