@@ -108,7 +108,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
 
       // 游戏 LOGO（splash 小岛图标 path，绿色描边——白色在米底不可见）
       ctx.save();
-      ctx.translate(40, H - 80);
+      ctx.translate(40, H - 76);
       ctx.scale(0.2, 0.2);
       ctx.strokeStyle = '#15803d'; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       ctx.stroke(new Path2D('M24 138L52 120L78 119L105 104L122 74L128 26L140 16L152 27L149 72L171 62L172 88L188 99L200 123L222 125L236 136L211 142L187 135L120 154L86 136L47 138L24 138Z'));

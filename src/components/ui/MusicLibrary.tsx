@@ -104,7 +104,7 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
       {/* 查看大卡详情 */}
       {selected !== null && (
         <div
-          className="fixed inset-0 z-[220] flex items-center justify-center"
+          className="fixed inset-0 z-[220] flex flex-col items-center justify-center gap-5"
           onClick={(e) => { e.stopPropagation(); closeDetail(); }}
           style={{ background: `rgba(2,6,23,${detailOpen ? 0.72 : 0})`, backdropFilter: `blur(${detailOpen ? 8 : 0}px)`, WebkitBackdropFilter: `blur(${detailOpen ? 8 : 0}px)`, transition: 'background 0.3s ease, backdrop-filter 0.3s ease' }}
         >
@@ -113,7 +113,7 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
               perspective: 1200,
               transform: detailOpen
                 ? 'translate(0px, 0px) scale(1)'
-                : `translate(${(selected - mid) * 148}px, 150px) scale(0.5)`,
+                : `translate(${(selected - mid) * 148}px, ${40 + Math.abs(selected - mid) * 16}px) rotate(${(selected - mid) * 7}deg) scale(0.6)`,
               opacity: detailOpen ? 1 : 0,
               transition: 'transform 0.45s cubic-bezier(0.34,1.45,0.64,1), opacity 0.3s ease',
             }}
@@ -130,7 +130,7 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
                 {renderTrackTexture(selected)}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
                 <p className="absolute top-5 left-5 text-white/60 text-[10px] font-mono tracking-[0.3em] uppercase">TRACK {selected + 1} / {n}</p>
-                <span className="absolute top-5 right-5 text-white/50 text-[10px] font-mono tracking-widest">翻面 ↻</span>
+                {/* 翻面提示见卡片下方 */}
                 <div className="absolute bottom-0 left-0 right-0 p-6">
                   <p className="text-white text-2xl font-bold drop-shadow-lg mb-2 leading-tight">{TRACKS[selected].title}</p>
                   <p className="text-white/75 text-[13px] leading-relaxed mb-4 italic">{(TRACKS[selected] as any).story}</p>
@@ -160,10 +160,12 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
                     <p className="text-slate-400 text-[11px] mt-1">的漫游者拥有这张卡</p>
                   </div>
                 </div>
-                <p className="text-slate-300 text-[10px] font-mono tracking-widest text-center">翻回 ↻</p>
               </div>
             </div>
           </div>
+          <p className="text-white/55 text-xs font-mono tracking-[0.25em] pointer-events-none" style={{ opacity: detailOpen ? 1 : 0, transition: 'opacity 0.3s' }}>
+            {flipped ? '点击卡片 · 翻回正面' : '点击卡片 · 查看背面'}
+          </p>
         </div>
       )}
     </div>
