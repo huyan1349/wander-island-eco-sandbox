@@ -8,6 +8,15 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
   const [progress, setProgress] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [flipped, setFlipped] = useState(false);
+  const RARITY = [64, 78, 41, 53, 29];
+  const obtainedDate = (url: string) => {
+    const k = `card_got_${url}`;
+    let v = localStorage.getItem(k);
+    if (!v) { v = Date.now().toString(); localStorage.setItem(k, v); }
+    const d = new Date(+v);
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+  };
   const [mounted, setMounted] = useState(false);
   useEffect(() => { const r = requestAnimationFrame(() => setMounted(true)); return () => cancelAnimationFrame(r); }, []);
 
@@ -27,6 +36,8 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
 
   const openDetail = (i: number) => {
     setSelected(i);
+    setFlipped(false);
+    obtainedDate(TRACKS[i].url); // 首次抽出即记录获得时间
     requestAnimationFrame(() => requestAnimationFrame(() => setDetailOpen(true)));
   };
   const closeDetail = () => {
@@ -66,7 +77,7 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
               <div
                 onClick={() => openDetail(i)}
                 className="group relative w-full h-full rounded-2xl overflow-hidden hand-drawn-panel cursor-pointer transition-transform duration-300 hover:scale-[1.06] hover:-translate-y-3"
-                style={{ boxShadow: isPlaying ? '0 0 0 3px #15803d, 0 14px 38px rgba(0,0,0,0.55)' : '0 10px 28px rgba(0,0,0,0.4)' }}
+                style={{ boxShadow: isPlaying ? '0 0 0 3px #15803d, 0 14px 38px rgba(0,0,0,0.55)' : '0 10px 28px rgba(0,0,0,0.4)', opacity: (selected === i && detailOpen) ? 0 : 1, transition: 'opacity 0.25s ease' }}
               >
                 <div className="absolute inset-0" style={{ background: t.bg }} />
                 {renderTrackTexture(i)}
@@ -98,32 +109,59 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
           style={{ background: `rgba(2,6,23,${detailOpen ? 0.72 : 0})`, backdropFilter: `blur(${detailOpen ? 8 : 0}px)`, WebkitBackdropFilter: `blur(${detailOpen ? 8 : 0}px)`, transition: 'background 0.3s ease, backdrop-filter 0.3s ease' }}
         >
           <div
-            className="relative w-72 h-[420px] rounded-3xl overflow-hidden hand-drawn-panel"
             style={{
-              boxShadow: '0 30px 70px rgba(0,0,0,0.6)',
+              perspective: 1200,
               transform: detailOpen
-                ? 'translate(0px, 0px) rotate(0deg) scale(1)'
-                : `translate(${(selected - mid) * 148}px, 150px) rotate(${(selected - mid) * 7}deg) scale(0.5)`,
+                ? 'translate(0px, 0px) scale(1)'
+                : `translate(${(selected - mid) * 148}px, 150px) scale(0.5)`,
               opacity: detailOpen ? 1 : 0,
-              transition: 'transform 0.42s cubic-bezier(0.34,1.45,0.64,1), opacity 0.3s ease',
+              transition: 'transform 0.45s cubic-bezier(0.34,1.45,0.64,1), opacity 0.3s ease',
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="absolute inset-0" style={{ background: TRACKS[selected].bg }} />
-            {renderTrackTexture(selected)}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
-            <div className="absolute top-5 left-5">
-              <p className="text-white/60 text-[10px] font-mono tracking-[0.3em] uppercase mb-1">TRACK {selected + 1} / {n}</p>
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 p-6">
-              <p className="text-white text-2xl font-bold drop-shadow-lg mb-2 leading-tight">{TRACKS[selected].title}</p>
-              <p className="text-white/75 text-[13px] leading-relaxed mb-4 italic">{(TRACKS[selected] as any).story}</p>
-              <button
-                onClick={() => play(TRACKS[selected].url)}
-                className="w-full hand-drawn-btn px-5 py-3 font-bold bg-white"
+            <div
+              onClick={() => setFlipped((f) => !f)}
+              className="relative w-72 h-[420px] cursor-pointer"
+              style={{ transformStyle: 'preserve-3d', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)', transition: 'transform 0.6s cubic-bezier(0.4,0.2,0.2,1)', boxShadow: '0 30px 70px rgba(0,0,0,0.6)', borderRadius: 24 }}
+            >
+              {/* 正面 */}
+              <div className="absolute inset-0 rounded-3xl overflow-hidden hand-drawn-panel" style={{ backfaceVisibility: 'hidden' }}>
+                <div className="absolute inset-0" style={{ background: TRACKS[selected].bg }} />
+                {renderTrackTexture(selected)}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
+                <p className="absolute top-5 left-5 text-white/60 text-[10px] font-mono tracking-[0.3em] uppercase">TRACK {selected + 1} / {n}</p>
+                <span className="absolute top-5 right-5 text-white/50 text-[10px] font-mono tracking-widest">翻面 ↻</span>
+                <div className="absolute bottom-0 left-0 right-0 p-6">
+                  <p className="text-white text-2xl font-bold drop-shadow-lg mb-2 leading-tight">{TRACKS[selected].title}</p>
+                  <p className="text-white/75 text-[13px] leading-relaxed mb-4 italic">{(TRACKS[selected] as any).story}</p>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); play(TRACKS[selected].url); }}
+                    className="w-full hand-drawn-btn px-5 py-3 font-bold bg-white"
+                  >
+                    {TRACKS[selected].url === playingUrl ? '♪ 正在播放' : '▶ 播放这首'}
+                  </button>
+                </div>
+              </div>
+              {/* 背面：获得信息 */}
+              <div
+                className="absolute inset-0 rounded-3xl overflow-hidden hand-drawn-panel bg-[#fcf8ec] p-7 flex flex-col"
+                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
               >
-                {TRACKS[selected].url === playingUrl ? '♪ 正在播放' : '▶ 播放这首'}
-              </button>
+                <p className="text-slate-400 text-[10px] font-mono tracking-[0.3em] uppercase text-center mb-5">CARD · 记忆回声</p>
+                <p className="hand-drawn-title text-2xl text-slate-800 text-center mb-8 -rotate-1">{TRACKS[selected].title}</p>
+                <div className="flex-1 flex flex-col justify-center gap-7">
+                  <div className="text-center">
+                    <p className="text-slate-400 text-[10px] uppercase tracking-widest mb-1">获得于</p>
+                    <p className="text-slate-800 text-xl font-bold">{obtainedDate(TRACKS[selected].url)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-slate-400 text-[10px] uppercase tracking-widest mb-1">稀有度</p>
+                    <p className="text-emerald-700 text-xl font-bold">{RARITY[selected]}%</p>
+                    <p className="text-slate-400 text-[11px] mt-1">的漫游者拥有这张卡</p>
+                  </div>
+                </div>
+                <p className="text-slate-300 text-[10px] font-mono tracking-widest text-center">翻回 ↻</p>
+              </div>
             </div>
           </div>
         </div>
