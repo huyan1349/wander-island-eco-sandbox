@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { createGiftLink, fetchGift, applyIslandData, captureScreenshot, GiftPayload } from '../utils/islandIO';
 
-// 高级 3D 翻转礼物卡：正面=截图底图+岛名，背面=在卡上手写寄语(create)/展示寄语(claim)。
-// 漂浮动画放外层、翻转放内层，避免 transform 冲突导致翻不动。
+// 高级 3D 翻转礼物卡 + 仪式感动效：
+// 弹性登场 / 翻面写寄语 / 封装光印 / 樱花瓣飘落 / 拆开展示。
+// 动画分层：入场层(scale)·漂浮层(translateY)·翻转层(rotateY) 互不冲突。
 export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
   mode: 'create' | 'claim';
   giftId?: string;
@@ -17,6 +18,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
   const [link, setLink] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [petals, setPetals] = useState(false);
   const [gift, setGift] = useState<GiftPayload | null>(null);
   const [err, setErr] = useState('');
 
@@ -25,7 +27,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       setShot(captureScreenshot());
     } else if (giftId) {
       fetchGift(giftId)
-        .then((g) => { setGift(g); setTimeout(() => setFlipped(true), 800); })
+        .then((g) => { setGift(g); setTimeout(() => { setFlipped(true); setPetals(true); }, 900); })
         .catch(() => setErr('礼物不存在或已失效'));
     }
   }, [mode, giftId]);
@@ -35,6 +37,8 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
     try {
       const l = await createGiftLink({ fromName: fromName || '匿名', toName, message, screenshot: shot });
       setLink(l);
+      setFlipped(false);
+      setPetals(true);
     } finally {
       setBusy(false);
     }
@@ -63,13 +67,29 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       <style>{`
         @keyframes giftHover{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
         @keyframes sheen{0%{transform:translateX(-130%) skewX(-20deg)}100%{transform:translateX(240%) skewX(-20deg)}}
+        @keyframes cardEnter{0%{opacity:0;transform:scale(0.6) translateY(40px)}60%{opacity:1;transform:scale(1.06) translateY(-4px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+        @keyframes petalFall{0%{transform:translateY(-30px) rotate(0deg);opacity:0}15%{opacity:.95}100%{transform:translateY(460px) rotate(380deg);opacity:0}}
+        @keyframes glowPulse{0%,100%{opacity:.35}50%{opacity:.6}}
       `}</style>
 
-      <div onClick={(e) => e.stopPropagation()} className="flex flex-col items-center gap-5">
-        {/* 漂浮层（只做 translateY，不与翻转冲突） */}
-        <div style={{ perspective: 1200 }}>
+      {/* 遮罩柔光晕 */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 42%, rgba(251,207,232,0.18), transparent 55%)', animation: 'glowPulse 5s ease-in-out infinite' }} />
+
+      {/* 樱花瓣飘落 */}
+      {petals && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {Array.from({ length: 14 }).map((_, i) => (
+            <div key={i} className="absolute text-lg" style={{ left: `${i * 7 + (i % 3) * 3}%`, top: -24, animation: `petalFall ${2.6 + (i % 4) * 0.7}s ease-in ${i * 0.18}s forwards` }}>🌸</div>
+          ))}
+        </div>
+      )}
+
+      <div onClick={(e) => e.stopPropagation()} className="relative flex flex-col items-center gap-5">
+        {/* 入场层（scale 弹性登场） */}
+        <div style={{ perspective: 1200, animation: 'cardEnter 0.8s cubic-bezier(0.34,1.56,0.64,1)' }}>
+          {/* 漂浮层（translateY 循环） */}
           <div style={{ animation: 'giftHover 4s ease-in-out infinite' }}>
-            {/* 翻转层 */}
+            {/* 翻转层（rotateY） */}
             <div
               className="relative w-64 h-96"
               style={{
@@ -91,7 +111,6 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
                   <p className="text-white/60 text-[10px] font-mono tracking-[0.3em] uppercase mb-1">A Gift Island</p>
                   <p className="text-white text-2xl font-bold drop-shadow-lg leading-tight">{cardName}</p>
                 </div>
-                {/* 翻面引导 */}
                 {mode === 'create' && !link && (
                   <button
                     onClick={(e) => { e.stopPropagation(); setFlipped(true); }}
@@ -102,7 +121,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
                 )}
               </div>
 
-              {/* 背面：create=在卡上填写；claim=展示寄语 */}
+              {/* 背面：create=卡上手写；claim=展示寄语 */}
               <div
                 className="absolute inset-0 rounded-3xl overflow-hidden hand-drawn-panel bg-[#fcf8ec] p-6 flex flex-col"
                 style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
@@ -151,7 +170,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
           <div className="w-64 flex flex-col gap-2">
             {!link ? (
               <button onClick={handleGenerate} disabled={busy} className="hand-drawn-btn px-5 py-3 font-bold bg-white">
-                {busy ? '封装中…' : '🎁 封装这张礼物卡'}
+                {busy ? '✦ 封装中…' : '🎁 封装这张礼物卡'}
               </button>
             ) : (
               <>
