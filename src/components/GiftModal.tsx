@@ -41,7 +41,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       setLink(l);
       setFlipped(false);
       setPetals(true);
-      QRCode.toDataURL(l, { margin: 1, width: 240 }).then(setQrUrl).catch(() => {});
+      QRCode.toDataURL(l, { margin: 1, width: 240, errorCorrectionLevel: 'L' }).then(setQrUrl).catch(() => setQrUrl(''));
     } finally {
       setBusy(false);
     }

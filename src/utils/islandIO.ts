@@ -120,7 +120,9 @@ export async function createGiftLink(meta: { fromName: string; toName: string; m
     const { id } = await res.json();
     return `${location.origin}/?gift=${id}`;
   } catch {
-    const slim = { ...payload, data: { ...data, _gift: { toName: meta.toName, screenshot: '' } } };
+    // 离线降级：去掉地形(占数据绝大部分)与截图，大幅压缩使其能塞进二维码
+    const slimData = { ...data, terrainPositions: null, terrainTypes: null, _gift: { toName: meta.toName, screenshot: '' } };
+    const slim = { name: island.name, fromName: meta.fromName, message: meta.message, data: slimData };
     return `${location.origin}/?gift=data:${encodeB64(JSON.stringify(slim))}`;
   }
 }
