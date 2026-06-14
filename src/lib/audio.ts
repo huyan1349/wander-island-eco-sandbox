@@ -18,6 +18,7 @@ export class AudioSystem {
 
     // BGM — uses <audio> element for better autoplay support (MEI-based)
     private static bgmEl: HTMLAudioElement | null = null;
+    private static bgmCache = new Map<string, HTMLAudioElement>(); // Preloaded audio elements
     private static isBgmPlaying = false;
     private static currentBgmUrl: string | null = null;
     private static bgmVolumeTarget = 0.5;
@@ -69,19 +70,35 @@ export class AudioSystem {
     }
 
     static async loadBGM(url: string) {
-        // Pre-create <audio> element if needed
-        if (!this.bgmEl) {
-            this.bgmEl = new Audio();
-            this.bgmEl.loop = true;
-            this.bgmEl.volume = 0; // Start silent, fade in on play
-            this.bgmEl.preload = 'auto';
+        // Check cache first
+        if (this.bgmCache.has(url)) {
+            this.bgmEl = this.bgmCache.get(url)!;
+            return;
         }
 
-        // If same URL already loaded, skip
-        if (this.bgmEl.src.endsWith(url)) return;
+        // Create <audio> element
+        const audio = new Audio();
+        audio.loop = true;
+        audio.volume = 0;
+        audio.preload = 'auto';
+        audio.src = url;
+        audio.load();
 
-        this.bgmEl.src = url;
-        this.bgmEl.load();
+        // Cache it
+        this.bgmCache.set(url, audio);
+        this.bgmEl = audio;
+    }
+
+    /** Preload a BGM track without setting it as current */
+    static preloadBGM(url: string) {
+        if (this.bgmCache.has(url)) return;
+        const audio = new Audio();
+        audio.loop = true;
+        audio.volume = 0;
+        audio.preload = 'auto';
+        audio.src = url;
+        audio.load();
+        this.bgmCache.set(url, audio);
     }
 
     static playBGM() {
@@ -161,15 +178,16 @@ export class AudioSystem {
 
         const switchToken = ++this.bgmSwitchToken;
 
-        if (this.isBgmPlaying) {
+        // Fade out current
+        if (this.isBgmPlaying && this.bgmEl) {
             await this.fadeBGMOUT();
             if (switchToken !== this.bgmSwitchToken) return;
-            this.bgmEl!.pause();
+            this.bgmEl.pause();
         }
 
-        this.bgmEl!.src = url;
-        this.bgmEl!.volume = 0;
-        this.bgmEl!.load();
+        // Get from cache or load
+        await this.loadBGM(url);
+        if (switchToken !== this.bgmSwitchToken) return;
 
         const playPromise = this.bgmEl!.play();
         if (playPromise !== undefined) {
