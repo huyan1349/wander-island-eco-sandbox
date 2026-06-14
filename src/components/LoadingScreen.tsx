@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AudioSystem } from '../lib/audio';
+import { Maximize2 } from 'lucide-react';
 
 interface LoadingScreenProps {
   onReady: () => void;
@@ -10,10 +11,19 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
   const [progress, setProgress] = useState(0);
   const [fadeIn, setFadeIn] = useState(false);
   const [showButton, setShowButton] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     setFadeIn(true);
+    // Check if already fullscreen
+    setIsFullscreen(!!document.fullscreenElement);
 
+    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  useEffect(() => {
     const loadAssets = async () => {
       const progressInterval = setInterval(() => {
         setProgress(prev => {
@@ -42,6 +52,12 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
 
     loadAssets();
   }, []);
+
+  const requestFullscreen = () => {
+    const el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    else if ((el as any).webkitRequestFullscreen) (el as any).webkitRequestFullscreen();
+  };
 
   const handleEnter = () => {
     AudioSystem.ensureResumed();
@@ -107,6 +123,18 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
           >
             <span className="text-sm tracking-[0.4em] uppercase font-light">Enter</span>
             <div className="absolute inset-0 rounded-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          </button>
+        )}
+
+        {/* Fullscreen hint */}
+        {showButton && !isFullscreen && (
+          <button
+            onClick={requestFullscreen}
+            className="flex items-center gap-2 text-white/25 hover:text-white/50 transition-colors duration-300 animate-in fade-in"
+            style={{ animationDuration: '1200ms', animationDelay: '400ms' }}
+          >
+            <Maximize2 size={12} />
+            <span className="text-[10px] tracking-[0.2em]">建议全屏游玩</span>
           </button>
         )}
       </div>
