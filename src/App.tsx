@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { GameCanvas } from "./components/GameCanvas";
+import { useEffect, useRef, useState, lazy, Suspense } from "react";
+// 懒加载 3D 场景（Three.js/r3f/drei）—— 拆出独立 chunk，大幅减小首屏主包
+const GameCanvas = lazy(() => import("./components/GameCanvas").then(m => ({ default: m.GameCanvas })));
 import { TitleScreen } from "./components/TitleScreen";
 import { SaveSelectScreen } from "./components/SaveSelectScreen";
 import { LoadingScreen, hasVisitedBefore } from "./components/LoadingScreen";
@@ -604,9 +605,11 @@ export default function App() {
       {/* Loading Screen — shows before everything else */}
       {!appLoaded && <LoadingScreen onReady={() => setAppLoaded(true)} />}
 
-      {/* Center Canvas */}
+      {/* Center Canvas（懒加载，载入前用渐变占位避免黑屏） */}
       <div className={`absolute inset-0 z-0 transition-all duration-1000 ${screen !== 'PLAYING' ? 'blur-none brightness-100' : 'blur-none brightness-100'}`}>
-        <GameCanvas immersive={isImmersive} timer3D={timer3D} autoRotateOn={autoRotateOn} />
+        <Suspense fallback={<div className="absolute inset-0" style={{ background: 'linear-gradient(180deg,#bfe3f5 0%,#e8f6ff 55%,#dff3e6 100%)' }} />}>
+          <GameCanvas immersive={isImmersive} timer3D={timer3D} autoRotateOn={autoRotateOn} />
+        </Suspense>
       </div>
 
       {appLoaded && screen === 'TITLE' && <TitleScreen />}
