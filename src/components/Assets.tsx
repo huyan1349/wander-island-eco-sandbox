@@ -3334,6 +3334,58 @@ export function Waterwheel(props: any) {
   );
 }
 
+function CherryPetals({ position }: { position: any }) {
+  const meshRef = useRef<THREE.InstancedMesh>(null);
+  const count = 20;
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+
+  const petalData = useMemo(() => {
+    return Array.from({ length: count }, () => ({
+      offsetX: (Math.random() - 0.5) * 4,
+      offsetZ: (Math.random() - 0.5) * 4,
+      startY: 3 + Math.random() * 3,
+      fallSpeed: 0.3 + Math.random() * 0.2,
+      driftSpeed: 0.5 + Math.random() * 0.5,
+      driftAmp: 0.3 + Math.random() * 0.3,
+      phase: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 2,
+    }));
+  }, []);
+
+  useFrame(({ clock }) => {
+    if (!meshRef.current) return;
+    const t = clock.elapsedTime;
+
+    for (let i = 0; i < count; i++) {
+      const p = petalData[i];
+      const cycle = (t * p.fallSpeed + p.phase) % 6;
+      const y = p.startY - cycle;
+
+      dummy.position.set(
+        position.x + p.offsetX + Math.sin(t * p.driftSpeed + p.phase) * p.driftAmp,
+        y,
+        position.z + p.offsetZ + Math.cos(t * p.driftSpeed * 0.7 + p.phase) * p.driftAmp
+      );
+      dummy.rotation.set(
+        Math.sin(t * p.rotSpeed + p.phase) * 0.5,
+        t * p.rotSpeed,
+        Math.cos(t * p.rotSpeed * 0.7 + p.phase) * 0.5
+      );
+      dummy.scale.setScalar(0.8 + Math.sin(t + p.phase) * 0.2);
+      dummy.updateMatrix();
+      meshRef.current.setMatrixAt(i, dummy.matrix);
+    }
+    meshRef.current.instanceMatrix.needsUpdate = true;
+  });
+
+  return (
+    <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
+      <boxGeometry args={[0.08, 0.01, 0.08]} />
+      <meshStandardMaterial color="#f9a8d4" transparent opacity={0.85} />
+    </instancedMesh>
+  );
+}
+
 export function CherryTree({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
   const groupRef = usePopIn(scale);
   const swayRef = useRef<any>(null);
@@ -3368,6 +3420,7 @@ export function CherryTree({ position, rotation, scale = 1 }: { position: any, r
           </mesh>
         </group>
       </group>
+      <CherryPetals position={position} />
     </group>
   );
 }
