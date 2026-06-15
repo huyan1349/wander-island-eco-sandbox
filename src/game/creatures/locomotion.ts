@@ -75,6 +75,10 @@ export interface LocomotionState {
   pitch: number;
   /** 身体 roll 角 (坡度对齐) */
   roll: number;
+  /** 平滑后的 Y 值 (防止高度跳变) */
+  smoothY: number;
+  /** 上一帧的 moveSpeed (用于速度平滑) */
+  prevMoveSpeed: number;
 }
 
 // ─── 工厂函数 ───────────────────────────────────────────
@@ -101,6 +105,8 @@ export function createLocomotionState(
     currentSpeed: 0,
     pitch: 0,
     roll: 0,
+    smoothY: startY,
+    prevMoveSpeed: 0,
   };
 }
 
@@ -158,6 +164,11 @@ export function stepCreature(
     if (moveSpeed < 0.05) moveSpeed = 0;
   }
 
+  // ── 2.5 速度平滑 — 防止速度突变造成顿挫 ──────────────
+  const speedSmoothRate = 8; // 速度变化平滑系数
+  moveSpeed = state.prevMoveSpeed + (moveSpeed - state.prevMoveSpeed) * Math.min(1, dt * speedSmoothRate);
+  state.prevMoveSpeed = moveSpeed;
+
   // ── 3. 计算期望朝向 ──────────────────────────────────
   let desiredHeading = state.heading;
   if (distToTarget > 0.05 && moveSpeed > 0) {
@@ -186,18 +197,32 @@ export function stepCreature(
   let actualDisplacement = 0;
 
   if (moveSpeed > 0) {
-    const probeDist = cfg.obstacleProbeDistance ?? 1.5;
-    const nextX = state.position.x + moveDir.x * moveSpeed * dt;
-    const nextZ = state.position.z + moveDir.z * moveSpeed * dt;
+    const step = moveSpeed * dt;
+    const nextX = state.position.x + moveDir.x * step;
+    const nextZ = state.position.z + moveDir.z * step;
 
-    // ── 6. 避障转向 (steer) ─────────────────────────────
-    if (isWalkable(nextX, nextZ, ctx.assets)) {
+    // ── 6. 避障转向 (多点探测 + 坡度感知) ───────────────
+    const walkable = isWalkable(nextX, nextZ, ctx.assets);
+
+    // 坡度感知：检查目标点高度差，太陡也不走
+    let tooSteep = false;
+    if (walkable) {
+      const currentH = getTerrainHeight(state.position.x, state.position.z);
+      const nextH = getTerrainHeight(nextX, nextZ);
+      const heightDiff = nextH - currentH;
+      const maxSlope = 2.0; // 最大可走坡度 (高度差/水平距离)
+      if (Math.abs(heightDiff) > maxSlope * step) {
+        tooSteep = true;
+      }
+    }
+
+    if (walkable && !tooSteep) {
       // 前方可走，正常移动
       state.position.x = nextX;
       state.position.z = nextZ;
-      actualDisplacement = moveSpeed * dt;
+      actualDisplacement = step;
     } else {
-      // 前方不可走 → 尝试左右偏转
+      // 前方不可走 → 尝试左右偏转（多点探测：近点+远点）
       const steerAngles = [Math.PI / 6, -Math.PI / 6, Math.PI / 3, -Math.PI / 3, Math.PI / 2, -Math.PI / 2];
       let steered = false;
 
@@ -205,17 +230,30 @@ export function stepCreature(
         const testHeading = state.heading + angle;
         const testDirX = Math.sin(testHeading);
         const testDirZ = Math.cos(testHeading);
-        const testX = state.position.x + testDirX * moveSpeed * dt;
-        const testZ = state.position.z + testDirZ * moveSpeed * dt;
 
-        if (isWalkable(testX, testZ, ctx.assets)) {
-          // 偏转方向可走，更新朝向和位置
-          state.heading = testHeading;
-          state.position.x = testX;
-          state.position.z = testZ;
-          actualDisplacement = moveSpeed * dt;
-          steered = true;
-          break;
+        // 近点探测 (半步)
+        const nearX = state.position.x + testDirX * step * 0.5;
+        const nearZ = state.position.z + testDirZ * step * 0.5;
+        // 远点探测 (全步)
+        const farX = state.position.x + testDirX * step;
+        const farZ = state.position.z + testDirZ * step;
+
+        const nearWalkable = isWalkable(nearX, nearZ, ctx.assets);
+        const farWalkable = isWalkable(farX, farZ, ctx.assets);
+
+        if (nearWalkable && farWalkable) {
+          // 坡度检查
+          const currentH = getTerrainHeight(state.position.x, state.position.z);
+          const farH = getTerrainHeight(farX, farZ);
+          const heightDiff = farH - currentH;
+          if (Math.abs(heightDiff) <= 2.0 * step) {
+            state.heading = testHeading;
+            state.position.x = farX;
+            state.position.z = farZ;
+            actualDisplacement = step;
+            steered = true;
+            break;
+          }
         }
       }
 
@@ -227,7 +265,7 @@ export function stepCreature(
     }
   }
 
-  // ── 7. 地形贴合 + 坡度对齐 ───────────────────────────
+  // ── 7. 地形贴合 + Y 值平滑过渡 ───────────────────────
   const { y: surfaceY } = getWalkableHeight(
     state.position.x,
     state.position.z,
@@ -235,16 +273,20 @@ export function stepCreature(
     ctx.weather,
     ctx.assets
   );
-  state.position.y = surfaceY;
+
+  // Y 值平滑过渡：用 lerp 而非直接赋值，防止高度跳变
+  const ySmoothRate = 12; // Y 值平滑系数，越大贴合越快
+  state.smoothY += (surfaceY - state.smoothY) * Math.min(1, dt * ySmoothRate);
+  state.position.y = state.smoothY;
 
   // 坡度对齐
   const slopeStrength = cfg.slopeAlignStrength ?? 0.5;
   if (slopeStrength > 0) {
     const grad = getTerrainGradient(state.position.x, state.position.z);
     // pitch: 前后倾斜
-    const targetPitch = -Math.atan2(grad.dz, 0.2) * slopeStrength;
+    const targetPitch = -Math.atan2(grad.dz, 0.3) * slopeStrength;
     // roll: 左右倾斜
-    const targetRoll = -Math.atan2(grad.dx, 0.2) * slopeStrength;
+    const targetRoll = -Math.atan2(grad.dx, 0.3) * slopeStrength;
     // 平滑过渡
     state.pitch += (targetPitch - state.pitch) * Math.min(1, dt * 5);
     state.roll += (targetRoll - state.roll) * Math.min(1, dt * 5);
