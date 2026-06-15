@@ -42,7 +42,7 @@ export function useCiProactive() {
         line = pickLine(WELCOME_LINES);
       } else {
         // 首次见面
-        line = '欢迎来到漫游岛。我是辞，这座岛上最古老的意识碎片。';
+        line = '你好，我是辞。这座岛上的……嗯，算是老住户吧。';
       }
       // 延迟 2s 再说，等场景加载完
       const t = setTimeout(() => ciSay(line), 2000);
@@ -132,7 +132,7 @@ export function useCiProactive() {
   // ===== 协同事件呼应 =====
   useEffect(() => {
     if (lastPlacedSynergy) {
-      ciSay('生态产生了共鸣……你听到了吗？');
+      ciSay('生态产生了共鸣……感觉到了吗？');
       addAffinity(5);
     }
   }, [lastPlacedSynergy, ciSay, addAffinity]);

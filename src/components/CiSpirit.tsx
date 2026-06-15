@@ -4,12 +4,11 @@ import { AudioSystem } from '../lib/audio';
 import { Send } from 'lucide-react';
 
 /**
- * 辞（岛灵）浮层组件 — 右下角
+ * 辞（织潮者的回音）浮层组件 — 右下角
  * - 替代原有 Sparkles AI 按钮，整合为辞的头像 + 快速对话
  * - 头像用 /ci-avatar.png 真实图片
- * - hover 展开输入框，支持快速对话
+ * - 单击头像 → 打开完整聊天界面（定位到辞）
  * - 有气泡时在头像上方显示手绘气泡，约 8s 自动淡出
- * - 点击辞头像 → 打开 PlayerPanel 社交 tab 定位到辞
  * - 定时器只依赖 ci.bubbleAt，避免 effect cleanup 误清
  */
 export const CiSpirit: React.FC = () => {
@@ -23,7 +22,6 @@ export const CiSpirit: React.FC = () => {
   const setAiNarration = useGameStore(s => s.setAiNarration);
 
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
-
   const [bubbleVisible, setBubbleVisible] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -42,13 +40,6 @@ export const CiSpirit: React.FC = () => {
       return () => clearTimeout(t);
     }
   }, [ci.bubbleAt, ci.bubble, clearCiBubble]);
-
-  // AI narration 变化时也显示气泡
-  useEffect(() => {
-    if (aiNarration && aiNarration !== ci.bubble) {
-      // narration 已由 ciSay 处理，这里只做兜底
-    }
-  }, [aiNarration, ci.bubble]);
 
   // 展开输入框时自动聚焦
   useEffect(() => {
@@ -94,9 +85,9 @@ export const CiSpirit: React.FC = () => {
     })
     .catch(() => {
       const fallbackLines = [
-        '...海风太大，我稍后再说。',
-        '风声太响，让我再听一听。',
-        '潮水涌来了，等它退去我再告诉你。',
+        '……风太大了，等一下。',
+        '潮水声太响，我没听清。',
+        '嗯……让我想想怎么说。',
       ];
       const line = fallbackLines[Math.floor(Math.random() * fallbackLines.length)];
       setAiNarration(line);
@@ -105,20 +96,13 @@ export const CiSpirit: React.FC = () => {
     .finally(() => setIsGeneratingAi(false));
   };
 
-  // 双击头像 → 打开社交面板定位到辞的聊天
-  const handleDoubleClickCi = () => {
+  // 单击头像 → 直接打开完整聊天界面（定位到辞）
+  const handleClickCi = () => {
     AudioSystem.playClick();
     addAffinity(1);
     setPanelInitialTab('social');
     setPanelInitialSocialTab('chat');
     setOpenPlayerPanel(true);
-  };
-
-  // 单击头像 → 切换快速对话
-  const handleClickCi = () => {
-    AudioSystem.playClick();
-    addAffinity(1);
-    setChatOpen(prev => !prev);
   };
 
   // 手动关闭气泡
@@ -134,16 +118,16 @@ export const CiSpirit: React.FC = () => {
 
   return (
     <div className="fixed bottom-28 right-6 z-[90] flex flex-col items-end gap-2 pointer-events-none">
-      {/* 气泡 / AI 回复浮层 — 更醒目 */}
+      {/* 气泡 / AI 回复浮层 — 手绘风格 */}
       {displayText && isVisible && (
         <div
-          className="pointer-events-auto max-w-[300px] transition-all duration-500"
+          className="pointer-events-auto max-w-[280px] transition-all duration-500"
           style={{
             opacity: isVisible ? 1 : 0,
-            transform: isVisible ? 'translateY(0) scale(1)' : 'translateY(12px) scale(0.95)',
+            transform: isVisible ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.96)',
           }}
         >
-          <div className="relative px-5 py-4 shadow-lg rounded-2xl border-2 border-emerald-600/30 bg-gradient-to-br from-emerald-50 via-[#fbf7ec] to-cyan-50">
+          <div className="relative hand-drawn-panel px-5 py-4 shadow-lg">
             {/* 关闭按钮 */}
             <button
               onClick={handleCloseBubble}
@@ -155,7 +139,7 @@ export const CiSpirit: React.FC = () => {
 
             <div className="flex items-start gap-3">
               {/* 小头像 — 用真实图片 */}
-              <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-emerald-600/40 shrink-0 shadow-md">
+              <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-slate-800 shrink-0 shadow-[2px_2px_0_rgba(15,23,42,0.25)]">
                 <img
                   src="/ci-avatar.png"
                   alt="辞"
@@ -163,14 +147,14 @@ export const CiSpirit: React.FC = () => {
                 />
               </div>
               <div className="flex-1 min-w-0 pt-0.5">
-                <p className="text-[9px] font-black tracking-[0.2em] uppercase text-emerald-600 mb-1">辞 · 岛灵</p>
-                <p className="text-[14px] text-slate-800 leading-relaxed font-medium">{displayText}</p>
+                <p className="text-[9px] font-black tracking-[0.2em] uppercase text-emerald-600 mb-1">辞 · 织潮者的回音</p>
+                <p className="text-[13px] text-slate-700 leading-relaxed">{displayText}</p>
               </div>
             </div>
 
             {/* 气泡尾巴（指向右下头像） */}
             <div className="absolute -bottom-2 right-8 w-4 h-4 overflow-hidden">
-              <div className="w-4 h-4 bg-gradient-to-br from-emerald-50 to-cyan-50 border-b-2 border-r-2 border-emerald-600/30 transform -rotate-45 -translate-y-2" />
+              <div className="w-4 h-4 bg-[#fbf7ec] border-b-2 border-l-2 border-slate-800/20 transform -rotate-45 -translate-y-2" />
             </div>
           </div>
         </div>
@@ -206,9 +190,8 @@ export const CiSpirit: React.FC = () => {
 
       {/* 辞头像（始终可见，呼吸动画） */}
       <div
-        className="pointer-events-auto cursor-pointer group"
+        className="pointer-events-auto cursor-pointer group relative"
         onClick={handleClickCi}
-        onDoubleClick={handleDoubleClickCi}
       >
         <div
           className="relative w-11 h-11 rounded-full overflow-hidden border-2 border-slate-800 shadow-[3px_3px_0_rgba(15,23,42,0.3)] transition-all duration-300 hover:scale-110 hover:shadow-[4px_4px_0_rgba(15,23,42,0.4)]"
