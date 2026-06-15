@@ -6,6 +6,7 @@ import { SpotLight, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
+import { applyTerrainBrush } from '../utils/terrainBrush';
 import { getWaterHeight as getOceanHeight, getWaveAmplitude } from './Water';
 
 const subIslandNoise = createNoise2D();
@@ -2101,6 +2102,7 @@ export function SubIsland(props: any) {
   const stoneColor = useMemo(() => new THREE.Color('#6c757d'), []);
   const pathColor = useMemo(() => new THREE.Color('#adb5bd'), []);
   const lastBrushPoint = useRef(new THREE.Vector3());
+  const flattenTargetY = useRef(0);
 
   useEffect(() => {
     if (!props.terrain || generatedTerrain !== props.terrain) {
@@ -2251,30 +2253,19 @@ export function SubIsland(props: any) {
     }
 
     if (selectedTool === 'terrainUp' || selectedTool === 'terrainDown') {
-      let changed = false;
-      for (let i = 0; i < posAttr.count; i++) {
-        brushVertex.fromBufferAttribute(posAttr, i);
-        const dist = Math.sqrt((brushVertex.x - localPoint.x) ** 2 + (brushVertex.z - localPoint.z) ** 2);
-        if (dist < 3.5) {
-          const influence = (3.5 - dist) / 3.5;
-          const smoothInfluence = influence * influence * (3 - 2 * influence);
-          const strength = isDragEvent ? 0.3 : 0.6;
-          const delta = (selectedTool === 'terrainUp' ? strength : -strength) * smoothInfluence;
-          // Allow digging real valleys/canyons (not just shallow dips) so
-          // water bodies have somewhere to sit.
-          const newY = Math.max(-3.0, brushVertex.y + delta);
-          if (newY !== brushVertex.y) {
-            posAttr.setY(i, newY);
-            positionsRef.current[i * 3 + 1] = newY;
-            changed = true;
-          }
-        }
-      }
-
+      const { brushMode, brushSize, brushStrength } = useGameStore.getState();
+      if (!isDragEvent) flattenTargetY.current = localPoint.y;
+      const changed = applyTerrainBrush(posAttr.array as Float32Array, {
+        mode: brushMode, size: brushSize, strength: brushStrength, isDrag: isDragEvent,
+        px: localPoint.x, pz: localPoint.z, targetY: flattenTargetY.current, minY: -3.0, maxY: 8.0,
+      });
       if (changed) {
         posAttr.needsUpdate = true;
         geometry.computeVertexNormals();
         refreshColors();
+        // 同步回 positionsRef 和持久化
+        positionsRef.current = new Float32Array(posAttr.array);
+        if (!isDragEvent) persistTerrain();
       }
       return;
     }
@@ -2351,7 +2342,7 @@ export function SubIsland(props: any) {
       }
 
       let cursorScale = 1;
-      if (selectedTool === 'terrainUp' || selectedTool === 'terrainDown') cursorScale = 3.2;
+      if (selectedTool === 'terrainUp' || selectedTool === 'terrainDown') cursorScale = useGameStore.getState().brushSize;
       if (selectedTool === 'eraser') cursorScale = 2;
       cursorRef.current.scale.setScalar(cursorScale);
     }
