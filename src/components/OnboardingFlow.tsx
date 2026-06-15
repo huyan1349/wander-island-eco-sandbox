@@ -125,7 +125,15 @@ export const OnboardingFlow: React.FC = () => {
         islandName: finalIsland, motto: motto.trim(), themeIdx, memberNo, joinDate, uid,
       }));
     } catch {}
-    setTimeout(() => createSaveSlot(finalIsland), 650); // 等飞出动画再建岛(内部 set screen=PLAYING)
+    // 等飞出动画后建岛：新手第一个岛 = 默认开屏小岛(教程岛)，载入后保存
+    setTimeout(async () => {
+      createSaveSlot(finalIsland); // 内部 set screen=PLAYING + clearAll
+      try {
+        const m = await import('../utils/islandIO');
+        await m.loadPresetIsland('/preset-demo.json'); // 填入默认教程岛内容
+        useGameStore.getState().saveGame();
+      } catch (e) { console.error('教程岛载入失败', e); }
+    }, 650);
   };
 
   return (
