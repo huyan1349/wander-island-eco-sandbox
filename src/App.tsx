@@ -102,7 +102,8 @@ import { WeatherForecast } from "./components/ui/WeatherForecast";
 import { api } from "./lib/api";
 import { connectSocket, onUserOnline, onUserOffline, onFriendRequest, onIslandVisitData, onIslandVisitError } from "./lib/socket";
 import { AudioSystem } from "./lib/audio";
-import { BRUSH_MODES } from "./utils/terrainBrush";
+import { BRUSH_MODES, SURFACE_LABELS } from "./utils/terrainBrush";
+import type { BrushFalloff, SurfaceType } from "./utils/terrainBrush";
 
 export default function App() {
   const screen = useGameStore(state => state.screen);
@@ -631,6 +632,8 @@ export default function App() {
   const brushMode = useGameStore(s => s.brushMode);
   const brushSize = useGameStore(s => s.brushSize);
   const brushStrength = useGameStore(s => s.brushStrength);
+  const brushFalloff = useGameStore(s => s.brushFalloff);
+  const brushPaintType = useGameStore(s => s.brushPaintType);
 
   const activeCatObj = categories.find(c => c.name === activeCategory);
 
@@ -1158,7 +1161,8 @@ export default function App() {
       </>
       )}
       {screen === 'PLAYING' && (selectedTool === 'terrainUp' || selectedTool === 'terrainDown') && (
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-44 z-50 hand-drawn-panel px-4 py-3 flex items-center gap-4 pointer-events-auto">
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-44 z-50 hand-drawn-panel px-4 py-3 flex items-center gap-3 pointer-events-auto">
+          {/* 笔刷模式按钮 */}
           <div className="flex gap-1.5">
             {BRUSH_MODES.map(m => (
               <button key={m.id}
@@ -1168,17 +1172,43 @@ export default function App() {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2">
+          {/* 材质色块（仅 paint 模式显示） */}
+          {brushMode === 'paint' && (
+            <div className="flex gap-1 ml-1">
+              {([2, 3, 4, 1, 5] as SurfaceType[]).map(st => (
+                <button key={st}
+                  onClick={() => useGameStore.getState().setBrushPaintType(st)}
+                  className={`hand-drawn-btn px-2 py-1 text-[10px] font-bold ${brushPaintType === st ? 'hand-drawn-btn-active' : ''}`}
+                  title={SURFACE_LABELS[st]}>
+                  {SURFACE_LABELS[st]}
+                </button>
+              ))}
+            </div>
+          )}
+          {/* 羽化曲线 */}
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] font-bold text-slate-600">羽化</span>
+            {(['smooth', 'linear', 'sharp'] as BrushFalloff[]).map(f => (
+              <button key={f}
+                onClick={() => useGameStore.getState().setBrushFalloff(f)}
+                className={`hand-drawn-btn px-2 py-1 text-[10px] font-bold ${brushFalloff === f ? 'hand-drawn-btn-active' : ''}`}>
+                {f === 'smooth' ? '柔' : f === 'linear' ? '线' : '锐'}
+              </button>
+            ))}
+          </div>
+          {/* 大小滑块 */}
+          <div className="flex items-center gap-1">
             <span className="text-[10px] font-bold text-slate-600">大小</span>
             <input type="range" min={0.5} max={10} step={0.5} value={brushSize}
               onChange={e => useGameStore.getState().setBrushSize(parseFloat(e.target.value))}
-              className="w-24 h-1 bg-slate-200 rounded-full appearance-none cursor-pointer" />
+              className="w-20 h-1 bg-slate-200 rounded-full appearance-none cursor-pointer" />
           </div>
-          <div className="flex items-center gap-2">
+          {/* 力度滑块 */}
+          <div className="flex items-center gap-1">
             <span className="text-[10px] font-bold text-slate-600">力度</span>
             <input type="range" min={0.05} max={1} step={0.05} value={brushStrength}
               onChange={e => useGameStore.getState().setBrushStrength(parseFloat(e.target.value))}
-              className="w-24 h-1 bg-slate-200 rounded-full appearance-none cursor-pointer" />
+              className="w-20 h-1 bg-slate-200 rounded-full appearance-none cursor-pointer" />
           </div>
         </div>
       )}

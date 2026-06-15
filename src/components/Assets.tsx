@@ -667,12 +667,23 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
     if (aiTickRef.current >= 0.18) {
         aiTickRef.current = 0;
 
+        const timeOfDay = useGameStore.getState().timeOfDay;
+        const isNight = timeOfDay > 20 || timeOfDay < 5;
+
         let nearestWolf = null;
         let nearestWolfDx = 0;
         let nearestWolfDz = 0;
         let nearestTree = null;
         let nearestFood = null;
+        let nearestWater = null;
+        let waterDistSq = Infinity;
         let wolfDistSq = Infinity;
+
+        // 鹿群 cohesion: 找到其他鹿的质心
+        let herdCenterX = 0;
+        let herdCenterZ = 0;
+        let herdCount = 0;
+
         for (const asset of allAssets) {
             if (asset.type === 'wolf') {
                 const dx = loco.position.x - asset.position.x;
@@ -684,7 +695,7 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
                     nearestWolfDx = dx;
                     nearestWolfDz = dz;
                 }
-            } else if (!nearestTree && (asset.type === 'treeA' || asset.type === 'treeB')) {
+            } else if (!nearestTree && (asset.type === 'treeA' || asset.type === 'treeB' || asset.type === 'cherry_tree' || asset.type === 'pine_tree' || asset.type === 'willow_tree')) {
                 nearestTree = asset;
             } else if (
                 !nearestFood &&
@@ -692,12 +703,37 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
                 getCropGrowthProgress(asset, useGameStore.getState().stats.playtime) >= 1
             ) {
                 nearestFood = asset;
+            } else if (asset.type === 'spring' || asset.type === 'pond') {
+                const dx = loco.position.x - asset.position.x;
+                const dz = loco.position.z - asset.position.z;
+                const distSq = dx * dx + dz * dz;
+                if (distSq < waterDistSq) {
+                    waterDistSq = distSq;
+                    nearestWater = asset;
+                }
+            } else if (asset.type === 'deer' && asset.id !== id) {
+                herdCenterX += asset.position.x;
+                herdCenterZ += asset.position.z;
+                herdCount++;
             }
         }
 
-        if (wolfDistSq < 15 * 15) {
+        // ── 昼夜节律：夜里卧下 ──────────────────────────
+        if (isNight && wolfDistSq > 15 * 15) {
+            loco.aiState = 'idle';
+            // 夜里偶尔微移
+            if (Math.random() < 0.005) {
+                const randX = loco.position.x + (Math.random() - 0.5) * 2;
+                const randZ = loco.position.z + (Math.random() - 0.5) * 2;
+                if (isWalkable(randX, randZ, allAssets)) {
+                    loco.target.set(randX, 0, randZ);
+                    loco.aiState = 'wander';
+                }
+            }
+        }
+        // ── 逃跑 ────────────────────────────────────────
+        else if (wolfDistSq < 15 * 15) {
             loco.aiState = 'flee';
-            // 逃跑方向：远离狼
             const wolfLen = Math.hypot(nearestWolfDx, nearestWolfDz) || 1;
             const dirX = nearestWolfDx / wolfLen;
             const dirZ = nearestWolfDz / wolfLen;
@@ -707,7 +743,9 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
               0,
               loco.position.z + dirZ * fleeDist
             );
-        } else if (hunger.current > 30) {
+        }
+        // ── 吃东西 ──────────────────────────────────────
+        else if (hunger.current > 30) {
             loco.aiState = 'graze';
             if (nearestFood) {
                 loco.target.set(nearestFood.position.x, 0, nearestFood.position.z);
@@ -729,8 +767,38 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
             } else {
                 loco.aiState = 'wander';
             }
-        } else {
+        }
+        // ── 喝水 (渴了且附近有水源) ─────────────────────
+        else if (hunger.current > 15 && nearestWater && waterDistSq < 100) {
+            loco.aiState = 'drink';
+            loco.target.set(nearestWater.position.x, 0, nearestWater.position.z);
+            if (waterDistSq < 4) {
+                hunger.current = Math.max(0, hunger.current - 5);
+                if (Math.random() < 0.1) loco.aiState = 'idle';
+            }
+        }
+        // ── 游荡 + 鹿群 cohesion ────────────────────────
+        else {
             loco.aiState = 'wander';
+            updateWanderTarget(loco, DEER_CFG, allAssets);
+
+            // 鹿群 cohesion: 朝质心偏移目标
+            if (herdCount > 0) {
+                herdCenterX /= herdCount;
+                herdCenterZ /= herdCount;
+                const toHerdDx = herdCenterX - loco.position.x;
+                const toHerdDz = herdCenterZ - loco.position.z;
+                const toHerdDist = Math.sqrt(toHerdDx * toHerdDx + toHerdDz * toHerdDz);
+                // 太远时朝质心走，太近时不靠
+                if (toHerdDist > 6) {
+                    loco.target.x += toHerdDx * 0.3;
+                    loco.target.z += toHerdDz * 0.3;
+                } else if (toHerdDist < 1.5) {
+                    // 分离：太近时稍微远离
+                    loco.target.x -= toHerdDx * 0.2;
+                    loco.target.z -= toHerdDz * 0.2;
+                }
+            }
         }
 
         const grassHealth = useGameStore.getState().grassHealth;
@@ -759,7 +827,7 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
     // ── 头部动画 ────────────────────────────────────────
     const head = groupRef.current.children[1];
     if (head) {
-         if (loco.aiState === 'graze' && !loco.isMoving) head.rotation.x = 0.8;
+         if ((loco.aiState === 'graze' || loco.aiState === 'drink') && !loco.isMoving) head.rotation.x = 0.8;
          else head.rotation.x = Math.sin(loco.legPhase * Math.PI * 2 * 0.5) * 0.15;
     }
 
@@ -936,16 +1004,30 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
     if (aiTickRef.current >= 0.18) {
         aiTickRef.current = 0;
 
+        const timeOfDay = useGameStore.getState().timeOfDay;
+        const isNight = timeOfDay > 20 || timeOfDay < 5;
+
         let nearestDeer = null;
         let deerDistSq = Infinity;
+
+        // 狼群分散：找到其他狼的质心
+        let packCenterX = 0;
+        let packCenterZ = 0;
+        let packCount = 0;
+
         for (const asset of allAssets) {
-            if (asset.type !== 'deer') continue;
-            const dx = loco.position.x - asset.position.x;
-            const dz = loco.position.z - asset.position.z;
-            const distSq = dx * dx + dz * dz;
-            if (distSq < deerDistSq) {
-                deerDistSq = distSq;
-                nearestDeer = asset;
+            if (asset.type === 'deer') {
+                const dx = loco.position.x - asset.position.x;
+                const dz = loco.position.z - asset.position.z;
+                const distSq = dx * dx + dz * dz;
+                if (distSq < deerDistSq) {
+                    deerDistSq = distSq;
+                    nearestDeer = asset;
+                }
+            } else if (asset.type === 'wolf' && asset.id !== id) {
+                packCenterX += asset.position.x;
+                packCenterZ += asset.position.z;
+                packCount++;
             }
         }
 
@@ -956,9 +1038,27 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
                 useGameStore.getState().spawnVFX('blood', nearestDeer.position);
                 useGameStore.getState().removeAsset(nearestDeer.id);
             }
+        } else if (isNight) {
+            // 夜里更活跃，巡逻范围更大
+            loco.aiState = 'wander';
+            updateWanderTarget(loco, WOLF_CFG, allAssets, 25);
         } else {
             loco.aiState = 'wander';
             updateWanderTarget(loco, WOLF_CFG, allAssets);
+
+            // 狼群分散：数量多时互相远离
+            if (packCount > 0) {
+                packCenterX /= packCount;
+                packCenterZ /= packCount;
+                const toPackDx = packCenterX - loco.position.x;
+                const toPackDz = packCenterZ - loco.position.z;
+                const toPackDist = Math.sqrt(toPackDx * toPackDx + toPackDz * toPackDz);
+                // 太近时分散巡逻
+                if (toPackDist < 5) {
+                    loco.target.x -= toPackDx * 0.3;
+                    loco.target.z -= toPackDz * 0.3;
+                }
+            }
         }
     }
 
@@ -2340,10 +2440,10 @@ export function SubIsland(props: any) {
     }
 
     if (selectedTool === 'terrainUp' || selectedTool === 'terrainDown') {
-      const { brushMode, brushSize, brushStrength } = useGameStore.getState();
+      const { brushMode, brushSize, brushStrength, brushFalloff } = useGameStore.getState();
       if (!isDragEvent) flattenTargetY.current = localPoint.y;
       const changed = applyTerrainBrush(posAttr.array as Float32Array, {
-        mode: brushMode, size: brushSize, strength: brushStrength, isDrag: isDragEvent,
+        mode: brushMode, size: brushSize, strength: brushStrength, falloff: brushFalloff, isDrag: isDragEvent,
         px: localPoint.x, pz: localPoint.z, targetY: flattenTargetY.current, minY: -3.0, maxY: 8.0,
       });
       if (changed) {

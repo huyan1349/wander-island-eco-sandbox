@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { useGameStore, ToolType } from '../store';
 import { AudioSystem } from '../lib/audio';
 import { emitHermitPlace } from '../lib/socket';
-import { applyTerrainBrush } from '../utils/terrainBrush';
+import { applyTerrainBrush, paintSurface } from '../utils/terrainBrush';
 
 const noise2D = createNoise2D();
 
@@ -597,19 +597,33 @@ export function Terrain() {
        if (!meshRef.current) return;
        const geometry = meshRef.current.geometry;
        const posAttr = geometry.attributes.position;
-       const { brushMode, brushSize, brushStrength } = useGameStore.getState();
+       const { brushMode, brushSize, brushStrength, brushFalloff, brushPaintType } = useGameStore.getState();
        if (!isDragEvent) flattenTargetY.current = point.y;
-       const changed = applyTerrainBrush(posAttr.array as Float32Array, {
-         mode: brushMode, size: brushSize, strength: brushStrength, isDrag: isDragEvent,
-         px: point.x, pz: point.z, targetY: flattenTargetY.current, minY: -3.0, maxY: 8.0,
-       });
-       if (changed) {
-         posAttr.needsUpdate = true;
-         geometry.computeVertexNormals();
-         geometry.computeBoundingBox();
-         geometry.computeBoundingSphere();
-         refreshTerrainColors();
-         if (!isDragEvent) useGameStore.getState().setTerrainData(posAttr.array as Float32Array, types, ISAND_SIZE, SEGMENTS);
+
+       if (brushMode === 'paint') {
+         // 地表材质笔刷：不改高度，改 types
+         const paintChanged = paintSurface(types, posAttr.array as Float32Array, {
+           mode: 'paint', size: brushSize, strength: brushStrength, falloff: brushFalloff,
+           isDrag: isDragEvent, px: point.x, pz: point.z, paintType: brushPaintType,
+         });
+         if (paintChanged) {
+           refreshTerrainColors();
+           if (!isDragEvent) useGameStore.getState().setTerrainData(posAttr.array as Float32Array, types, ISAND_SIZE, SEGMENTS);
+         }
+       } else {
+         // 高度笔刷
+         const changed = applyTerrainBrush(posAttr.array as Float32Array, {
+           mode: brushMode, size: brushSize, strength: brushStrength, falloff: brushFalloff,
+           isDrag: isDragEvent, px: point.x, pz: point.z, targetY: flattenTargetY.current, minY: -3.0, maxY: 8.0,
+         });
+         if (changed) {
+           posAttr.needsUpdate = true;
+           geometry.computeVertexNormals();
+           geometry.computeBoundingBox();
+           geometry.computeBoundingSphere();
+           refreshTerrainColors();
+           if (!isDragEvent) useGameStore.getState().setTerrainData(posAttr.array as Float32Array, types, ISAND_SIZE, SEGMENTS);
+         }
        }
        return;
     }
