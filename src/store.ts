@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { AudioSystem } from './lib/audio';
 import { getGlobalXP, addGlobalXP, levelFromXP } from './lib/globalProgress';
+import { getCiAffinity, addCiAffinity, getCiMemory, addCiMemory as addCiMemoryEntry, getCiMemorySummary } from './lib/ciProgress';
 import type { BrushMode } from './utils/terrainBrush';
 import { FlourishCardId, FLOURISH_CARDS, STARTING_DECK, HAND_SIZE, SEASON_BASE_ECO, evaluateSymbiosis, shuffle } from './game/flourish';
 
@@ -216,6 +217,19 @@ interface GameState {
   
   aiNarration: string | null;
   setAiNarration: (narration: string | null) => void;
+
+  // 辞（岛灵）状态
+  ci: {
+    affinity: number;
+    lastSpokenAt: number;
+    memory: string[];
+    bubble: string | null;
+    bubbleAt: number;
+  };
+  ciSay: (line: string) => void;
+  addAffinity: (n: number) => void;
+  setCiBubble: (s: string | null) => void;
+  clearCiBubble: () => void;
 
   lastPlacedSynergy: { type: string, position: Vector3Data, id: number } | null;
   setLastPlacedSynergy: (synergy: { type: string, position: Vector3Data, id: number } | null) => void;
