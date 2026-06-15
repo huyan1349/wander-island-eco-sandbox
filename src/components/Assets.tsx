@@ -785,40 +785,107 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
 
   return (
     <group position={[position.x, position.y, position.z]} scale={scale * 0.5} ref={groupRef} castShadow onPointerDown={handlePointerDown}>
-      {/* Body */}
-      <mesh position={[0, 0.8, 0]} castShadow>
-        <boxGeometry args={[0.5, 0.6, 1.2]} />
+      {/* Body - elongated torso with belly */}
+      <mesh position={[0, 0.85, 0]} castShadow>
+        <boxGeometry args={[0.45, 0.55, 1.3]} />
+        <meshStandardMaterial color="#92400e" flatShading />
+      </mesh>
+      {/* Belly - lighter underside */}
+      <mesh position={[0, 0.65, 0]} castShadow>
+        <boxGeometry args={[0.4, 0.2, 1.1]} />
+        <meshStandardMaterial color="#d6d3d1" flatShading />
+      </mesh>
+      {/* Neck */}
+      <mesh position={[0, 1.2, 0.55]} rotation={[0.3, 0, 0]} castShadow>
+        <boxGeometry args={[0.25, 0.5, 0.35]} />
         <meshStandardMaterial color="#a16207" flatShading />
       </mesh>
       {/* Head */}
-      <group position={[0, 1.2, 0.7]}>
-         <mesh position={[0, 0.2, 0.2]} castShadow>
-           <boxGeometry args={[0.3, 0.4, 0.4]} />
-           <meshStandardMaterial color="#ca8a04" flatShading />
+      <group position={[0, 1.45, 0.75]}>
+         <mesh position={[0, 0, 0]} castShadow>
+           <boxGeometry args={[0.28, 0.3, 0.35]} />
+           <meshStandardMaterial color="#b45309" flatShading />
          </mesh>
-         {/* Antlers */}
-         <mesh position={[-0.1, 0.6, 0.1]} castShadow>
-             <boxGeometry args={[0.05, 0.4, 0.05]} />
-             <meshStandardMaterial color="#fef08a" flatShading />
+         {/* Snout */}
+         <mesh position={[0, -0.08, 0.22]} castShadow>
+           <boxGeometry args={[0.18, 0.14, 0.2]} />
+           <meshStandardMaterial color="#78350f" flatShading />
          </mesh>
-         <mesh position={[0.1, 0.6, 0.1]} castShadow>
-             <boxGeometry args={[0.05, 0.4, 0.05]} />
-             <meshStandardMaterial color="#fef08a" flatShading />
+         {/* Eyes */}
+         <mesh position={[-0.12, 0.05, 0.12]} castShadow>
+           <boxGeometry args={[0.06, 0.06, 0.04]} />
+           <meshStandardMaterial color="#1c1917" />
          </mesh>
+         <mesh position={[0.12, 0.05, 0.12]} castShadow>
+           <boxGeometry args={[0.06, 0.06, 0.04]} />
+           <meshStandardMaterial color="#1c1917" />
+         </mesh>
+         {/* Ears */}
+         <mesh position={[-0.12, 0.22, -0.05]} rotation={[0, 0, 0.2]} castShadow>
+           <boxGeometry args={[0.08, 0.18, 0.06]} />
+           <meshStandardMaterial color="#a16207" flatShading />
+         </mesh>
+         <mesh position={[0.12, 0.22, -0.05]} rotation={[0, 0, -0.2]} castShadow>
+           <boxGeometry args={[0.08, 0.18, 0.06]} />
+           <meshStandardMaterial color="#a16207" flatShading />
+         </mesh>
+         {/* Antlers - branching */}
+         <group position={[-0.1, 0.3, -0.05]}>
+           <mesh position={[0, 0.2, 0]} castShadow>
+             <boxGeometry args={[0.04, 0.4, 0.04]} />
+             <meshStandardMaterial color="#fef3c7" flatShading />
+           </mesh>
+           <mesh position={[0.06, 0.35, 0]} castShadow>
+             <boxGeometry args={[0.04, 0.2, 0.04]} />
+             <meshStandardMaterial color="#fef3c7" flatShading />
+           </mesh>
+         </group>
+         <group position={[0.1, 0.3, -0.05]}>
+           <mesh position={[0, 0.2, 0]} castShadow>
+             <boxGeometry args={[0.04, 0.4, 0.04]} />
+             <meshStandardMaterial color="#fef3c7" flatShading />
+           </mesh>
+           <mesh position={[-0.06, 0.35, 0]} castShadow>
+             <boxGeometry args={[0.04, 0.2, 0.04]} />
+             <meshStandardMaterial color="#fef3c7" flatShading />
+           </mesh>
+         </group>
       </group>
+      {/* Tail */}
+      <mesh position={[0, 1.0, -0.7]} rotation={[-0.5, 0, 0]} castShadow>
+        <boxGeometry args={[0.1, 0.1, 0.25]} />
+        <meshStandardMaterial color="#d6d3d1" flatShading />
+      </mesh>
       {/* Legs */}
-      <group position={[-0.2, 0.8, -0.4]}>
-          <mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.1, 0.8, 0.1]} /><meshStandardMaterial color="#422006" /></mesh>
+      <group position={[-0.18, 0.8, -0.45]}>
+          <mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.09, 0.8, 0.09]} /><meshStandardMaterial color="#78350f" flatShading /></mesh>
       </group>
-      <group position={[0.2, 0.8, -0.4]}>
-          <mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.1, 0.8, 0.1]} /><meshStandardMaterial color="#422006" /></mesh>
+      <group position={[0.18, 0.8, -0.45]}>
+          <mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.09, 0.8, 0.09]} /><meshStandardMaterial color="#78350f" flatShading /></mesh>
       </group>
-      <group position={[-0.2, 0.8, 0.4]}>
-          <mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.1, 0.8, 0.1]} /><meshStandardMaterial color="#422006" /></mesh>
+      <group position={[-0.18, 0.8, 0.45]}>
+          <mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.09, 0.8, 0.09]} /><meshStandardMaterial color="#78350f" flatShading /></mesh>
       </group>
-      <group position={[0.2, 0.8, 0.4]}>
-          <mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.1, 0.8, 0.1]} /><meshStandardMaterial color="#422006" /></mesh>
+      <group position={[0.18, 0.8, 0.45]}>
+          <mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.09, 0.8, 0.09]} /><meshStandardMaterial color="#78350f" flatShading /></mesh>
       </group>
+      {/* Hooves */}
+      <mesh position={[-0.18, 0.38, -0.45]} castShadow>
+        <boxGeometry args={[0.1, 0.04, 0.1]} />
+        <meshStandardMaterial color="#44403c" flatShading />
+      </mesh>
+      <mesh position={[0.18, 0.38, -0.45]} castShadow>
+        <boxGeometry args={[0.1, 0.04, 0.1]} />
+        <meshStandardMaterial color="#44403c" flatShading />
+      </mesh>
+      <mesh position={[-0.18, 0.38, 0.45]} castShadow>
+        <boxGeometry args={[0.1, 0.04, 0.1]} />
+        <meshStandardMaterial color="#44403c" flatShading />
+      </mesh>
+      <mesh position={[0.18, 0.38, 0.45]} castShadow>
+        <boxGeometry args={[0.1, 0.04, 0.1]} />
+        <meshStandardMaterial color="#44403c" flatShading />
+      </mesh>
     </group>
   );
 }
@@ -930,50 +997,109 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
 
   return (
     <group position={[position.x, position.y, position.z]} scale={scale * 0.45} ref={groupRef} castShadow>
-      {/* Body */}
-      <mesh position={[0, 0.7, 0]} castShadow>
-        <boxGeometry args={[0.4, 0.5, 1.3]} />
+      {/* Body - streamlined torso */}
+      <mesh position={[0, 0.75, 0]} castShadow>
+        <boxGeometry args={[0.38, 0.45, 1.4]} />
+        <meshStandardMaterial color="#475569" flatShading />
+      </mesh>
+      {/* Belly - lighter underside */}
+      <mesh position={[0, 0.55, 0]} castShadow>
+        <boxGeometry args={[0.32, 0.15, 1.2]} />
+        <meshStandardMaterial color="#94a3b8" flatShading />
+      </mesh>
+      {/* Chest - broader front */}
+      <mesh position={[0, 0.8, 0.4]} castShadow>
+        <boxGeometry args={[0.42, 0.4, 0.4]} />
+        <meshStandardMaterial color="#475569" flatShading />
+      </mesh>
+      {/* Neck */}
+      <mesh position={[0, 1.05, 0.55]} rotation={[0.25, 0, 0]} castShadow>
+        <boxGeometry args={[0.25, 0.4, 0.3]} />
         <meshStandardMaterial color="#475569" flatShading />
       </mesh>
       {/* Head */}
-      <group position={[0, 1.0, 0.7]}>
+      <group position={[0, 1.2, 0.75]}>
          <mesh position={[0, 0, 0]} castShadow>
-           <boxGeometry args={[0.35, 0.35, 0.4]} />
+           <boxGeometry args={[0.3, 0.28, 0.35]} />
            <meshStandardMaterial color="#334155" flatShading />
          </mesh>
-         {/* Snout */}
-         <mesh position={[0, -0.1, 0.3]} castShadow>
-           <boxGeometry args={[0.2, 0.15, 0.3]} />
+         {/* Snout - elongated */}
+         <mesh position={[0, -0.06, 0.28]} castShadow>
+           <boxGeometry args={[0.18, 0.14, 0.35]} />
            <meshStandardMaterial color="#1e293b" flatShading />
          </mesh>
-         {/* Ears */}
-         <mesh position={[-0.12, 0.25, -0.1]} castShadow>
-             <boxGeometry args={[0.1, 0.2, 0.1]} />
-             <meshStandardMaterial color="#475569" flatShading />
+         {/* Nose */}
+         <mesh position={[0, -0.04, 0.45]} castShadow>
+           <boxGeometry args={[0.1, 0.06, 0.04]} />
+           <meshStandardMaterial color="#0f172a" />
          </mesh>
-         <mesh position={[0.12, 0.25, -0.1]} castShadow>
-             <boxGeometry args={[0.1, 0.2, 0.1]} />
-             <meshStandardMaterial color="#475569" flatShading />
+         {/* Eyes - fierce */}
+         <mesh position={[-0.13, 0.05, 0.14]} castShadow>
+           <boxGeometry args={[0.05, 0.04, 0.04]} />
+           <meshStandardMaterial color="#fbbf24" emissive="#fbbf24" emissiveIntensity={0.5} />
+         </mesh>
+         <mesh position={[0.13, 0.05, 0.14]} castShadow>
+           <boxGeometry args={[0.05, 0.04, 0.04]} />
+           <meshStandardMaterial color="#fbbf24" emissive="#fbbf24" emissiveIntensity={0.5} />
+         </mesh>
+         {/* Ears - pointed */}
+         <mesh position={[-0.12, 0.24, -0.06]} rotation={[0, 0, 0.15]} castShadow>
+           <boxGeometry args={[0.08, 0.22, 0.06]} />
+           <meshStandardMaterial color="#334155" flatShading />
+         </mesh>
+         <mesh position={[0.12, 0.24, -0.06]} rotation={[0, 0, -0.15]} castShadow>
+           <boxGeometry args={[0.08, 0.22, 0.06]} />
+           <meshStandardMaterial color="#334155" flatShading />
+         </mesh>
+         {/* Inner ears */}
+         <mesh position={[-0.12, 0.22, -0.04]} rotation={[0, 0, 0.15]} castShadow>
+           <boxGeometry args={[0.04, 0.14, 0.04]} />
+           <meshStandardMaterial color="#64748b" flatShading />
+         </mesh>
+         <mesh position={[0.12, 0.22, -0.04]} rotation={[0, 0, -0.15]} castShadow>
+           <boxGeometry args={[0.04, 0.14, 0.04]} />
+           <meshStandardMaterial color="#64748b" flatShading />
          </mesh>
       </group>
-      {/* Tail */}
-      <mesh position={[0, 0.8, -0.7]} rotation={[-0.4, 0, 0]} castShadow>
-         <boxGeometry args={[0.15, 0.15, 0.5]} />
+      {/* Tail - bushy */}
+      <mesh position={[0, 0.85, -0.8]} rotation={[-0.3, 0, 0]} castShadow>
+         <boxGeometry args={[0.14, 0.14, 0.5]} />
          <meshStandardMaterial color="#334155" flatShading />
       </mesh>
+      <mesh position={[0, 0.9, -1.05]} rotation={[-0.6, 0, 0]} castShadow>
+         <boxGeometry args={[0.12, 0.12, 0.25]} />
+         <meshStandardMaterial color="#475569" flatShading />
+      </mesh>
       {/* Legs */}
-      <group position={[-0.15, 0.7, -0.4]}>
-          <mesh position={[0, -0.35, 0]} castShadow><boxGeometry args={[0.1, 0.7, 0.1]} /><meshStandardMaterial color="#1e293b" /></mesh>
+      <group position={[-0.14, 0.7, -0.45]}>
+          <mesh position={[0, -0.35, 0]} castShadow><boxGeometry args={[0.09, 0.7, 0.09]} /><meshStandardMaterial color="#1e293b" flatShading /></mesh>
       </group>
-      <group position={[0.15, 0.7, -0.4]}>
-          <mesh position={[0, -0.35, 0]} castShadow><boxGeometry args={[0.1, 0.7, 0.1]} /><meshStandardMaterial color="#1e293b" /></mesh>
+      <group position={[0.14, 0.7, -0.45]}>
+          <mesh position={[0, -0.35, 0]} castShadow><boxGeometry args={[0.09, 0.7, 0.09]} /><meshStandardMaterial color="#1e293b" flatShading /></mesh>
       </group>
-      <group position={[-0.15, 0.7, 0.4]}>
-          <mesh position={[0, -0.35, 0]} castShadow><boxGeometry args={[0.1, 0.7, 0.1]} /><meshStandardMaterial color="#1e293b" /></mesh>
+      <group position={[-0.14, 0.7, 0.4]}>
+          <mesh position={[0, -0.35, 0]} castShadow><boxGeometry args={[0.09, 0.7, 0.09]} /><meshStandardMaterial color="#1e293b" flatShading /></mesh>
       </group>
-      <group position={[0.15, 0.7, 0.4]}>
-          <mesh position={[0, -0.35, 0]} castShadow><boxGeometry args={[0.1, 0.7, 0.1]} /><meshStandardMaterial color="#1e293b" /></mesh>
+      <group position={[0.14, 0.7, 0.4]}>
+          <mesh position={[0, -0.35, 0]} castShadow><boxGeometry args={[0.09, 0.7, 0.09]} /><meshStandardMaterial color="#1e293b" flatShading /></mesh>
       </group>
+      {/* Paws */}
+      <mesh position={[-0.14, 0.33, -0.45]} castShadow>
+        <boxGeometry args={[0.1, 0.04, 0.12]} />
+        <meshStandardMaterial color="#0f172a" flatShading />
+      </mesh>
+      <mesh position={[0.14, 0.33, -0.45]} castShadow>
+        <boxGeometry args={[0.1, 0.04, 0.12]} />
+        <meshStandardMaterial color="#0f172a" flatShading />
+      </mesh>
+      <mesh position={[-0.14, 0.33, 0.4]} castShadow>
+        <boxGeometry args={[0.1, 0.04, 0.12]} />
+        <meshStandardMaterial color="#0f172a" flatShading />
+      </mesh>
+      <mesh position={[0.14, 0.33, 0.4]} castShadow>
+        <boxGeometry args={[0.1, 0.04, 0.12]} />
+        <meshStandardMaterial color="#0f172a" flatShading />
+      </mesh>
     </group>
   );
 }
@@ -2546,48 +2672,167 @@ export function FishSchool(props: any) {
     const groupRef = useRef<THREE.Group>(null);
     const timeOfDay = useGameStore(state => state.timeOfDay);
     const isNight = timeOfDay > 18 || timeOfDay < 6;
-    
+
+    const FISH_COUNT = 6;
     const [fishData] = useState(() => {
-        const arr = [];
-        for (let i = 0; i < 5; i++) {
+        const arr: {
+            pos: THREE.Vector3;
+            vel: THREE.Vector3;
+            phase: number;
+        }[] = [];
+        for (let i = 0; i < FISH_COUNT; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const r = Math.random() * 1.5;
             arr.push({
-                offset: Math.random() * Math.PI * 2,
-                radius: 0.5 + Math.random() * 1.5,
-                speed: 1 + Math.random(),
-                yOffset: (Math.random() - 0.5) * 0.5
+                pos: new THREE.Vector3(
+                    props.position.x + Math.cos(angle) * r,
+                    -0.5,
+                    props.position.z + Math.sin(angle) * r
+                ),
+                vel: new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.5,
+                    0,
+                    (Math.random() - 0.5) * 0.5
+                ),
+                phase: Math.random() * Math.PI * 2,
             });
         }
         return arr;
     });
 
-    useFrame(({ clock }) => {
+    // Boids 参数
+    const BOID_SEP_DIST = 0.6;
+    const BOID_ALI_DIST = 2.0;
+    const BOID_COH_DIST = 2.5;
+    const BOID_MAX_SPEED = 0.8;
+    const BOID_CENTER_PULL = 0.3;
+
+    useFrame(({ clock }, delta) => {
         if (!groupRef.current) return;
         const t = clock.elapsedTime;
-        
-        groupRef.current.position.x = props.position.x + Math.sin(t * 0.2) * 2;
-        groupRef.current.position.z = props.position.z + Math.cos(t * 0.2) * 2;
 
-        groupRef.current.children.forEach((fish, i) => {
+        // ── Boids 群游算法 ──────────────────────────────
+        const center = new THREE.Vector3(props.position.x, -0.5, props.position.z);
+
+        for (let i = 0; i < fishData.length; i++) {
+            const fish = fishData[i];
+            const sep = new THREE.Vector3();
+            const ali = new THREE.Vector3();
+            const coh = new THREE.Vector3();
+            let sepCount = 0, aliCount = 0, cohCount = 0;
+
+            for (let j = 0; j < fishData.length; j++) {
+                if (i === j) continue;
+                const other = fishData[j];
+                const dist = fish.pos.distanceTo(other.pos);
+
+                // 分离
+                if (dist < BOID_SEP_DIST && dist > 0) {
+                    const diff = new THREE.Vector3().subVectors(fish.pos, other.pos).normalize().divideScalar(dist);
+                    sep.add(diff);
+                    sepCount++;
+                }
+                // 对齐
+                if (dist < BOID_ALI_DIST) {
+                    ali.add(other.vel);
+                    aliCount++;
+                }
+                // 聚合
+                if (dist < BOID_COH_DIST) {
+                    coh.add(other.pos);
+                    cohCount++;
+                }
+            }
+
+            // 应用规则
+            if (sepCount > 0) {
+                sep.divideScalar(sepCount).normalize().multiplyScalar(0.05);
+                fish.vel.add(sep);
+            }
+            if (aliCount > 0) {
+                ali.divideScalar(aliCount).normalize().multiplyScalar(0.02);
+                fish.vel.add(ali);
+            }
+            if (cohCount > 0) {
+                coh.divideScalar(cohCount);
+                const toCoh = new THREE.Vector3().subVectors(coh, fish.pos).normalize().multiplyScalar(0.03);
+                fish.vel.add(toCoh);
+            }
+
+            // 朝中心拉回 (防止游太远)
+            const toCenter = new THREE.Vector3().subVectors(center, fish.pos);
+            if (toCenter.length() > 3) {
+                fish.vel.add(toCenter.normalize().multiplyScalar(BOID_CENTER_PULL * delta));
+            }
+
+            // 限速
+            if (fish.vel.length() > BOID_MAX_SPEED) {
+                fish.vel.normalize().multiplyScalar(BOID_MAX_SPEED);
+            }
+
+            // 更新位置
+            fish.pos.add(fish.vel.clone().multiplyScalar(delta * 2));
+            // 保持在水下
+            fish.pos.y = -0.5 + Math.sin(t * 2 + fish.phase) * 0.15;
+        }
+
+        // ── 更新 mesh ──────────────────────────────────
+        groupRef.current.children.forEach((fishGroup, i) => {
+            if (i >= fishData.length) return;
             const data = fishData[i];
-            const angle = t * data.speed + data.offset;
-            fish.position.x = Math.cos(angle) * data.radius;
-            fish.position.z = Math.sin(angle) * data.radius;
-            fish.position.y = -0.5 + data.yOffset + Math.sin(t * 3 + data.offset) * 0.2;
-            fish.rotation.y = -angle; 
+            fishGroup.position.copy(data.pos);
+            // 朝向运动方向
+            if (data.vel.lengthSq() > 0.001) {
+                const angle = Math.atan2(data.vel.x, data.vel.z);
+                fishGroup.rotation.y = angle;
+            }
+            // 飘尾动画
+            const tail = fishGroup.children[1]; // tail mesh
+            if (tail) {
+                tail.rotation.y = Math.sin(t * 8 + data.phase) * 0.4;
+            }
         });
     });
 
-    const materialProps = isNight 
-        ? { color: "#38bdf8", emissive: "#0ea5e9", emissiveIntensity: 4.0, toneMapped: false }
-        : { color: "#0f172a", roughness: 0.5 };
+    const bodyColor = isNight ? "#38bdf8" : "#f97316";
+    const bellyColor = isNight ? "#0ea5e9" : "#fef3c7";
+    const tailColor = isNight ? "#7dd3fc" : "#ea580c";
+    const emissiveProps = isNight
+        ? { emissive: "#0ea5e9", emissiveIntensity: 4.0, toneMapped: false }
+        : {};
 
     return (
         <group ref={groupRef}>
             {fishData.map((_, i) => (
                 <group key={i}>
-                    <mesh rotation={[Math.PI/2, 0, 0]}>
-                        <coneGeometry args={[0.1, 0.4, 4]} />
-                        <meshStandardMaterial {...materialProps} />
+                    {/* 鱼身 - 纺锤体 */}
+                    <mesh rotation={[0, Math.PI / 2, 0]}>
+                        <sphereGeometry args={[0.12, 6, 4]} />
+                        <meshStandardMaterial color={bodyColor} flatShading {...emissiveProps} />
+                    </mesh>
+                    {/* 鱼腹 */}
+                    <mesh position={[0, -0.04, 0]} rotation={[0, Math.PI / 2, 0]}>
+                        <sphereGeometry args={[0.1, 6, 3]} />
+                        <meshStandardMaterial color={bellyColor} flatShading {...emissiveProps} />
+                    </mesh>
+                    {/* 鱼尾 - 飘动 */}
+                    <mesh position={[0, 0, -0.15]} rotation={[0, Math.PI, 0]}>
+                        <coneGeometry args={[0.1, 0.15, 4]} />
+                        <meshStandardMaterial color={tailColor} flatShading {...emissiveProps} />
+                    </mesh>
+                    {/* 背鳍 */}
+                    <mesh position={[0, 0.1, -0.02]} rotation={[0.3, 0, 0]}>
+                        <boxGeometry args={[0.02, 0.06, 0.1]} />
+                        <meshStandardMaterial color={tailColor} flatShading {...emissiveProps} />
+                    </mesh>
+                    {/* 眼睛 */}
+                    <mesh position={[-0.06, 0.02, 0.08]}>
+                        <sphereGeometry args={[0.02, 4, 4]} />
+                        <meshStandardMaterial color="#1c1917" />
+                    </mesh>
+                    <mesh position={[0.06, 0.02, 0.08]}>
+                        <sphereGeometry args={[0.02, 4, 4]} />
+                        <meshStandardMaterial color="#1c1917" />
                     </mesh>
                 </group>
             ))}
