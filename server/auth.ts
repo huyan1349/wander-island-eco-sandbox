@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import getDb from './db.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'wander-island-secret-key-2026';
 const JWT_EXPIRES_IN = '7d';
@@ -30,6 +31,14 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
   const token = authHeader.slice(7);
   const payload = verifyToken(token);
   if (!payload) {
+    res.status(401).json({ error: '登录已过期' });
+    return;
+  }
+
+  // 校验用户仍然存在：旧 token 可能指向已删除/已重置的账号，
+  // 若不拦截，后续写操作会因外键约束失败而返回 500（见 friends 等接口）。
+  const user = getDb().prepare('SELECT id FROM users WHERE id = ?').get(payload.userId);
+  if (!user) {
     res.status(401).json({ error: '登录已过期' });
     return;
   }

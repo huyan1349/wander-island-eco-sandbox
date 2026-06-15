@@ -63,6 +63,9 @@ router.post('/', authMiddleware, (req: AuthRequest, res: Response) => {
   }
 
   const db = getDb();
+  const MAX = 20;
+  const owned = db.prepare("SELECT COUNT(*) c FROM islands WHERE owner_id=?").get(req.userId) as { c: number } | undefined;
+  if (owned && owned.c >= MAX) { res.status(400).json({ error: "最多只能创建20个岛屿" }); return; }
   const id = crypto.randomUUID();
 
   db.prepare('INSERT INTO islands (id, owner_id, name, is_public, data) VALUES (?, ?, ?, ?, ?)')
