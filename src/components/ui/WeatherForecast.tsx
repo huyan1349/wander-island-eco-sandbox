@@ -29,6 +29,17 @@ export function WeatherForecast() {
     return () => clearInterval(id);
   }, [mode]);
 
+  // 卡片与当前播放同步：自动切歌时，最上面那张卡跟着切到正在播放的这首（复用切卡动画）。
+  // 只在歌曲真正变化时触发，避免每 250ms 把手动浏览的卡拽回去。
+  const lastSyncedUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (mode !== 'music' || !playingUrl) return;
+    if (playingUrl === lastSyncedUrlRef.current) return;
+    lastSyncedUrlRef.current = playingUrl;
+    const idx = TRACKS.findIndex(t => t.url === playingUrl);
+    if (idx >= 0) setActiveIndex(idx);
+  }, [playingUrl, mode]);
+
   const getWeatherIcon = (w: WeatherType, size = 20) => {
     switch (w) {
       case 'sunny': return <Sun size={size} className="text-amber-400 drop-shadow-md" />;
