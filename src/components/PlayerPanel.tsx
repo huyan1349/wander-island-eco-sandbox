@@ -162,6 +162,8 @@ export const PlayerPanel: React.FC = () => {
   const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchBusy, setSearchBusy] = useState(false);
+  const [searchHint, setSearchHint] = useState(''); // 无结果 / 未登录 / 失败 提示
   const [onlineUsers, setOnlineUsers] = useState<Record<string, boolean>>({});
   const [chatTarget, setChatTarget] = useState<any>(null);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
@@ -259,14 +261,32 @@ export const PlayerPanel: React.FC = () => {
     setChatInput('');
   };
 
-  const handleSearch = async () => {
-    AudioSystem.playClick();
-    if (!searchQuery.trim()) return;
+  const runSearch = async (q: string) => {
+    const query = q.trim();
+    if (!query) { setSearchResults([]); setSearchHint(''); return; }
+    if (!authUser) { setSearchResults([]); setSearchHint('登录账号后才能搜索并添加好友'); return; }
+    setSearchBusy(true); setSearchHint('');
     try {
-      const res = await api.searchUsers(searchQuery.trim());
-      setSearchResults(res.users);
-    } catch (err) { console.error('Search failed:', err); }
+      const res = await api.searchUsers(query);
+      setSearchResults(res.users || []);
+      setSearchHint((res.users || []).length === 0 ? '没有找到匹配的玩家（试试完整用户名或编号）' : '');
+    } catch (err) {
+      console.error('Search failed:', err);
+      setSearchResults([]);
+      setSearchHint('搜索失败，请检查网络后再试');
+    } finally { setSearchBusy(false); }
   };
+
+  const handleSearch = () => { AudioSystem.playClick(); runSearch(searchQuery); };
+
+  // 输入即搜（防抖 350ms）：点开搜索框打字就能出结果，不必非按回车
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q) { setSearchResults([]); setSearchHint(''); return; }
+    const t = setTimeout(() => runSearch(searchQuery), 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   const handleSendFriendRequest = async (userId: string) => {
     AudioSystem.playConfirm();
@@ -664,6 +684,15 @@ export const PlayerPanel: React.FC = () => {
                           </div>
                           <button onClick={() => { AudioSystem.playClick(); handleSearch(); }} className="hand-drawn-btn px-4 py-2"><Search size={16} /></button>
                         </div>
+
+                        {/* 搜索状态：加载 / 无结果 / 未登录 / 失败 */}
+                        {(searchBusy || searchHint) && (
+                          <div className="mb-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                            {searchBusy ? (
+                              <><span className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /> 搜索中…</>
+                            ) : searchHint}
+                          </div>
+                        )}
 
                         {searchResults.length > 0 && (
                           <div className="mb-6">

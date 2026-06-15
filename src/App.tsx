@@ -93,6 +93,7 @@ import { GiftModal } from "./components/GiftModal";
 import { PomodoroTimer } from "./components/PomodoroTimer";
 import { VisitOverlay } from "./components/VisitOverlay";
 import { CiSpirit } from "./components/CiSpirit";
+import { CiForecastAlert } from "./components/ui/CiForecastAlert";
 import { useCiProactive } from "./hooks/useCiProactive";
 import { TimeWeatherSystem } from "./components/systems/TimeWeatherSystem";
 import { SolarMeridian } from "./components/ui/SolarMeridian";
@@ -1138,6 +1139,7 @@ export default function App() {
       {screen === 'PLAYING' && <Toast />}
       {screen === 'PLAYING' && showWelcomeGuide && <WelcomeGuide />}
       {screen === 'PLAYING' && !isImmersive && <CiSpirit />}
+      {screen === 'PLAYING' && !isImmersive && <CiForecastAlert />}
       {screen === 'PLAYING' && <SignEditorModal />}
       {screen === 'PLAYING' && <AchievementSystem />}
       {screen === 'PLAYING' && online && <HermitOnline />}

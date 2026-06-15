@@ -57,5 +57,23 @@ export function TimeWeatherSystem() {
     return () => cancelAnimationFrame(frameId);
   }, []);
 
+  // 随机天气调度：游戏中每隔一段随机时间，天气自然变化一次，辞会播报预报
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const schedule = () => {
+      // 130~260s 随机间隔，避免太频繁打扰
+      const delay = 130000 + Math.random() * 130000;
+      timer = setTimeout(() => {
+        const s = useGameStore.getState();
+        if (s.screen === 'PLAYING' && !s.isTimeScrubbing) {
+          s.rollWeather();
+        }
+        schedule();
+      }, delay);
+    };
+    schedule();
+    return () => clearTimeout(timer);
+  }, []);
+
   return null;
 }

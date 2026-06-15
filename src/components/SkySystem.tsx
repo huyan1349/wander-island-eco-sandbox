@@ -4,116 +4,126 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Sky, Stars, Clouds, Cloud } from '@react-three/drei';
 
+// ===== 全天连续光照关键帧（消除时段边界硬跳；端点首尾相接，0=24 闭环）=====
+// 每个关键帧：t 时刻 / 环境光色 ai / 太阳(月)光色 si / 雾色
+const SKY_KF = [
+  { t: 0,    amb: '#0a0e1a', ai: 0.30, sun: '#5b7fb9', si: 0.22, fog: '#05070f' }, // 深夜
+  { t: 4.5,  amb: '#10131f', ai: 0.30, sun: '#5b7fb9', si: 0.24, fog: '#0a0c16' }, // 拂晓前
+  { t: 6,    amb: '#caa6c8', ai: 0.45, sun: '#f6b27a', si: 0.70, fog: '#e8c4c0' }, // 日出微光
+  { t: 7,    amb: '#fbbf8f', ai: 0.55, sun: '#ffd9a0', si: 1.05, fog: '#fde2c0' }, // 朝霞
+  { t: 8.5,  amb: '#e2e8f0', ai: 0.60, sun: '#ffffff', si: 1.20, fog: '#bae6fd' }, // 入昼
+  { t: 15,   amb: '#e2e8f0', ai: 0.60, sun: '#ffffff', si: 1.20, fog: '#bae6fd' }, // 正午～午后
+  { t: 17,   amb: '#f1d2aa', ai: 0.55, sun: '#ffd29a', si: 1.05, fog: '#d8ecf0' }, // 金色前段
+  { t: 18.5, amb: '#c77a52', ai: 0.46, sun: '#f97316', si: 0.75, fog: '#f4768c' }, // 日落
+  { t: 19.8, amb: '#5b3a86', ai: 0.36, sun: '#a06fc9', si: 0.40, fog: '#5a2f57' }, // 暮色
+  { t: 21,   amb: '#0a0e1a', ai: 0.30, sun: '#5b7fb9', si: 0.22, fog: '#05070f' }, // 入夜
+  { t: 24,   amb: '#0a0e1a', ai: 0.30, sun: '#5b7fb9', si: 0.22, fog: '#05070f' }, // 闭环=0
+];
+
+const _kfTmp = new THREE.Color();
+const _wFog = new THREE.Color();
+const _sunTmp = new THREE.Vector3();
+
+// 在任意时刻对关键帧做线性插值，写入 out（颜色连续、无突变）
+function sampleSky(t: number, out: { amb: THREE.Color; sun: THREE.Color; fog: THREE.Color; ai: number; si: number }) {
+  t = ((t % 24) + 24) % 24;
+  let a = SKY_KF[0], b = SKY_KF[SKY_KF.length - 1];
+  for (let i = 0; i < SKY_KF.length - 1; i++) {
+    if (t >= SKY_KF[i].t && t <= SKY_KF[i + 1].t) { a = SKY_KF[i]; b = SKY_KF[i + 1]; break; }
+  }
+  const p = THREE.MathUtils.clamp((t - a.t) / ((b.t - a.t) || 1), 0, 1);
+  out.amb.set(a.amb).lerp(_kfTmp.set(b.amb), p);
+  out.sun.set(a.sun).lerp(_kfTmp.set(b.sun), p);
+  out.fog.set(a.fog).lerp(_kfTmp.set(b.fog), p);
+  out.ai = THREE.MathUtils.lerp(a.ai, b.ai, p);
+  out.si = THREE.MathUtils.lerp(a.si, b.si, p);
+}
+
 export function SkySystem() {
-    const timeOfDay = useGameStore(state => state.timeOfDay); // 0 to 24
-    
-    // Calculate sun position based on time of day
-    // 6am (6) is sunrise, 12pm is noon, 6pm (18) is sunset
-    const inclination = useMemo(() => {
-        return (timeOfDay - 6) / 24; 
-    }, [timeOfDay]);
-    
-    // Calculate colors based on time
-    const { ambientColor, ambientIntensity, sunColor, isNight, fogColor, cloudColor, sunIntensity } = useMemo(() => {
-        let ambCol = new THREE.Color('#ffffff');
-        let ambInt = 0.5;
-        let sunCol = new THREE.Color('#ffffff');
-        let sunInt = 1.0;
-        let night = false;
-        let fogCol = new THREE.Color('#bae6fd');
-        let cloudCol = new THREE.Color('#ffffff');
-        
-        // Deep Night (20 to 4)
-        if (timeOfDay >= 20 || timeOfDay < 4) {
-            ambCol = new THREE.Color('#080b14'); // Very dark deep blue
-            ambInt = 0.3;
-            sunCol = new THREE.Color('#38bdf8'); // Cold moon light
-            sunInt = 0.2; // Dim moon
-            night = true;
-            fogCol = new THREE.Color('#020617');
-            cloudCol = new THREE.Color('#1e293b');
-        } 
-        // Dawn / Sunrise (4 to 7)
-        else if (timeOfDay >= 4 && timeOfDay < 7) {
-            const progress = (timeOfDay - 4) / 3; // 0 to 1
-            ambCol = new THREE.Color('#080b14').lerp(new THREE.Color('#fb923c'), progress);
-            ambInt = 0.3 + (progress * 0.2);
-            sunCol = new THREE.Color('#38bdf8').lerp(new THREE.Color('#fcd34d'), progress);
-            sunInt = 0.2 + (progress * 0.8);
-            fogCol = new THREE.Color('#020617').lerp(new THREE.Color('#fed7aa'), progress);
-            cloudCol = new THREE.Color('#1e293b').lerp(new THREE.Color('#ffedd5'), progress);
-            if (timeOfDay < 5) night = true;
-        }
-        // Day (7 to 16)
-        else if (timeOfDay >= 7 && timeOfDay < 16) {
-            ambCol = new THREE.Color('#e2e8f0');
-            ambInt = 0.6;
-            sunCol = new THREE.Color('#ffffff');
-            sunInt = 1.2;
-            fogCol = new THREE.Color('#bae6fd');
-            cloudCol = new THREE.Color('#ffffff');
-        }
-        // Golden Hour / Sunset (16 to 20)
-        else {
-            const progress = (timeOfDay - 16) / 4; // 0 to 1
-            ambCol = new THREE.Color('#e2e8f0').lerp(new THREE.Color('#4c1d95'), progress); // Fades to deep purple
-            ambInt = 0.6 - (progress * 0.3);
-            sunCol = new THREE.Color('#ffffff').lerp(new THREE.Color('#f97316'), progress); // Turns bright orange/red
-            sunInt = 1.2 - (progress * 0.8);
-            fogCol = new THREE.Color('#bae6fd').lerp(new THREE.Color('#f43f5e'), progress); // Pink/Rose fog
-            cloudCol = new THREE.Color('#ffffff').lerp(new THREE.Color('#fda4af'), progress); // Pink clouds
-            if (timeOfDay > 19) night = true;
-        }
-        
-        return { ambientColor: ambCol, ambientIntensity: ambInt, sunColor: sunCol, isNight: night, fogColor: fogCol, cloudColor: cloudCol, sunIntensity: sunInt };
-    }, [timeOfDay]);
+    // 不再按 timeOfDay 订阅重渲染；全部在 useFrame 里以阻尼方式驱动，任何时间跳变都丝滑过渡
+    const skyRef = useRef<any>(null);
+    const ambRef = useRef<THREE.AmbientLight>(null!);
+    const dirRef = useRef<THREE.DirectionalLight>(null!);
+    const fogRef = useRef<THREE.FogExp2>(null!);
+    const starsRef = useRef<THREE.Group>(null!);
 
-    const weather = useGameStore(state => state.weather);
-    let sceneFogColor: string = fogColor.getStyle();
-    let finalCloudColor = cloudColor.getStyle();
-    let fogDensity = 0.012;
+    // 当前（已阻尼）状态，持久存在于帧之间
+    const cur = useMemo(() => ({
+        amb: new THREE.Color('#0a0e1a'),
+        sun: new THREE.Color('#5b7fb9'),
+        fog: new THREE.Color('#05070f'),
+        ai: 0.30, si: 0.22, density: 0.012,
+        sunPos: new THREE.Vector3(0, -50, 20),
+    }), []);
+    const target = useMemo(() => ({ amb: new THREE.Color(), sun: new THREE.Color(), fog: new THREE.Color(), ai: 0.3, si: 0.22 }), []);
 
-    if (weather === 'rainy') { sceneFogColor = '#64748b'; finalCloudColor = '#475569'; fogDensity = 0.025; }
-    else if (weather === 'stormy') { sceneFogColor = '#334155'; finalCloudColor = '#1e293b'; fogDensity = 0.035; }
-    else if (weather === 'foggy') { sceneFogColor = '#cbd5e1'; finalCloudColor = '#f1f5f9'; fogDensity = 0.06; }
-    else if (weather === 'cloudy') { finalCloudColor = '#94a3b8'; }
-    else if (weather === 'snowy') { sceneFogColor = '#e2e8f0'; finalCloudColor = '#ffffff'; fogDensity = 0.02; }
+    useFrame((_, delta) => {
+        const g = useGameStore.getState();
+        const t = g.timeOfDay;
+        const w = g.weather;
 
-    // Position of the sun/moon directional light
-    const theta = Math.PI * (timeOfDay / 24) * 2 - Math.PI / 2;
-    const sunX = Math.cos(theta) * 50;
-    const sunY = Math.sin(theta) * 50;
-    const sunZ = 20;
+        sampleSky(t, target);
+
+        // 太阳 / 月亮位置（连续）
+        const theta = Math.PI * (t / 24) * 2 - Math.PI / 2;
+        _sunTmp.set(Math.cos(theta) * 50, Math.sin(theta) * 50, 20);
+
+        // 天气对雾的覆盖（也走阻尼，天气切换不再突兀）
+        let fogTarget: THREE.Color = target.fog;
+        let densityTarget = 0.012;
+        if (w === 'rainy') { fogTarget = _wFog.set('#64748b'); densityTarget = 0.025; }
+        else if (w === 'stormy') { fogTarget = _wFog.set('#334155'); densityTarget = 0.035; }
+        else if (w === 'foggy') { fogTarget = _wFog.set('#cbd5e1'); densityTarget = 0.06; }
+        else if (w === 'snowy') { fogTarget = _wFog.set('#e2e8f0'); densityTarget = 0.02; }
+        else if (w === 'cloudy') { densityTarget = 0.016; }
+
+        // 阻尼系数：约 0.4s 收敛，既跟手又丝滑（帧率无关）
+        const k = 1 - Math.exp(-2.5 * delta);
+        cur.amb.lerp(target.amb, k);
+        cur.sun.lerp(target.sun, k);
+        cur.fog.lerp(fogTarget, k);
+        cur.ai = THREE.MathUtils.lerp(cur.ai, target.ai, k);
+        cur.si = THREE.MathUtils.lerp(cur.si, target.si, k);
+        cur.density = THREE.MathUtils.lerp(cur.density, densityTarget, k);
+        cur.sunPos.lerp(_sunTmp, k);
+
+        if (ambRef.current) { ambRef.current.color.copy(cur.amb); ambRef.current.intensity = cur.ai; }
+        if (dirRef.current) {
+            dirRef.current.color.copy(cur.sun);
+            dirRef.current.intensity = cur.si;
+            dirRef.current.position.copy(cur.sunPos);
+            dirRef.current.visible = cur.sunPos.y > -8; // 太阳落到地平线下就不再投射
+        }
+        if (fogRef.current) { fogRef.current.color.copy(cur.fog); fogRef.current.density = cur.density; }
+        if (skyRef.current?.material?.uniforms?.sunPosition) {
+            skyRef.current.material.uniforms.sunPosition.value.copy(cur.sunPos);
+        }
+        if (starsRef.current) starsRef.current.visible = (t >= 19.5 || t < 5.5);
+    });
 
     return (
         <>
-           <fogExp2 attach="fog" color={sceneFogColor} density={fogDensity} />
-           <Sky 
-              distance={450000} 
-              sunPosition={[sunX, sunY, sunZ]} 
-              inclination={inclination} 
-              azimuth={0.25} 
+           <fogExp2 ref={fogRef} attach="fog" color={'#05070f'} density={0.012} />
+           <Sky ref={skyRef} distance={450000} sunPosition={[0, -50, 20]} azimuth={0.25} />
+           <group ref={starsRef}>
+              <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+           </group>
+           <ambientLight ref={ambRef} color={'#0a0e1a'} intensity={0.3} />
+           <directionalLight
+              ref={dirRef}
+              position={[0, -50, 20]}
+              intensity={0.22}
+              color={'#5b7fb9'}
+              castShadow
+              shadow-mapSize-width={1024}
+              shadow-mapSize-height={1024}
+              shadow-camera-far={150}
+              shadow-camera-left={-40}
+              shadow-camera-right={40}
+              shadow-camera-top={40}
+              shadow-camera-bottom={-40}
+              shadow-bias={-0.0005}
            />
-           {isNight && <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />}
-           <ambientLight color={ambientColor} intensity={ambientIntensity} />
-           
-           {/* Primary Sun Light */}
-           {sunY > -10 && (
-               <directionalLight 
-                  position={[sunX, sunY, sunZ]} 
-                  intensity={sunIntensity} 
-                  color={sunColor}
-                  castShadow 
-                  shadow-mapSize-width={1024} 
-                  shadow-mapSize-height={1024}
-                  shadow-camera-far={150}
-                  shadow-camera-left={-40}
-                  shadow-camera-right={40}
-                  shadow-camera-top={40}
-                  shadow-camera-bottom={-40}
-                  shadow-bias={-0.0005}
-               />
-           )}
         </>
     );
 }

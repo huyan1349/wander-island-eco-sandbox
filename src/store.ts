@@ -8,6 +8,20 @@ import { FlourishCardId, FLOURISH_CARDS, STARTING_DECK, HAND_SIZE, SEASON_BASE_E
 export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox';
 export type WeatherType = 'sunny' | 'cloudy' | 'rainy' | 'foggy' | 'snowy' | 'stormy';
 
+// 辞向玩家播报天气时的诗意文案（每种天气随机取一句）
+const FORECAST_LINES: Record<WeatherType, string[]> = {
+  sunny: ['天要放晴了，阳光会把岛照得发亮。', '云散了，是个好天气。'],
+  cloudy: ['云正慢慢聚拢，光会变得温柔。', '天色要暗一点了，云在路上。'],
+  rainy: ['我闻到雨的气息了，草会喝饱水。', '要下雨了，听见远处的潮声了吗。'],
+  foggy: ['雾要漫上来了，岛会变得朦胧。', '一层雾正靠近，看不太远了。'],
+  snowy: ['要下雪了……岛会安静下来。', '第一片雪快落了，记得留意。'],
+  stormy: ['风暴在路上，把松动的东西收一收吧。', '雷云压过来了，今晚不太平静。'],
+};
+function pickForecastLine(w: WeatherType): string {
+  const lines = FORECAST_LINES[w] || FORECAST_LINES.sunny;
+  return lines[Math.floor(Math.random() * lines.length)];
+}
+
 export interface Vector3Data {
   x: number;
   y: number;
@@ -124,6 +138,10 @@ interface GameState {
   setWeather: (weather: WeatherType) => void;
   forecast: WeatherType[];
   advanceDay: () => void;
+  // 随机天气来临时，辞向玩家播报的天气预报弹窗数据（null = 不显示）
+  forecastAlert: { weather: WeatherType; forecast: WeatherType[]; line: string; at: number } | null;
+  rollWeather: () => void;
+  clearForecastAlert: () => void;
 
   waveIntensity: number;
   setWaveIntensity: (v: number) => void;
@@ -317,13 +335,31 @@ export const useGameStore = create<GameState>((set, get) => ({
   weather: 'sunny',
   setWeather: (weather) => set({ weather: weather }),
   forecast: ['cloudy', 'rainy', 'sunny'],
+  forecastAlert: null,
   advanceDay: () => set((state) => {
     const types: WeatherType[] = ['sunny', 'cloudy', 'rainy', 'foggy', 'snowy', 'stormy'];
     const nextForecast = [...state.forecast];
     const today = nextForecast.shift() || 'sunny';
     nextForecast.push(types[Math.floor(Math.random() * types.length)]);
-    return { weather: today, forecast: nextForecast };
+    const alert = today !== state.weather
+      ? { weather: today, forecast: nextForecast, line: pickForecastLine(today), at: Date.now() }
+      : state.forecastAlert;
+    return { weather: today, forecast: nextForecast, forecastAlert: alert };
   }),
+  // 随机推进一档天气（不跨天），并让辞向玩家播报预报
+  rollWeather: () => set((state) => {
+    const types: WeatherType[] = ['sunny', 'cloudy', 'rainy', 'foggy', 'snowy', 'stormy'];
+    const nextForecast = [...state.forecast];
+    const today = nextForecast.shift() || 'sunny';
+    nextForecast.push(types[Math.floor(Math.random() * types.length)]);
+    if (today === state.weather) return { forecast: nextForecast }; // 没变就不打扰
+    return {
+      weather: today,
+      forecast: nextForecast,
+      forecastAlert: { weather: today, forecast: nextForecast, line: pickForecastLine(today), at: Date.now() },
+    };
+  }),
+  clearForecastAlert: () => set({ forecastAlert: null }),
 
   waveIntensity: 1.0,
   setWaveIntensity: (v) => set({ waveIntensity: v }),
