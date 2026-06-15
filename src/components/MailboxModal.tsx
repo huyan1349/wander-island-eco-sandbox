@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
-import { X, Mail, Send, Trash2, ArrowLeft, Pen, User, Gift } from 'lucide-react';
+import { X, Mail, Send, Trash2, ArrowLeft, Pen, User, Gift, UserPlus, Check } from 'lucide-react';
 import { AudioSystem } from '../lib/audio';
+import { emitFriendAccepted } from '../lib/socket';
 import { TRACKS, renderTrackTexture, isCardOwned, grantCard } from './ui/musicData';
 
 export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }> = ({ onClose, embedded }) => {
@@ -17,6 +18,7 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
   const [loading, setLoading] = useState(true);
   const [claimAnim, setClaimAnim] = useState(false);
   const [, setClaimedTick] = useState(0); // 领取后强制刷新 owned 状态
+  const [friendReqs, setFriendReqs] = useState<any[]>([]); // 收到的好友申请
 
   // 解析"记忆卡"邮件：gift_type = "music_card:<url>"
   const cardOf = (mail: any) => {
@@ -38,7 +40,33 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
   useEffect(() => {
     loadMails();
     loadFriends();
+    loadFriendReqs();
   }, []);
+
+  const loadFriendReqs = async () => {
+    try {
+      const res = await api.getFriendRequests();
+      setFriendReqs(res.incoming || []);
+    } catch { /* ignore */ }
+  };
+
+  const handleAcceptReq = async (userId: string) => {
+    AudioSystem.playConfirm();
+    try {
+      await api.acceptFriendRequest(userId);
+      emitFriendAccepted(userId);
+      setFriendReqs(prev => prev.filter(r => r.id !== userId));
+      loadFriends();
+    } catch (err: any) { alert(err?.message || '操作失败'); }
+  };
+
+  const handleRejectReq = async (userId: string) => {
+    AudioSystem.playClose();
+    try {
+      await api.rejectFriendRequest(userId);
+      setFriendReqs(prev => prev.filter(r => r.id !== userId));
+    } catch { /* ignore */ }
+  };
 
   const loadMails = async () => {
     try {
@@ -251,12 +279,31 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
                 <Pen size={14} /> 写信
               </button>
             )}
+            {/* 好友申请：同意后即可聊天、互访、赠礼 */}
+            {friendReqs.length > 0 && (
+              <div className="mb-3 flex flex-col gap-2">
+                <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase flex items-center gap-1.5"><UserPlus size={12} /> 好友申请</p>
+                {friendReqs.map(req => (
+                  <div key={req.id} className="flex items-center gap-3 p-3 rounded-xl bg-amber-50/70 border-2 border-amber-200">
+                    <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-slate-800 shrink-0">
+                      {req.avatar ? <img src={req.avatar} alt="" className="w-full h-full object-cover" /> : <User size={16} className="text-amber-400 m-auto" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-slate-800 text-sm truncate">{req.username}</p>
+                      <p className="text-[11px] text-slate-400">想成为你的岛友</p>
+                    </div>
+                    <button onClick={() => handleAcceptReq(req.id)} className="hand-drawn-btn px-2.5 py-1.5 text-emerald-600 flex items-center gap-1 text-xs font-bold"><Check size={13} /> 同意</button>
+                    <button onClick={() => handleRejectReq(req.id)} className="hand-drawn-btn p-1.5 text-slate-400"><X size={13} /></button>
+                  </div>
+                ))}
+              </div>
+            )}
             {loading ? (
               <div className="text-center py-12">
                 <div className="w-8 h-8 border-2 border-slate-800 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
                 <p className="text-slate-400 text-sm">加载中...</p>
               </div>
-            ) : mails.length === 0 ? (
+            ) : mails.length === 0 && friendReqs.length === 0 ? (
               <div className="text-center py-16">
                 <Mail size={48} className="text-slate-300 mx-auto mb-4" />
                 <p className="text-slate-400 font-bold tracking-widest">信箱空空如也</p>

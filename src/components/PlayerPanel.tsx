@@ -247,7 +247,15 @@ export const PlayerPanel: React.FC = () => {
   const handleSendMessage = () => {
     AudioSystem.playConfirm();
     if (!chatInput.trim() || !chatTarget) return;
-    emitChatSend(chatTarget.id, chatInput.trim());
+    // 和"辞"聊天时附带实时岛屿上下文，让它记得整段对话 + 看见当前的岛
+    const s = useGameStore.getState();
+    const ctx = chatTarget.id === CI_USER_ID ? {
+      timeOfDay: s.timeOfDay, weather: s.weather, season: s.season,
+      grassHealth: s.grassHealth, deerCount: s.deerCount, wolfCount: s.wolfCount,
+      assetsCount: s.assets.length, islandName: s.islandName,
+      affinityLevel: s.ci.affinity >= 61 ? 'close' : s.ci.affinity >= 21 ? 'familiar' : 'stranger',
+    } : undefined;
+    emitChatSend(chatTarget.id, chatInput.trim(), ctx);
     setChatInput('');
   };
 
@@ -615,7 +623,7 @@ export const PlayerPanel: React.FC = () => {
 
               {/* ====== Social Tab ====== */}
               {activeTab === 'social' && (
-                <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-4">
+                <div className="flex-1 flex flex-col min-h-0 animate-in fade-in slide-in-from-bottom-4">
                   {/* Social Sub-tabs */}
                   <div className="flex gap-1 px-8 pt-6 pb-3 border-b border-slate-200">
                     <button onClick={() => { AudioSystem.playTap(); setActiveSocialTab('friends'); }} className={`hand-drawn-btn px-4 py-2 text-xs font-bold flex items-center gap-1.5 ${activeSocialTab === 'friends' ? 'hand-drawn-btn-active' : ''}`}>
@@ -637,15 +645,22 @@ export const PlayerPanel: React.FC = () => {
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto custom-scrollbar">
+                  <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                     {/* Friends Sub-tab */}
                     {activeSocialTab === 'friends' && (
                       <div className="p-8">
+                        {/* 我的编号：分享给好友，对方可按编号搜索到你 */}
+                        {authUser && (
+                          <div className="flex items-center justify-between mb-4 px-4 py-2.5 rounded-xl bg-emerald-50/70 ring-1 ring-emerald-200">
+                            <span className="text-[11px] text-slate-500">我的好友编号 · 告诉朋友即可搜到你</span>
+                            <span className="text-sm font-black font-mono text-emerald-700 tracking-wider">NO.{String(authUser.memberNo || 1).padStart(5, '0')}</span>
+                          </div>
+                        )}
                         {/* Search */}
                         <div className="flex gap-2 mb-6">
                           <div className="relative flex-1">
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder="搜索用户..." className="w-full pl-9 pr-4 py-2.5 hand-drawn-panel text-slate-800 placeholder:text-slate-400 focus:outline-none text-sm" style={{ borderWidth: '2px' }} />
+                            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder="搜索用户名 或 编号（如 42）..." className="w-full pl-9 pr-4 py-2.5 hand-drawn-panel text-slate-800 placeholder:text-slate-400 focus:outline-none text-sm" style={{ borderWidth: '2px' }} />
                           </div>
                           <button onClick={() => { AudioSystem.playClick(); handleSearch(); }} className="hand-drawn-btn px-4 py-2"><Search size={16} /></button>
                         </div>
@@ -657,7 +672,10 @@ export const PlayerPanel: React.FC = () => {
                               <div key={user.id} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-amber-50 transition-colors">
                                 <div className="flex items-center gap-3">
                                   <img src={user.avatar} alt="" className="w-8 h-8 rounded-full border border-slate-800" />
-                                  <span className="font-bold text-slate-800 text-sm">{user.username}</span>
+                                  <div>
+                                    <span className="font-bold text-slate-800 text-sm">{user.username}</span>
+                                    {user.memberNo != null && <span className="ml-2 text-[10px] font-mono text-slate-400">NO.{String(user.memberNo).padStart(5, '0')}</span>}
+                                  </div>
                                 </div>
                                 <button onClick={() => { AudioSystem.playConfirm(); handleSendFriendRequest(user.id); }} className="hand-drawn-btn flex items-center gap-1 px-3 py-1 text-xs"><UserPlus size={12} /> 加好友</button>
                               </div>
@@ -711,7 +729,7 @@ export const PlayerPanel: React.FC = () => {
 
                     {/* Chat Sub-tab */}
                     {activeSocialTab === 'chat' && (
-                      <div className="flex-1 flex flex-col h-full">
+                      <div className="flex flex-col h-full min-h-0">
                         {chatTarget ? (
                           <>
                             <div className="flex items-center gap-3 px-8 py-3 border-b border-slate-200">
@@ -720,7 +738,7 @@ export const PlayerPanel: React.FC = () => {
                               <span className="font-bold text-slate-800 text-sm tracking-wide">{chatTarget.username}</span>
                               {chatTarget.is_ai && <span className="text-[9px] text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded-full font-bold">AI</span>}
                             </div>
-                            <div className="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
+                            <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-3 custom-scrollbar">
                               {chatMessages.map((msg) => {
                                 const isMine = msg.from_id === authUser?.id;
                                 return (

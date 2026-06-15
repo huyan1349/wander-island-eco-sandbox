@@ -98,7 +98,7 @@ export function setupSocket(io: SocketServer) {
     console.log(`[Socket] ${username} (${userId}) connected`);
 
     // ====== 聊天消息 ======
-    socket.on('chat:send', async (data: { toId: string; content: string }) => {
+    socket.on('chat:send', async (data: { toId: string; content: string; ctx?: any }) => {
       if (!data.toId || !data.content?.trim()) return;
 
       const id = crypto.randomUUID();
@@ -125,11 +125,11 @@ export function setupSocket(io: SocketServer) {
       // ====== 如果对方是"辞"，自动AI回复 ======
       if (data.toId === CI_USER_ID && aiClient) {
         try {
-          // 获取最近几条聊天记录作为上下文
+          // 获取最近几条聊天记录作为上下文（保留更长上下文，让辞记得整段对话）
           const recentMessages: any[] = db.prepare(`
             SELECT from_id, content FROM chat_messages
             WHERE (from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?)
-            ORDER BY created_at DESC LIMIT 10
+            ORDER BY created_at DESC LIMIT 24
           `).all(userId, CI_USER_ID, CI_USER_ID, userId);
 
           const chatHistory: { role: 'user' | 'assistant'; content: string }[] = recentMessages.reverse().map((m: any) => ({
@@ -141,15 +141,25 @@ export function setupSocket(io: SocketServer) {
           const userMessages = chatHistory.filter(m => m.role === 'user').slice(-5);
           const memorySummary = userMessages.map(m => m.content).join('；');
 
-          // 根据聊天记录数量估算好感等级
+          // 客户端传来的实时岛屿上下文（让辞"看见"当前的岛）
+          const ctx = data.ctx || {};
+          const weatherCn = ctx.weather === 'sunny' ? '晴天' : ctx.weather === 'rainy' ? '雨天' : ctx.weather === 'snowy' ? '雪天' : ctx.weather === 'cloudy' ? '多云' : ctx.weather === 'foggy' ? '浓雾' : ctx.weather === 'stormy' ? '雷暴' : ctx.weather;
+          // 好感等级优先用客户端账号级数据，回退到按聊天条数估算
           const totalChats = recentMessages.length;
-          const affinityLevel = totalChats > 30 ? 'close' : totalChats > 10 ? 'familiar' : 'stranger';
+          const affinityLevel = ctx.affinityLevel || (totalChats > 30 ? 'close' : totalChats > 10 ? 'familiar' : 'stranger');
+          const recentEvent = (ctx.assetsCount != null)
+            ? `岛上有${ctx.assetsCount}个物件、${ctx.deerCount ?? 0}只鹿、${ctx.wolfCount ?? 0}只狼，草地健康度${Math.floor(ctx.grassHealth ?? 0)}%`
+            : '岛友正在和你聊天';
 
-          // 构建动态 system prompt
+          // 构建动态 system prompt（注入实时岛屿状态）
           const systemPrompt = buildCiSystemPrompt({
+            islandName: ctx.islandName || undefined,
+            weather: weatherCn,
+            timeOfDay: ctx.timeOfDay,
+            season: ctx.season || undefined,
             affinityLevel,
             memorySummary: memorySummary || undefined,
-            recentEvent: '岛友正在和你聊天',
+            recentEvent,
           });
 
           const response = await aiClient.chat.completions.create({

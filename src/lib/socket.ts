@@ -93,8 +93,9 @@ export function onUserOffline(callback: (data: any) => void) {
 }
 
 // Emit events
-export function emitChatSend(toId: string, content: string) {
-  socket?.emit('chat:send', { toId, content });
+// ctx：与"辞"聊天时附带的实时岛屿上下文，让辞"看见"当前的岛（普通好友会被服务端忽略）
+export function emitChatSend(toId: string, content: string, ctx?: any) {
+  socket?.emit('chat:send', { toId, content, ctx });
 }
 
 export function emitIslandVisit(islandId: string) {
