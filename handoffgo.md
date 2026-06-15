@@ -1,9 +1,13 @@
 # Handoff
 
 ## 已完成
-- Waterwheel 组件环境响应：旋转速度受附近泉水（8单位内）、季节、天气影响
-- Crop 组件视觉生长阶段：0-0.3 小苗/0.3-0.6 中等/0.7-1.0 成熟，小麦金色/胡萝卜橙色根部
-- PR #10 已合并到 main
+- 高级地形笔刷接线（全部 4 步 STEP 1~4 均已完成）
+  - store.ts: 添加 brushMode(BrushMode)/brushSize(number)/brushStrength(number) 状态及 setter
+  - Terrain.tsx: 用 applyTerrainBrush 替换旧升降逻辑，添加 flattenTargetY ref，光标跟随 brushSize
+  - App.tsx: 添加笔刷面板 UI（5模式按钮+大小/力度滑块），工具按钮联动 brushMode（terrainUp→raise, terrainDown→lower）
+  - Assets.tsx: SubIsland 子岛接入笔刷（localPoint 局部坐标 + persistTerrain 持久化）
+- npx tsc --noEmit 0 错误，npx vite build 成功
+- PR #13 已合并到 main
 
 ## 未完成
 - 无
