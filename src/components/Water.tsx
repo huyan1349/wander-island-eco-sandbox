@@ -107,7 +107,8 @@ export function Water() {
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', `#include <common>
 uniform float uTime; uniform float uFlowSpeed; uniform float uBaseAmp;
-varying vec3 vWaveCol;`)
+varying vec3 vWaveCol;
+varying float vUnder;`)
         .replace('#include <begin_vertex>', `#include <begin_vertex>
 {
   float x = position.x;
@@ -116,6 +117,9 @@ varying vec3 vWaveCol;`)
   float flowTime = uTime * uFlowSpeed;
   float islandFade = 1.0;
   if (dist < 18.0) { float t = max(0.0, (dist - 12.0) / 6.0); islandFade = t*t*(3.0 - 2.0*t); }
+  // Fade the ocean to fully transparent under the island core so the flat
+  // sea plane never shows through the terrain (was clipping under the island).
+  vUnder = smoothstep(7.0, 15.0, dist);
   float p1 = x*0.2 + y*0.1 + flowTime;
   float wave1 = (sin(p1) + 0.35*sin(2.0*p1 + 0.6)) * uBaseAmp * 0.28 * islandFade;
   float p2 = x*0.1 - y*0.2 + flowTime*0.8;
@@ -156,9 +160,11 @@ varying vec3 vWaveCol;`)
 
       shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', `#include <common>
-varying vec3 vWaveCol;`)
+varying vec3 vWaveCol;
+varying float vUnder;`)
         .replace('#include <color_fragment>', `#include <color_fragment>
-diffuseColor.rgb *= vWaveCol;`);
+diffuseColor.rgb *= vWaveCol;
+diffuseColor.a *= vUnder;`);
     };
     mat.needsUpdate = true;
   }, []);
