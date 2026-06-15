@@ -152,11 +152,12 @@
     transform: translate(-2px, -2px) rotate(1deg);
   }
 
-  /* 常驻「选择 / 橡皮擦」按钮：保留手绘圆角，但不要旋转倾斜（仅作用于这两个，不影响全局） */
-  #guide-modes .hand-drawn-btn,
-  #guide-modes .hand-drawn-btn-active { transform: none; }
-  #guide-modes .hand-drawn-btn:hover { transform: translate(-2px, -2px); }
-  #guide-modes .hand-drawn-btn:active { transform: translate(2px, 2px); }
+  /* 底部工具坞内的所有格子：保留手绘圆角与偏移阴影，但去掉旋转倾斜，
+     让选中高亮框端正地罩住图标（仅作用于工具坞，不影响侧栏等其它按钮） */
+  #tool-dock .hand-drawn-btn,
+  #tool-dock .hand-drawn-btn-active { transform: none; }
+  #tool-dock .hand-drawn-btn:hover { transform: translate(-2px, -2px); }
+  #tool-dock .hand-drawn-btn:active { transform: translate(2px, 2px); }
 
   /* Keep legacy glass styles just in case for overlays, but mostly unused now */
   .glass-panel {
