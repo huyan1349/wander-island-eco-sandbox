@@ -560,7 +560,7 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
                     src="/mail-illustration.png"
                     alt=""
                     className="absolute bottom-0 right-0 w-28 h-28 object-contain pointer-events-none select-none"
-                    style={{ mixBlendMode: 'multiply', opacity: 0.85, filter: 'sepia(0.15) brightness(1.02)' }}
+                    style={{ opacity: 0.9 }}
                   />
                 </div>
               ) : (
