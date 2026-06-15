@@ -411,6 +411,29 @@ wander-island-eco-sandbox/
 
 ---
 
+## 游戏截图
+
+<div align="center">
+
+<img src="public/screenshots/screenshot-1.png" width="48%" alt="黄昏岛屿全景" />
+<img src="public/screenshots/screenshot-6.png" width="48%" alt="樱花盛放" />
+
+*黄昏岛屿全景 · 云海之上的浮岛* ｜ *樱花盛放 · 岛屿建设主界面*
+
+<img src="public/screenshots/screenshot-2.png" width="48%" alt="冰封地貌" />
+<img src="public/screenshots/screenshot-4.png" width="48%" alt="樱花与冰雪" />
+
+*冰封地貌 · 时间凝固的段落* ｜ *樱花与冰雪 · 生态地貌的交织*
+
+<img src="public/screenshots/screenshot-5.png" width="48%" alt="冰封世界" />
+<img src="public/screenshots/screenshot-3.png" width="48%" alt="夜幕降临" />
+
+*冰封世界 · 永冬之岛* ｜ *夜幕降临 · 岛灵「辞」的低语*
+
+</div>
+
+---
+
 ## 游戏流程
 
 ```
