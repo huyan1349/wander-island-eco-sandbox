@@ -121,7 +121,7 @@ export const IslandHubModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
                     </div>
                   </div>
                   <div className="absolute bottom-0 inset-x-0 px-4 py-2 flex items-end justify-between border-t-2 border-slate-900/15 bg-white/30">
-                    <div><p className="text-[8px] uppercase tracking-widest text-slate-500">第 {rc.memberNo} 位</p><p className="text-base font-black font-mono" style={{ color: theme.accent }}>NO.{String(rc.memberNo).padStart(5, '0')}</p></div>
+                    <div><p className="text-[8px] uppercase tracking-widest text-slate-500">第 {rc.memberNo} 位</p><p className="text-base font-black font-mono" style={{ color: theme.accent }}>NO.{String(rc.residentNo ?? rc.memberNo).padStart(5, '0')}</p></div>
                     <p className="text-xs font-bold text-slate-700 font-mono">{rc.joinDate}</p>
                   </div>
                 </div>

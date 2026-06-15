@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { AudioSystem } from '../lib/audio';
+import { loadPresetIsland } from '../utils/islandIO';
 import { Plus, Trash2, ArrowLeft, TreePine, Mountain, Waves, Bird, Fish, Cloud, Sun, Globe, Check } from 'lucide-react';
 
 export const SaveSelectScreen: React.FC = () => {
@@ -50,7 +51,6 @@ export const SaveSelectScreen: React.FC = () => {
         AudioSystem.playConfirm();
         setHermitLoading(true);
         try {
-            const { loadPresetIsland } = await import('../utils/islandIO');
             await loadPresetIsland('/preset-hermit.json'); // 辞的隐者之岛底图，立即有内容
         } catch (e) {
             console.error('归隐之岛底图加载失败', e);

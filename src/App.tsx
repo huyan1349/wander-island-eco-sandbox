@@ -99,10 +99,12 @@ import { TimeWeatherSystem } from "./components/systems/TimeWeatherSystem";
 import { SolarMeridian } from "./components/ui/SolarMeridian";
 import { WeatherForecast } from "./components/ui/WeatherForecast";
 import { api } from "./lib/api";
+import { syncOnLogin, pushUserState } from "./lib/cloudSync";
 import { connectSocket, onUserOnline, onUserOffline, onFriendRequest, onIslandVisitData, onIslandVisitError } from "./lib/socket";
 import { AudioSystem } from "./lib/audio";
 import { BRUSH_MODES, SURFACE_LABELS } from "./utils/terrainBrush";
 import type { BrushFalloff, SurfaceType } from "./utils/terrainBrush";
+import { applyIslandSnapshot, loadPresetIsland } from "./utils/islandIO";
 
 export default function App() {
   const screen = useGameStore(state => state.screen);
@@ -194,9 +196,15 @@ export default function App() {
   useEffect(() => {
     const token = api.getToken();
     if (token && !authUser) {
-      api.getMe().then((res) => {
+      api.getMe().then(async (res) => {
         setAuthUser(res.user);
         connectSocket(token);
+        // 从云端同步岛屿与账号进度；完成后刷新标题页背景存档
+        await syncOnLogin();
+        const slots = useGameStore.getState().getSavedSlots();
+        if (slots.length > 0) {
+          useGameStore.getState().loadGame(slots[0].id, true);
+        }
       }).catch(() => {
         api.setToken(null);
       });
@@ -224,7 +232,7 @@ export default function App() {
         data: data.data
       });
       // 真正把对方的岛应用到场景，让玩家看见别人的岛（返回时 loadGame 会恢复自己的岛）
-      import('./utils/islandIO').then(m => m.applyIslandSnapshot(data.data || {})).catch(() => {});
+      try { applyIslandSnapshot(data.data || {}); } catch { /* ignore */ }
     });
     const unsubVisitError = onIslandVisitError((data: any) => {
       addToast(data.error || '串门失败', 'info');
@@ -293,6 +301,8 @@ export default function App() {
           };
           api.updateIsland(serverId, { data: saveData }).catch(() => {});
         }
+        // 账号级进度（XP/好感度/记忆/成就/居民卡/音乐卡）一并上云
+        pushUserState();
       }
     }, 60000); // Sync every 60 seconds
 
@@ -346,7 +356,7 @@ export default function App() {
     // 仅当场景里已经有岛（玩家存档已载入）时才跳过；登录与否都显示「默认开屏小岛」作为标题背景
     if (s.assets.length > 0) return;
     demoLoadedRef.current = true;
-    import('./utils/islandIO').then(m => m.loadPresetIsland('/preset-demo.json?v=2').catch(() => {}));
+    loadPresetIsland('/preset-demo.json?v=2').catch(() => {});
   }, [appLoaded]);
 
   // Switch BGM based on screen
@@ -431,6 +441,37 @@ export default function App() {
     }, 2000); // Every 2 seconds update ecology
     return () => clearInterval(interval);
   }, [updateEcology]);
+
+  // 奇观 · 遗迹破水而出：一眼生命之泉周围聚齐 ≥4 棵树 → 召唤沉睡遗迹升出水面（每眼泉仅一次）
+  const ruinsTriggeredRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (screen !== 'PLAYING') return;
+    const near = (a: any, b: any, r: number) => {
+      const dx = a.position.x - b.position.x, dz = a.position.z - b.position.z;
+      return dx * dx + dz * dz < r * r;
+    };
+    const iv = setInterval(() => {
+      const st = useGameStore.getState();
+      const springs = st.assets.filter(a => a.type === 'spring');
+      if (!springs.length) return;
+      const trees = st.assets.filter(a => a.type === 'treeA' || a.type === 'treeB' || a.type === 'pine_tree');
+      const ruins = st.assets.filter(a => a.type === 'ruins_arch');
+      for (const sp of springs) {
+        if (ruinsTriggeredRef.current.has(sp.id)) continue;
+        if (ruins.some(rn => near(rn, sp, 7))) { ruinsTriggeredRef.current.add(sp.id); continue; } // 已有遗迹(含读档)，不重复
+        if (trees.filter(t => near(t, sp, 7)).length >= 4) {
+          ruinsTriggeredRef.current.add(sp.id);
+          const pos = { x: sp.position.x, y: 0, z: sp.position.z };
+          st.spawnVFX('splash', pos);
+          st.addAsset({ type: 'ruins_arch', position: pos, rotation: { x: 0, y: 0, z: 0 }, scale: 1.4, customState: `rising:${Date.now()}` });
+          AudioSystem.playSynergyChord();
+          st.bumpAwakening(5);
+          st.addToast('遗迹破水而出！泉底古老的共鸣被唤醒了', 'info');
+        }
+      }
+    }, 2000);
+    return () => clearInterval(iv);
+  }, [screen]);
 
   useEffect(() => {
     if (selectedTool !== 'none') {
@@ -856,6 +897,7 @@ export default function App() {
                 return (
                   <button
                     key={t.id}
+                    id={`guide-tool-${t.id}`}
                     onClick={() => {
                       if (!isUnlocked) {
                          if (canAfford && confirm(`解锁 ${t.label} 需要 ${t.cost} EP？`)) {
@@ -947,6 +989,7 @@ export default function App() {
               return (
                 <button
                   key={c.name}
+                  id={`guide-cat-${c.name}`}
                   onClick={() => {
                     setActiveCategory(isActive ? null : c.name);
                     showTouchTooltip(c.name);

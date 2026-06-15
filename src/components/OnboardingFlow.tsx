@@ -4,6 +4,7 @@ import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { AudioSystem } from '../lib/audio';
 import { TRACKS, renderTrackTexture, grantCard, MAIL_CARD_URLS } from './ui/musicData';
+import { loadPresetIsland } from '../utils/islandIO';
 
 // 注册赠送的卡（前 5 张，排除走邮件发放的新卡）
 const STARTER = TRACKS.filter(t => !MAIL_CARD_URLS.includes(t.url));
@@ -46,7 +47,7 @@ export const OnboardingFlow: React.FC = () => {
 
   const theme = THEMES[themeIdx];
   const memberNo = authUser?.memberNo || 1;
-  const serial = String(memberNo).padStart(5, '0');
+  const rn = authUser?.residentNo ?? memberNo; const serial = String(rn).padStart(5, '0');
   const today = new Date();
   const joinDate = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
   const uid = `WI-${today.getFullYear()}-${String(memberNo).padStart(6, '0')}`;
@@ -129,8 +130,7 @@ export const OnboardingFlow: React.FC = () => {
     setTimeout(async () => {
       createSaveSlot(finalIsland); // 内部 set screen=PLAYING + clearAll
       try {
-        const m = await import('../utils/islandIO');
-        await m.loadPresetIsland('/preset-demo.json?v=2'); // 填入默认教程岛内容
+        await loadPresetIsland('/preset-tutorial.json?v=1'); // 新手教程岛：稀疏沉睡岛，留给玩家亲手唤醒
         useGameStore.getState().saveGame();
       } catch (e) { console.error('教程岛载入失败', e); }
     }, 650);

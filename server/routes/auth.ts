@@ -237,7 +237,7 @@ router.post('/login', (req: AuthRequest, res: Response) => {
 
   res.json({
     token,
-    user: { id: user.id, username: user.username, avatar: user.avatar, motto: user.motto || null }
+    user: { id: user.id, username: user.username, avatar: user.avatar, motto: user.motto || null, memberNo: user.member_no || null, residentNo: user.resident_no ?? user.member_no }
   });
 });
 

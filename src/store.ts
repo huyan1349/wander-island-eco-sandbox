@@ -61,7 +61,7 @@ export interface AuthUser {
   avatar: string;
   motto: string;
   visitorCount?: number;
-  memberNo?: number;
+  memberNo?: number; residentNo?: number;
 }
 
 export interface ToastItem {
@@ -110,6 +110,9 @@ interface GameState {
   // Visiting
   visitingIsland: VisitingIsland | null;
   setVisitingIsland: (island: VisitingIsland | null) => void;
+  isVisiting: boolean;
+  enterVisiting: (island: VisitingIsland) => void;
+  exitVisiting: () => void;
 
   // Unread
   unreadCount: number;
@@ -176,7 +179,10 @@ interface GameState {
   
   grassHealth: number; // 0-100
   setGrassHealth: (health: number) => void;
-  
+
+  awakening: number; // 0-100 岛屿苏醒度（主线脊柱：缓慢、只升，持续健康才涨；驱动后续生长/奇观/碎片/辞）
+  bumpAwakening: (delta: number) => void;
+
   deerCount: number;
   wolfCount: number;
   updateEcology: () => void;
@@ -308,6 +314,33 @@ export const useGameStore = create<GameState>((set, get) => ({
   // Visiting
   visitingIsland: null,
   setVisitingIsland: (island) => set({ visitingIsland: island }),
+  isVisiting: false,
+  enterVisiting: (island) => {
+    const st = get();
+    if (!st.isVisiting && st.islandId) st.saveGame();
+    const d = (island && island.data) || {};
+    set({
+      visitingIsland: island,
+      isVisiting: true,
+      screen: "PLAYING",
+      timeOfDay: 6,
+      weather: d.weather || "sunny",
+      assets: Array.isArray(d.assets) ? d.assets : [],
+      grassHealth: typeof d.grassHealth === "number" ? d.grassHealth : 100,
+      deerCount: d.deerCount || 0,
+      wolfCount: d.wolfCount || 0,
+      terrainData: {
+        ...st.terrainData,
+        positions: d.terrainPositions ? new Float32Array(d.terrainPositions) : null,
+        types: d.terrainTypes ? new Uint8Array(d.terrainTypes) : null
+      }
+    });
+  },
+  exitVisiting: () => {
+    const st = get();
+    set({ isVisiting: false, visitingIsland: null });
+    if (st.islandId) st.loadGame(st.islandId, false);
+  },
 
   // Unread
   unreadCount: 0,
@@ -595,7 +628,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   
   grassHealth: 100,
   setGrassHealth: (health) => set({ grassHealth: health }),
-  
+
+  awakening: 0,
+  bumpAwakening: (delta) => set((s) => ({ awakening: Math.max(0, Math.min(100, s.awakening + delta)) })),
+
   deerCount: 0,
   wolfCount: 0,
   
@@ -686,8 +722,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     
     // Update Procedural Audio Env Mix
     AudioSystem.updateEcologyState(springs.length, windmills.length, state.weather);
-    
-    return { grassHealth: newHealth, assets: currentAssets, deerCount: dCount, wolfCount: wCount, ecoPoints: finalEP };
+
+    // 苏醒度（主线脊柱）：持续健康 + 有水有树才缓慢累积；生态崩溃时轻微回落
+    let newAwakening = state.awakening;
+    if (newHealth > 80 && springs.length > 0 && trees.length > 0) newAwakening += 0.05;
+    else if (newHealth < 20) newAwakening -= 0.02;
+    newAwakening = Math.max(0, Math.min(100, newAwakening));
+
+    return { grassHealth: newHealth, assets: currentAssets, deerCount: dCount, wolfCount: wCount, ecoPoints: finalEP, awakening: newAwakening };
   }),
 
   terrainData: {
@@ -797,6 +839,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         playerXP: state.playerXP,
         playerLevel: state.playerLevel,
         ecoPoints: state.ecoPoints,
+        awakening: state.awakening,
         unlockedAssets: state.unlockedAssets,
         stats: state.stats,
         terrainPositions: state.terrainData.positions ? Array.from(state.terrainData.positions) : null,
@@ -845,6 +888,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           playerXP: getGlobalXP(),          // 全局等级：加载任何小岛都保持联合进度，不被单岛存档覆盖
           playerLevel: levelFromXP(getGlobalXP()),
           ecoPoints: data.ecoPoints !== undefined ? data.ecoPoints : 200,
+          awakening: data.awakening ?? 0,
           unlockedAssets: Array.from(new Set([
             ...(data.unlockedAssets || []),
             'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'terrainUp', 'terrainDown', 'eraser',
@@ -873,6 +917,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       weather: 'sunny',
       grassHealth: 100,
       ecoPoints: 200,
+      awakening: 0,
       stats: { playtime: 0, itemsPlaced: 0 },
       unlockedAssets: [
           'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'terrainUp', 'terrainDown', 'eraser',
