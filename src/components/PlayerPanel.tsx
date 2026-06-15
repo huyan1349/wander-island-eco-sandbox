@@ -67,6 +67,24 @@ export const PlayerPanel: React.FC = () => {
     }
   }, [isOpen, panelInitialTab, setPanelInitialTab]);
 
+  // 辞头像点击时，自动定位到社交→聊天→辞
+  const panelInitialSocialTab = useGameStore(state => state.panelInitialSocialTab);
+  const setPanelInitialSocialTab = useGameStore(state => state.setPanelInitialSocialTab);
+  useEffect(() => {
+    if (isOpen && panelInitialSocialTab && activeTab === 'social') {
+      setActiveSocialTab(panelInitialSocialTab as SocialTab);
+      setPanelInitialSocialTab(null);
+      // 如果定位到 chat，自动选择辞作为聊天对象
+      if (panelInitialSocialTab === 'chat') {
+        const CI_USER_ID = '00000000-0000-0000-0000-000000000001';
+        const ciFriend = friends.find((f: any) => f.id === CI_USER_ID);
+        if (ciFriend) {
+          handleOpenChat(ciFriend);
+        }
+      }
+    }
+  }, [isOpen, panelInitialSocialTab, activeTab]);
+
   // 居民证数据：优先持久化，缺失则从账号/存档回退
   const residentCard = (() => {
     try { const v = localStorage.getItem('resident_card'); if (v) return JSON.parse(v); } catch { /* ignore */ }

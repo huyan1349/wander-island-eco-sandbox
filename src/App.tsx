@@ -48,8 +48,6 @@ import {
   Trash2,
   Settings,
   Hammer,
-  Bot,
-  Sparkles,
   Lock,
   Box,
   Columns,
@@ -173,57 +171,6 @@ export default function App() {
   const serverIslandMap = useGameStore(state => state.serverIslandMap);
   const setServerIslandMap = useGameStore(state => state.setServerIslandMap);
   const islandId = useGameStore(state => state.islandId);
-
-  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
-  const [userInput, setUserInput] = useState("");
-
-  const fetchAiNarration = async () => {
-    if (isGeneratingAi) return;
-    setIsGeneratingAi(true);
-    const messageToSend = userInput;
-    setUserInput("");
-    
-    try {
-      // 注入辞的好感等级和记忆摘要
-      const ciState = useGameStore.getState().ci;
-      const affinityLevel = ciState.affinity >= 61 ? 'close' : ciState.affinity >= 21 ? 'familiar' : 'stranger';
-      const memorySummary = ciState.memory.slice(-5).join('；');
-
-      const response = await fetch('/api/generate-event', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-           timeOfDay,
-           weather,
-           grassHealth,
-           deerCount,
-           wolfCount,
-           assetsCount: assetCount,
-           userMessage: messageToSend,
-           affinityLevel,
-           memorySummary,
-           islandName: useGameStore.getState().islandName,
-           season,
-        })
-      });
-      if (response.ok) {
-         const data = await response.json();
-         setAiNarration(data.narration);
-         // 同时让辞在游戏内冒泡
-         if (data.narration) {
-           useGameStore.getState().ciSay(data.narration);
-         }
-      }
-    } catch (e) {
-      console.error("Failed to fetch AI narration:", e);
-      // 前端兜底：API 失败时使用本地文案
-      const { pickLine, IDLE_LINES } = await import('./game/ci/lines');
-      const fallbackLine = pickLine(IDLE_LINES);
-      setAiNarration(fallbackLine);
-      useGameStore.getState().ciSay(fallbackLine);
-    }
-    setIsGeneratingAi(false);
-  };
 
   // Audio init moved after appLoaded declaration
 
@@ -1125,37 +1072,6 @@ export default function App() {
           </div>
         )}
 
-        {/* AI Narration Float */}
-        {aiNarration && (
-          <div className="hand-drawn-panel p-4 max-w-xs pointer-events-auto mt-4 animate-in slide-in-from-right-4 fade-in">
-             <div className="flex items-center gap-2 mb-2">
-                <Bot size={16} className="text-indigo-600" />
-                <span className="text-xs font-black tracking-widest uppercase text-indigo-700">Island Spirit</span>
-             </div>
-             <p className="text-sm font-light text-slate-800 leading-relaxed italic">"{aiNarration}"</p>
-          </div>
-        )}
-
-        <div className="pointer-events-auto mt-auto flex justify-end">
-            <div className="relative group flex items-center mt-2">
-             <input 
-               type="text" 
-               value={userInput}
-               onChange={(e) => setUserInput(e.target.value)}
-               onKeyDown={(e) => { if (e.key === 'Enter') fetchAiNarration(); }}
-               placeholder="Ask the spirit..." 
-               className="w-0 group-hover:w-48 focus:w-48 transition-all duration-500 hand-drawn-panel px-0 group-hover:px-4 focus:px-4 py-2 text-sm text-slate-800 placeholder:text-slate-400 outline-none"
-             />
-             <button 
-               onClick={fetchAiNarration}
-               disabled={isGeneratingAi}
-               className="hand-drawn-btn w-10 h-10 flex items-center justify-center -ml-4 z-10"
-               title="Talk to AI"
-             >
-                {isGeneratingAi ? <Sparkles size={16} className="animate-spin text-indigo-500" /> : <Sparkles size={16} className="text-indigo-500" />}
-             </button>
-           </div>
-        </div>
       </div>
       )}
       </>

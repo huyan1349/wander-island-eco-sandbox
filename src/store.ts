@@ -218,6 +218,8 @@ interface GameState {
   setOpenPlayerPanel: (v: boolean) => void;
   panelInitialTab: string | null; // 打开用户面板时定位到的标签
   setPanelInitialTab: (t: string | null) => void;
+  panelInitialSocialTab: string | null; // 打开社交标签时定位到的子标签（如 'chat'）
+  setPanelInitialSocialTab: (t: string | null) => void;
   
   aiNarration: string | null;
   setAiNarration: (narration: string | null) => void;
@@ -406,6 +408,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   setOpenPlayerPanel: (v) => set({ openPlayerPanel: v }),
   panelInitialTab: null,
   setPanelInitialTab: (t) => set({ panelInitialTab: t }),
+  panelInitialSocialTab: null,
+  setPanelInitialSocialTab: (t) => set({ panelInitialSocialTab: t }),
   
   aiNarration: null,
   setAiNarration: (narration) => set({ aiNarration: narration }),
