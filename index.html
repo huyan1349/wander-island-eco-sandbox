@@ -10,7 +10,11 @@
     <meta name="application-name" content="流浪岛" />
     <meta name="apple-mobile-web-app-title" content="流浪岛" />
     <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
+    <!-- Preload the splash LCP image so it loads in parallel with the JS bundle
+         instead of being discovered only after React renders the title screen. -->
+    <link rel="preload" as="image" href="/title/island-outline.svg" type="image/svg+xml" fetchpriority="high" />
     <title>Wander Island</title>
     <style>
       /* Critical: prevent FOUC and ensure fullscreen on mobile */
@@ -27,8 +31,8 @@
         const el = document.documentElement;
         if (!document.fullscreenElement && el.requestFullscreen) {
           el.requestFullscreen().catch(function(){});
-        } else if (!document.fullscreenElement && (el as any).webkitRequestFullscreen) {
-          (el as any).webkitRequestFullscreen();
+        } else if (!document.fullscreenElement && el.webkitRequestFullscreen) {
+          el.webkitRequestFullscreen();
         }
         document.removeEventListener('touchstart', tryFullscreen);
         document.removeEventListener('click', tryFullscreen);

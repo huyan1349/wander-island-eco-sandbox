@@ -19,6 +19,7 @@ import bottlesRouter from './routes/bottles.js';
 import adminRouter from './routes/admin.js';
 import giftsRouter from './routes/gifts.js';
 import boardRouter from './routes/board.js';
+import userStateRouter from './routes/userState.js';
 import { setupSocket } from './socket.js';
 import { buildCiSystemPrompt, pickFallback, pickWeatherLine, pickSeasonLine } from './ciLines.js';
 
@@ -76,6 +77,7 @@ app.use('/api/bottles', bottlesRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/gifts', giftsRouter);
 app.use('/api/board', boardRouter);
+app.use('/api/user-state', userStateRouter);
 
 // AI Narration endpoint (preserved from original server.js)
 const apiKey = process.env.DEEPSEEK_API_KEY;
@@ -147,7 +149,7 @@ app.get('/api/stats', (_req, res) => {
 
 // Serve built frontend in production
 const distPath = path.join(__dirname, '..', 'dist');
-app.use(express.static(distPath));
+app.use(express.static(distPath,{setHeaders:(res,p)=>{if(p.endsWith(".html")||p.endsWith("manifest.json"))res.setHeader("Cache-Control","no-cache");else if(p.includes("/assets/"))res.setHeader("Cache-Control","public, max-age=31536000, immutable");else res.setHeader("Cache-Control","public, max-age=86400")}}));
 
 // SPA fallback - serve index.html for all non-API routes
 app.get('*', (req, res, next) => {

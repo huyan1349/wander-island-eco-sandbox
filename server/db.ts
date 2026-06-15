@@ -17,7 +17,7 @@ export function getDb(): Database.Database {
     }
 
     db = new Database(DB_PATH);
-    db.pragma('journal_mode = WAL');
+    db.pragma('journal_mode = DELETE');
     db.pragma('foreign_keys = ON');
     initTables();
   }
@@ -135,6 +135,13 @@ function initTables() {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS idx_board_created ON board_posts(created_at);
+
+    CREATE TABLE IF NOT EXISTS user_state (
+      user_id TEXT PRIMARY KEY,
+      data TEXT DEFAULT '{}',
+      updated_at INTEGER DEFAULT (unixepoch()),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
   `);
 
   try {

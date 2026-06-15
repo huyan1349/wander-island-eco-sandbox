@@ -140,10 +140,13 @@ export const TitleScreen: React.FC = () => {
                                 <img
                                     src="/title/island-outline.svg"
                                     alt=""
+                                    width={56}
+                                    height={56}
+                                    fetchPriority="high"
                                     className="w-14 h-14 opacity-90 drop-shadow-xl"
                                 />
                                 <span className="text-slate-300 text-sm tracking-[0.4em] uppercase font-bold">A Game By</span>
-                                <h2 className="text-white text-4xl font-bold tracking-[0.3em] hand-drawn-title drop-shadow-lg">HUYAN</h2>
+                                <h2 className="text-white text-4xl font-bold tracking-[0.3em] hand-drawn-title drop-shadow-lg text-center">HUYAN<br />and XYH</h2>
                             </>
                         )}
                         {splashPhase === 'TITLE' && (
@@ -266,7 +269,7 @@ export const TitleScreen: React.FC = () => {
             <div className={`absolute bottom-6 right-8 flex items-end gap-4 pointer-events-auto transition-opacity duration-1000 delay-[1500ms] ${splashPhase === 'DONE' ? 'opacity-80' : 'opacity-0'}`}>
                 <div className="flex flex-col items-end gap-1.5">
                     <span className={`text-sm font-bold tracking-[0.2em] hand-drawn-title ${titleTheme === 'white' ? "text-white/60" : "text-slate-400/80"}`}>
-                        By HUYAN
+                        BY HUYAN<br />and XYH
                     </span>
                     <span className={`text-[10px] font-bold tracking-[0.25em] ${titleTheme === 'white' ? "text-white/60" : "text-slate-500"}`}>
                         © {new Date().getFullYear()} 启元开物
