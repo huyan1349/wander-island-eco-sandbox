@@ -33,7 +33,7 @@ export function serializeIsland() {
   const s = useGameStore.getState();
   return {
     format: 'wander-island',
-    version: 1,
+    version: 2,
     name: s.islandName,
     savedAt: Date.now(),
     timeOfDay: s.timeOfDay,

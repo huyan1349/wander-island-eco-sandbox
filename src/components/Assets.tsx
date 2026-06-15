@@ -2440,10 +2440,10 @@ export function SubIsland(props: any) {
     }
 
     if (selectedTool === 'terrainUp' || selectedTool === 'terrainDown') {
-      const { brushMode, brushSize, brushStrength } = useGameStore.getState();
+      const { brushMode, brushSize, brushStrength, brushFalloff } = useGameStore.getState();
       if (!isDragEvent) flattenTargetY.current = localPoint.y;
       const changed = applyTerrainBrush(posAttr.array as Float32Array, {
-        mode: brushMode, size: brushSize, strength: brushStrength, isDrag: isDragEvent,
+        mode: brushMode, size: brushSize, strength: brushStrength, falloff: brushFalloff, isDrag: isDragEvent,
         px: localPoint.x, pz: localPoint.z, targetY: flattenTargetY.current, minY: -3.0, maxY: 8.0,
       });
       if (changed) {

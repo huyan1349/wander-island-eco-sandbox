@@ -1,16 +1,27 @@
 # Handoff
 
 ## 已完成
-- **详细计划A · 岛灵辞AI重构** — 全部 6 个 STEP 已完成
-  - STEP 2: `src/lib/ciProgress.ts` 新建（好感度/记忆 localStorage 持久化）；`store.ts` 增加 `ci` 状态对象 + `ciSay`(8s节流) + `addAffinity` + `setCiBubble` + `clearCiBubble`
-  - STEP 1: `src/components/CiSpirit.tsx` 新建（左下角2D浮层+头像+手绘气泡+8s淡出+点击打开社交面板）；挂载到 `App.tsx` PLAYING 屏幕
-  - STEP 3: `src/hooks/useCiProactive.ts` 新建（进岛欢迎/生态事件/放置物件/重复操作建议/idle计时器/好感等级变化）；`src/game/ci/lines.ts` 新建（本地文案库，按事件类型分桶）
-  - STEP 4: 好感度分级(stranger/familiar/close) + 记忆系统 + 后端 prompt 注入好感等级和记忆摘要
-  - STEP 5: 环境存在感（天气/时间/季节变化触发，60s间隔限制）— 已在 useCiProactive 中实现
-  - STEP 6: `server/ciLines.ts` 新建（服务端本地文案库+动态prompt构建+兜底）；重构 `server/socket.ts` 辞聊天（注入好感/记忆/上下文）；重构 `server/index.ts` `/api/generate-event`（动态prompt+成本控制max_tokens:80+本地文案兜底）；前端 `fetchAiNarration` 注入 affinityLevel/memorySummary/islandName/season + 前端兜底
-  - 版本号更新至 v2.3.0 岛灵辞，设置页面增加辞的好感度面板
+- **详细计划B · 生态系统与动物重构** — 全部 3 个 STEP 已完成
+  - STEP 1: 新建 `src/game/creatures/locomotion.ts` 共享生物运动模块
+    - 恒定速度 seek + 到达减速(arrival)，替代 lerp 指数缓动
+    - 避障转向(steer)：前方不可走时 ±30°/±60° 偏转，不再急停
+    - 地形贴合 + 坡度对齐(pitch/roll from getTerrainGradient)
+    - 朝向平滑(限制最大转向角速度 rad/s)
+    - 腿部步频与位移挂钩(legPhase += displacement/stepLength)，不再滑步
+    - 自然游荡(航向角缓慢漂移/噪声)，替代随机远点目标
+    - Deer/Wolf 的 useFrame 移动段替换为 stepCreature 调用
+  - STEP 2: 动物建模升级(路线B: 纯改程序模型)
+    - Deer: 拉长躯干+浅色腹部+颈部+详细头部(吻/眼/耳)+分叉鹿角+尾+蹄
+    - Wolf: 流线躯干+浅色腹部+宽胸+详细头部(长吻/鼻/琥珀眼/尖耳+内耳)+双段蓬尾+爪
+    - FishSchool: 橙白纺锤体(sphereGeometry)+鱼腹+飘尾+背鳍+眼，boids群游(分离/对齐/聚合)，夜间生物发光
+  - STEP 3: 行为与生态打磨
+    - Deer: drink状态(检测spring/pond)+鹿群cohesion(远靠近离)+昼夜节律(夜里idle)+识别所有树种
+    - Wolf: 狼群分散(太近时互相远离)+昼夜节律(夜里更活跃巡逻范围25)+pack center tracking
+  - 版本号更新至 v2.1.0，存档格式 version: 2
   - `vite build` 通过
 
 ## 未完成
 - tsc 有 2 个预存错误（BrushOptions 缺少 falloff 属性），非本次修改引入
-- 辞的 3D 漂浮小灵形象（文档提到后续可升级为 drei `<Html>`/sprite，当前为 2D 浮层）
+- STEP 2 路线A(glTF rigged 模型)未实施，当前为路线B(程序模型)，后续可升级
+- 海鸥飞行噪声手感统一(可选，文档标注)
+- 与呼应系统联动(种树→鹿循迹走入)部分实现(cohesion已让鹿靠近树)，完整生态链规则待后续
