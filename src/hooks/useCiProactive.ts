@@ -103,20 +103,8 @@ export function useCiProactive() {
           recentPlacementsRef.current = recentPlacementsRef.current.slice(-10);
         }
 
-        // 检测重复操作（5s 内在同一位置放/删 3+ 次）
-        const now = Date.now();
-        const recentSamePos = recentPlacementsRef.current.filter(
-          p => now - p.at < 5000 &&
-            Math.abs(p.position.x - newAsset.position.x) < 2 &&
-            Math.abs(p.position.z - newAsset.position.z) < 2
-        );
-        if (recentSamePos.length >= 3) {
-          ciSay(pickLine(REPEAT_SUGGESTION_LINES));
-        } else {
-          // 正常放置呼应
-          ciSay(getPlacementLine(newAsset.type));
-          addAffinity(1);
-        }
+        // 放置只默默加好感+记忆，不再每放一个物件就冒一句话（太吵、像没必要的预置回答）
+        addAffinity(1);
 
         // 记忆：记录玩家常做的事
         addCiMemoryEntry({
@@ -176,10 +164,7 @@ export function useCiProactive() {
 
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     idleTimerRef.current = setTimeout(() => {
-      const idle = Date.now() - lastActivityRef.current;
-      if (idle >= 90000 && useGameStore.getState().screen === 'PLAYING') {
-        ciSay(pickLine(IDLE_LINES));
-      }
+      // idle 不再自言自语（删掉没必要的预置陪伴句）
     }, 90000);
 
     return () => {
