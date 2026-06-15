@@ -1310,6 +1310,7 @@ export function Balloon(props: any) {
   const plankRefs = useRef<(THREE.Mesh | null)[]>([]);
   const balloonMatShaders = useRef<any[]>([]);
   const ropeMatShader = useRef<any>(null);
+  const driftAngle = useRef(0);
 
   const balloonOnBeforeCompile = useMemo(() => (shader: any) => {
     shader.uniforms.time = { value: 0 };
@@ -1360,9 +1361,17 @@ export function Balloon(props: any) {
   }, [props.customState]);
   const duo = [mainColor, '#f8fafc'];
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     const t = state.clock.elapsedTime;
     const g = swayRef.current;
+    const weather = useGameStore.getState().weather;
+
+    // Slow wind drift: figure-8 pattern around home position
+    const driftSpeed = weather === 'rainy' ? 0.1 : 0.07;
+    driftAngle.current += driftSpeed * delta;
+    const driftRadius = 3;
+    const driftX = Math.cos(driftAngle.current) * driftRadius;
+    const driftZ = Math.sin(driftAngle.current * 0.7) * driftRadius;
 
     if (balloonMatShaders.current.length > 0) {
       const waveInt = useGameStore.getState().waveIntensity || 1.0;
@@ -1378,16 +1387,20 @@ export function Balloon(props: any) {
     if (!g) return;
 
     if (mode === 'ladder') {
-      // Held by the ladder: gentle bob, slight lean and slow turn
-      g.position.set(Math.sin(t * 0.5) * 0.15, H + Math.sin(t * 0.7) * 0.3, Math.cos(t * 0.45) * 0.15);
+      // Held by the ladder: gentle bob, slight lean and slow turn + drift
+      g.position.set(
+        driftX + Math.sin(t * 0.5) * 0.15,
+        H + Math.sin(t * 0.7) * 0.3,
+        driftZ + Math.cos(t * 0.45) * 0.15
+      );
       g.rotation.z = Math.sin(t * 0.5) * 0.03;
       g.rotation.y = Math.sin(t * 0.15) * 0.15;
     } else {
       const ax = mode === 'bridge' ? 1.2 : 1.8;
       g.position.set(
-        Math.sin(t * 0.31) * ax,
+        driftX + Math.sin(t * 0.31) * ax,
         H + Math.sin(t * 0.53) * 0.9,
-        Math.cos(t * 0.27) * ax
+        driftZ + Math.cos(t * 0.27) * ax
       );
       g.rotation.y = Math.sin(t * 0.2) * 0.3;
       g.rotation.z = Math.sin(t * 0.37) * 0.04;
