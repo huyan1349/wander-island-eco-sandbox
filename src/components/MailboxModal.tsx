@@ -555,14 +555,13 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
                 <TutorialGuideContent />
               ) : isDeepseekAnnouncement(selectedMail) ? (
                 <div className="relative">
+                  <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedMail.content}</p>
                   <img
                     src="/mail-illustration.png"
-                    alt="辞升级了"
-                    className="w-32 h-32 object-contain rounded-lg float-right ml-3 mb-1"
-                    style={{ mixBlendMode: 'multiply', opacity: 0.92 }}
+                    alt=""
+                    className="absolute bottom-0 right-0 w-28 h-28 object-contain pointer-events-none select-none"
+                    style={{ mixBlendMode: 'multiply', opacity: 0.85, filter: 'sepia(0.15) brightness(1.02)' }}
                   />
-                  <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedMail.content}</p>
-                  <div className="clear-both" />
                 </div>
               ) : (
                 <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedMail.content}</p>
