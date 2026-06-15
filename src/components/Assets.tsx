@@ -3789,8 +3789,26 @@ export function Observatory(props: any) {
 
 export function RuinsArch(props: any) {
   const ref = usePopIn(props.scale || 1.3);
+  // 破水而出：customState='rising:<ts>' 时，从水下 5 单位 easeOut 缓缓升起到位
+  const riseRef = useRef<number | null>(null);
+  const isRising = String(props.customState || '').startsWith('rising');
+  useEffect(() => {
+    const cs = String(props.customState || '');
+    if (cs.startsWith('rising')) {
+      const t = parseInt(cs.split(':')[1] || '', 10);
+      riseRef.current = Number.isFinite(t) ? t : Date.now();
+    } else riseRef.current = null;
+  }, [props.customState]);
+  useFrame(() => {
+    if (!ref.current || riseRef.current == null) return;
+    const RISE = 3200, DEPTH = 5;
+    const p = Math.min(1, (Date.now() - riseRef.current) / RISE);
+    const e = 1 - Math.pow(1 - p, 3); // easeOutCubic
+    ref.current.position.y = props.position.y + (e - 1) * DEPTH;
+    if (p >= 1) riseRef.current = null;
+  });
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
+    <group position={[props.position.x, isRising ? props.position.y - 5 : props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
       {/* Massive Left Pillar */}
       <mesh position={[-1.2, 1.5, 0]} rotation={[0, 0.1, 0.05]} castShadow receiveShadow>
         <boxGeometry args={[0.8, 3.0, 0.8]} />
