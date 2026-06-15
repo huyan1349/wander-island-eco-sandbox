@@ -5,7 +5,8 @@ import { AudioSystem } from '../lib/audio';
 import { THEMES } from './OnboardingFlow';
 import { GiftModal } from './GiftModal';
 import { captureScreenshot } from '../utils/islandIO';
-import { X, Globe, Gift, Sparkles, User, Image as ImageIcon } from 'lucide-react';
+import { X, Globe, Gift, Sparkles, User, Image as ImageIcon, Award, Lock } from 'lucide-react';
+import { ACHIEVEMENTS, getUnlocked } from '../lib/achievements';
 
 // 小岛面板：概况 + 居民证(可重复查看) + 明信片导出 + 送礼物
 export const IslandHubModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
@@ -15,7 +16,8 @@ export const IslandHubModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
   const playerLevel = useGameStore(s => s.playerLevel);
   const stats = useGameStore(s => s.stats);
 
-  const [tab, setTab] = useState<'overview' | 'card'>('overview');
+  const [tab, setTab] = useState<'overview' | 'card' | 'ach'>('overview');
+  const unlockedAch = getUnlocked();
   const [flipped, setFlipped] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [showGift, setShowGift] = useState(false);
@@ -72,6 +74,7 @@ export const IslandHubModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
         <div className="flex gap-2 px-6 pt-4">
           <button onClick={() => { AudioSystem.playTap(); setTab('overview'); }} className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${tab === 'overview' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>小岛概况</button>
           <button onClick={() => { AudioSystem.playTap(); setTab('card'); setFlipped(false); }} className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${tab === 'card' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>居民证</button>
+          <button onClick={() => { AudioSystem.playTap(); setTab('ach'); }} className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${tab === 'ach' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>成就 {unlockedAch.size}/{ACHIEVEMENTS.length}</button>
         </div>
 
         <div className="p-6 overflow-y-auto custom-scrollbar">
@@ -98,7 +101,7 @@ export const IslandHubModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
                 </button>
               </div>
             </div>
-          ) : (
+          ) : tab === 'card' ? (
             <div className="flex flex-col items-center gap-4" style={{ perspective: 1200 }}>
               <div onClick={() => { AudioSystem.playTap(); setFlipped(f => !f); }} className="relative w-[330px] h-[208px] cursor-pointer" style={{ transformStyle: 'preserve-3d', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0)', transition: 'transform .6s cubic-bezier(.4,.2,.2,1)' }}>
                 {/* 正面 */}
@@ -132,6 +135,23 @@ export const IslandHubModal: React.FC<{ onClose: () => void }> = ({ onClose }) =
                 </div>
               </div>
               <p className="text-slate-400 text-xs">点击卡片 · 翻面</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-2.5">
+              {ACHIEVEMENTS.map(a => {
+                const got = unlockedAch.has(a.id);
+                return (
+                  <div key={a.id} className={`flex items-center gap-3 rounded-xl border-2 p-3 transition-colors ${got ? 'border-amber-300 bg-amber-50/70' : 'border-slate-200 bg-white/50'}`}>
+                    <div className={`w-10 h-10 rounded-full border-2 border-slate-800 flex items-center justify-center shrink-0 ${got ? 'bg-gradient-to-tr from-amber-300 to-yellow-500' : 'bg-slate-200'}`}>
+                      {got ? <Award size={20} className="text-slate-900" /> : <Lock size={16} className="text-slate-400" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className={`text-sm font-bold ${got ? 'text-slate-800' : 'text-slate-400'}`}>{a.title}</p>
+                      <p className="text-xs text-slate-400">{a.desc}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

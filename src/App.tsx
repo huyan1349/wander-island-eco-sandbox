@@ -83,6 +83,7 @@ import { OnboardingFlow } from "./components/OnboardingFlow";
 import { WelcomeGuide } from "./components/WelcomeGuide";
 import { SoundLayer } from "./components/SoundLayer";
 import { SignEditorModal } from "./components/SignEditorModal";
+import { AchievementSystem } from "./components/AchievementSystem";
 import { HermitOnline } from "./components/HermitOnline";
 import { MailboxModal } from "./components/MailboxModal";
 import { emitHermitRemove } from "./lib/socket";
@@ -1093,6 +1094,7 @@ export default function App() {
       {screen === 'PLAYING' && <Toast />}
       {screen === 'PLAYING' && showWelcomeGuide && <WelcomeGuide />}
       {screen === 'PLAYING' && <SignEditorModal />}
+      {screen === 'PLAYING' && <AchievementSystem />}
       {screen === 'PLAYING' && online && <HermitOnline />}
       {screen === 'PLAYING' && mailboxOpen && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/55 backdrop-blur-sm" onClick={() => setMailboxOpen(false)}>
