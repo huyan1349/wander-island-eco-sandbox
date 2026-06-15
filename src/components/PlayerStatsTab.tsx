@@ -29,7 +29,7 @@ interface PlayerStatsTabProps {
 export const PlayerStatsTab: React.FC<PlayerStatsTabProps> = ({ handleAvatarUpload, setActiveTab }) => {
   const {
     playerName, setPlayerName, playerLevel, playerXP, playerAvatar,
-    islandName, stats, ecoPoints, deerCount, wolfCount,
+    islandName, stats, ecoPoints, deerCount, wolfCount, awakening,
   } = useGameStore();
   const authUser = useGameStore(state => state.authUser);
   const setAuthUser = useGameStore(state => state.setAuthUser);
@@ -111,6 +111,24 @@ export const PlayerStatsTab: React.FC<PlayerStatsTabProps> = ({ handleAvatarUplo
           </div>
         </div>
       </div>
+
+      {/* 岛屿苏醒度 —— 主线脊柱 */}
+      {(() => {
+        const aw = Math.round(awakening);
+        const tier = aw >= 90 ? '和声' : aw >= 70 ? '清醒' : aw >= 45 ? '苏醒' : aw >= 20 ? '微醒' : '沉睡';
+        return (
+          <div className="hand-drawn-panel p-5 mb-8 bg-gradient-to-br from-amber-100/40 to-transparent" style={{ borderWidth: '2px' }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700"><Star size={14} /> 岛屿苏醒度 · {tier}</span>
+              <span className="text-sm font-black text-amber-700">{aw} / 100</span>
+            </div>
+            <div className="w-full h-3.5 bg-black/10 rounded-full overflow-hidden shadow-inner ring-1 ring-amber-300/50">
+              <div className="h-full bg-gradient-to-r from-amber-400 via-amber-300 to-emerald-300 transition-all duration-700 rounded-full" style={{ width: `${aw}%` }} />
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1.5">持续照料这座岛，让它一点点醒来 · 苏醒越深，辞的话越完整、回声越清晰</p>
+          </div>
+        );
+      })()}
 
       {/* 数据网格 */}
       <div className="grid grid-cols-3 gap-4 mb-8">

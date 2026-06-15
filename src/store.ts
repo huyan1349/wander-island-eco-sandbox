@@ -179,7 +179,10 @@ interface GameState {
   
   grassHealth: number; // 0-100
   setGrassHealth: (health: number) => void;
-  
+
+  awakening: number; // 0-100 岛屿苏醒度（主线脊柱：缓慢、只升，持续健康才涨；驱动后续生长/奇观/碎片/辞）
+  bumpAwakening: (delta: number) => void;
+
   deerCount: number;
   wolfCount: number;
   updateEcology: () => void;
@@ -625,7 +628,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   
   grassHealth: 100,
   setGrassHealth: (health) => set({ grassHealth: health }),
-  
+
+  awakening: 0,
+  bumpAwakening: (delta) => set((s) => ({ awakening: Math.max(0, Math.min(100, s.awakening + delta)) })),
+
   deerCount: 0,
   wolfCount: 0,
   
@@ -716,8 +722,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     
     // Update Procedural Audio Env Mix
     AudioSystem.updateEcologyState(springs.length, windmills.length, state.weather);
-    
-    return { grassHealth: newHealth, assets: currentAssets, deerCount: dCount, wolfCount: wCount, ecoPoints: finalEP };
+
+    // 苏醒度（主线脊柱）：持续健康 + 有水有树才缓慢累积；生态崩溃时轻微回落
+    let newAwakening = state.awakening;
+    if (newHealth > 80 && springs.length > 0 && trees.length > 0) newAwakening += 0.05;
+    else if (newHealth < 20) newAwakening -= 0.02;
+    newAwakening = Math.max(0, Math.min(100, newAwakening));
+
+    return { grassHealth: newHealth, assets: currentAssets, deerCount: dCount, wolfCount: wCount, ecoPoints: finalEP, awakening: newAwakening };
   }),
 
   terrainData: {
@@ -827,6 +839,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         playerXP: state.playerXP,
         playerLevel: state.playerLevel,
         ecoPoints: state.ecoPoints,
+        awakening: state.awakening,
         unlockedAssets: state.unlockedAssets,
         stats: state.stats,
         terrainPositions: state.terrainData.positions ? Array.from(state.terrainData.positions) : null,
@@ -875,6 +888,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           playerXP: getGlobalXP(),          // 全局等级：加载任何小岛都保持联合进度，不被单岛存档覆盖
           playerLevel: levelFromXP(getGlobalXP()),
           ecoPoints: data.ecoPoints !== undefined ? data.ecoPoints : 200,
+          awakening: data.awakening ?? 0,
           unlockedAssets: Array.from(new Set([
             ...(data.unlockedAssets || []),
             'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'terrainUp', 'terrainDown', 'eraser',
@@ -903,6 +917,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       weather: 'sunny',
       grassHealth: 100,
       ecoPoints: 200,
+      awakening: 0,
       stats: { playtime: 0, itemsPlaced: 0 },
       unlockedAssets: [
           'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'terrainUp', 'terrainDown', 'eraser',
