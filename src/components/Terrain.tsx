@@ -596,18 +596,19 @@ export function Terrain() {
        if (!meshRef.current) return;
        const geometry = meshRef.current.geometry;
        const posAttr = geometry.attributes.position;
-       const v = new THREE.Vector3();
-       for (let i = 0; i < posAttr.count; i++) {
-         v.fromBufferAttribute(posAttr, i);
-         const dist = Math.sqrt((v.x - point.x) ** 2 + (v.z - point.z) ** 2);
-         if (dist < 1.5) { // brush size
-             types[i] = 1; // 1 = path
-         }
+       const { brushSize, brushStrength, brushFalloff } = useGameStore.getState();
+       const paintChanged = paintSurface(types, posAttr.array as Float32Array, {
+         mode: 'paint', size: 1.5, strength: brushStrength, falloff: brushFalloff,
+         isDrag: isDragEvent, px: point.x, pz: point.z, paintType: 1, // 1 = 小路
+       });
+       if (paintChanged) {
+         refreshTerrainColors();
+         if (!isDragEvent) useGameStore.getState().setTerrainData(posAttr.array as Float32Array, types, ISAND_SIZE, SEGMENTS);
        }
-       refreshTerrainColors();
        return;
     }
 
+    // ── 地形笔刷（隆起/挖低/找平/柔化/材质）──
     if (selectedTool === 'terrainUp' || selectedTool === 'terrainDown') {
        if (!meshRef.current) return;
        const geometry = meshRef.current.geometry;
@@ -616,7 +617,7 @@ export function Terrain() {
        if (!isDragEvent) flattenTargetY.current = point.y;
 
        if (brushMode === 'paint') {
-         // 地表材质笔刷：不改高度，改 types
+         // 材质笔刷：改 types 数组，不改高度
          const paintChanged = paintSurface(types, posAttr.array as Float32Array, {
            mode: 'paint', size: brushSize, strength: brushStrength, falloff: brushFalloff,
            isDrag: isDragEvent, px: point.x, pz: point.z, paintType: brushPaintType,
@@ -626,7 +627,7 @@ export function Terrain() {
            if (!isDragEvent) useGameStore.getState().setTerrainData(posAttr.array as Float32Array, types, ISAND_SIZE, SEGMENTS);
          }
        } else {
-         // 高度笔刷
+         // 高度笔刷：改 positions 数组（隆起/挖低/找平/柔化）
          const changed = applyTerrainBrush(posAttr.array as Float32Array, {
            mode: brushMode, size: brushSize, strength: brushStrength, falloff: brushFalloff,
            isDrag: isDragEvent, px: point.x, pz: point.z, targetY: flattenTargetY.current, minY: -3.0, maxY: 8.0,
@@ -636,7 +637,7 @@ export function Terrain() {
            geometry.computeVertexNormals();
            geometry.computeBoundingBox();
            geometry.computeBoundingSphere();
-           refreshTerrainColors();
+           refreshTerrainColors(); // 坡度自动贴材质
            if (!isDragEvent) useGameStore.getState().setTerrainData(posAttr.array as Float32Array, types, ISAND_SIZE, SEGMENTS);
          }
        }

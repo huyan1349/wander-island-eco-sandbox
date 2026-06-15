@@ -6,7 +6,7 @@ import { SpotLight, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
-import { applyTerrainBrush } from '../utils/terrainBrush';
+import { applyTerrainBrush, paintSurface } from '../utils/terrainBrush';
 import { getWaterHeight as getOceanHeight, getWaveAmplitude } from './Water';
 import {
   createLocomotionState,
@@ -2430,29 +2430,50 @@ export function SubIsland(props: any) {
     }
 
     if (selectedTool === 'pave') {
-      for (let i = 0; i < posAttr.count; i++) {
-        brushVertex.fromBufferAttribute(posAttr, i);
-        const dist = Math.sqrt((brushVertex.x - localPoint.x) ** 2 + (brushVertex.z - localPoint.z) ** 2);
-        if (dist < 1.5) typesRef.current[i] = 1;
+      if (!meshRef.current) return;
+      const geometry = meshRef.current.geometry;
+      const posAttr = geometry.attributes.position;
+      const { brushSize, brushStrength, brushFalloff } = useGameStore.getState();
+      const paintChanged = paintSurface(typesRef.current, posAttr.array as Float32Array, {
+        mode: 'paint', size: 1.5, strength: brushStrength, falloff: brushFalloff,
+        isDrag: isDragEvent, px: localPoint.x, pz: localPoint.z, paintType: 1, // 1 = 小路
+      });
+      if (paintChanged) {
+        refreshColors();
+        if (!isDragEvent) persistTerrain();
       }
-      refreshColors();
       return;
     }
 
+    // ── 地形笔刷（隆起/挖低/找平/柔化/材质）──
     if (selectedTool === 'terrainUp' || selectedTool === 'terrainDown') {
-      const { brushMode, brushSize, brushStrength, brushFalloff } = useGameStore.getState();
+      const { brushMode, brushSize, brushStrength, brushFalloff, brushPaintType } = useGameStore.getState();
       if (!isDragEvent) flattenTargetY.current = localPoint.y;
-      const changed = applyTerrainBrush(posAttr.array as Float32Array, {
-        mode: brushMode, size: brushSize, strength: brushStrength, falloff: brushFalloff, isDrag: isDragEvent,
-        px: localPoint.x, pz: localPoint.z, targetY: flattenTargetY.current, minY: -3.0, maxY: 8.0,
-      });
-      if (changed) {
-        posAttr.needsUpdate = true;
-        geometry.computeVertexNormals();
-        refreshColors();
-        // 同步回 positionsRef 和持久化
-        positionsRef.current = new Float32Array(posAttr.array);
-        if (!isDragEvent) persistTerrain();
+
+      if (brushMode === 'paint') {
+        // 材质笔刷：改 types 数组，不改高度
+        const paintChanged = paintSurface(typesRef.current, posAttr.array as Float32Array, {
+          mode: 'paint', size: brushSize, strength: brushStrength, falloff: brushFalloff,
+          isDrag: isDragEvent, px: localPoint.x, pz: localPoint.z, paintType: brushPaintType,
+        });
+        if (paintChanged) {
+          refreshColors();
+          positionsRef.current = new Float32Array(posAttr.array);
+          if (!isDragEvent) persistTerrain();
+        }
+      } else {
+        // 高度笔刷：改 positions 数组（隆起/挖低/找平/柔化）
+        const changed = applyTerrainBrush(posAttr.array as Float32Array, {
+          mode: brushMode, size: brushSize, strength: brushStrength, falloff: brushFalloff,
+          isDrag: isDragEvent, px: localPoint.x, pz: localPoint.z, targetY: flattenTargetY.current, minY: -3.0, maxY: 8.0,
+        });
+        if (changed) {
+          posAttr.needsUpdate = true;
+          geometry.computeVertexNormals();
+          refreshColors(); // 坡度自动贴材质
+          positionsRef.current = new Float32Array(posAttr.array);
+          if (!isDragEvent) persistTerrain();
+        }
       }
       return;
     }
