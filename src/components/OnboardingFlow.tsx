@@ -130,7 +130,7 @@ export const OnboardingFlow: React.FC = () => {
     setTimeout(async () => {
       createSaveSlot(finalIsland); // 内部 set screen=PLAYING + clearAll
       try {
-        await loadPresetIsland('/preset-demo.json?v=2'); // 填入默认教程岛内容
+        await loadPresetIsland('/preset-tutorial.json?v=1'); // 新手教程岛：稀疏沉睡岛，留给玩家亲手唤醒
         useGameStore.getState().saveGame();
       } catch (e) { console.error('教程岛载入失败', e); }
     }, 650);
