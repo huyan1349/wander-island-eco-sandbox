@@ -865,6 +865,7 @@ export default function App() {
                 return (
                   <button
                     key={t.id}
+                    id={`guide-tool-${t.id}`}
                     onClick={() => {
                       if (!isUnlocked) {
                          if (canAfford && confirm(`解锁 ${t.label} 需要 ${t.cost} EP？`)) {
@@ -956,6 +957,7 @@ export default function App() {
               return (
                 <button
                   key={c.name}
+                  id={`guide-cat-${c.name}`}
                   onClick={() => {
                     setActiveCategory(isActive ? null : c.name);
                     showTouchTooltip(c.name);
