@@ -149,10 +149,10 @@ export const CiSpirit: React.FC = () => {
 
       {/* 小聊天窗 */}
       {chatOpen && (
-        <div className="pointer-events-auto w-[300px] max-w-[calc(100vw-2.5rem)] h-[400px] max-h-[60vh] flex flex-col hand-drawn-panel shadow-xl animate-in slide-in-from-bottom-2 fade-in duration-300 overflow-hidden" style={{ borderWidth: '2px', borderRadius: '0' }}>
+        <div className="pointer-events-auto w-[300px] max-w-[calc(100vw-2.5rem)] h-[400px] max-h-[60vh] flex flex-col hand-drawn-panel shadow-xl animate-in slide-in-from-bottom-2 fade-in duration-300 overflow-hidden" style={{ borderWidth: '2px', borderRadius: '3px 7px 4px 6px / 6px 4px 7px 3px' }}>
           {/* 头部 */}
           <div className="flex items-center gap-2 px-3 py-2.5 border-b-2 border-slate-800 shrink-0">
-            <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-slate-800 shrink-0">
+            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-slate-800 shrink-0">
               <img src="/ci-avatar.png" alt="辞" className="w-full h-full object-cover" />
             </div>
             <div className="flex-1 min-w-0">
@@ -204,7 +204,7 @@ export const CiSpirit: React.FC = () => {
       {/* 辞头像（始终可见，呼吸动画） */}
       <div className="pointer-events-auto cursor-pointer group relative" onClick={toggleChat}>
         <div
-          className="relative w-11 h-11 rounded-full overflow-hidden border-2 border-slate-800 shadow-[3px_3px_0_rgba(15,23,42,0.3)] transition-all duration-300 hover:scale-110 hover:shadow-[4px_4px_0_rgba(15,23,42,0.4)]"
+          className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-slate-800 shadow-[3px_3px_0_rgba(15,23,42,0.3)] transition-all duration-300 hover:scale-110 hover:shadow-[4px_4px_0_rgba(15,23,42,0.4)]"
           style={{ animation: 'ciBreathe 3s ease-in-out infinite' }}
         >
           <img src="/ci-avatar.png" alt="辞" className="w-full h-full object-cover" />
