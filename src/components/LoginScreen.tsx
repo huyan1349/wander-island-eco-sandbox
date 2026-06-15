@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { connectSocket } from '../lib/socket';
+import { syncOnLogin } from '../lib/cloudSync';
 import { AudioSystem } from '../lib/audio';
 import { User, Lock, ArrowRight, Globe, ArrowLeft, Check, X } from 'lucide-react';
 
@@ -48,6 +49,10 @@ export const LoginScreen: React.FC = () => {
       api.setToken(result.token);
       connectSocket(result.token);
       setAuthUser(result.user);
+      // 登录后从云端同步岛屿与账号进度（新设备也能拿回数据）
+      if (mode === 'login') {
+        await syncOnLogin();
+      }
       // 新注册用户 → 引导设置个人信息 + 居民证；老用户直接进入存档
       setScreen(mode === 'register' ? 'ONBOARD' : 'SAVE_SELECT');
     } catch (err: any) {

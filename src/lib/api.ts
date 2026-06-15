@@ -109,6 +109,18 @@ class ApiClient {
     });
   }
 
+  // Account-level progress (cross-device sync)
+  async getUserState() {
+    return this.request<{ state: any; updatedAt: number }>('/api/user-state');
+  }
+
+  async putUserState(state: any) {
+    return this.request<{ success: boolean; updatedAt: number }>('/api/user-state', {
+      method: 'PUT',
+      body: JSON.stringify({ state })
+    });
+  }
+
   // Friends
   async getFriends() {
     return this.request<{ friends: any[] }>('/api/friends');

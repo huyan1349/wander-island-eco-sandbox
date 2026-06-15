@@ -61,7 +61,7 @@ export interface AuthUser {
   avatar: string;
   motto: string;
   visitorCount?: number;
-  memberNo?: number;
+  memberNo?: number; residentNo?: number;
 }
 
 export interface ToastItem {
@@ -110,6 +110,9 @@ interface GameState {
   // Visiting
   visitingIsland: VisitingIsland | null;
   setVisitingIsland: (island: VisitingIsland | null) => void;
+  isVisiting: boolean;
+  enterVisiting: (island: VisitingIsland) => void;
+  exitVisiting: () => void;
 
   // Unread
   unreadCount: number;
@@ -308,6 +311,33 @@ export const useGameStore = create<GameState>((set, get) => ({
   // Visiting
   visitingIsland: null,
   setVisitingIsland: (island) => set({ visitingIsland: island }),
+  isVisiting: false,
+  enterVisiting: (island) => {
+    const st = get();
+    if (!st.isVisiting && st.islandId) st.saveGame();
+    const d = (island && island.data) || {};
+    set({
+      visitingIsland: island,
+      isVisiting: true,
+      screen: "PLAYING",
+      timeOfDay: 6,
+      weather: d.weather || "sunny",
+      assets: Array.isArray(d.assets) ? d.assets : [],
+      grassHealth: typeof d.grassHealth === "number" ? d.grassHealth : 100,
+      deerCount: d.deerCount || 0,
+      wolfCount: d.wolfCount || 0,
+      terrainData: {
+        ...st.terrainData,
+        positions: d.terrainPositions ? new Float32Array(d.terrainPositions) : null,
+        types: d.terrainTypes ? new Uint8Array(d.terrainTypes) : null
+      }
+    });
+  },
+  exitVisiting: () => {
+    const st = get();
+    set({ isVisiting: false, visitingIsland: null });
+    if (st.islandId) st.loadGame(st.islandId, false);
+  },
 
   // Unread
   unreadCount: 0,

@@ -43,7 +43,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       setLink(l);
       setFlipped(false);
       setPetals(true);
-      QRCode.toDataURL(l, { margin: 1, width: 240, errorCorrectionLevel: 'L' }).then(setQrUrl).catch(() => setQrUrl(''));
+      QRCode.toDataURL(l, { margin: 1, width: 400, errorCorrectionLevel: 'M' }).then(setQrUrl).catch(() => setQrUrl(''));
     } finally {
       setBusy(false);
     }
@@ -148,7 +148,7 @@ export function GiftModal({ mode, giftId, fromName, islandName, onClose }: {
       im.src = src;
     });
     let qrData = '';
-    try { qrData = await QRCode.toDataURL(link, { margin: 1, width: 240, errorCorrectionLevel: 'L' }); } catch { /* 链接过长无法生成 */ }
+    try { qrData = await QRCode.toDataURL(link, { margin: 2, width: 360, errorCorrectionLevel: 'M' }); } catch { /* 链接过长无法生成 */ }
     const [bgImg, qrImg] = await Promise.all([
       shot ? loadImg(shot) : Promise.resolve(null),
       qrData ? loadImg(qrData) : Promise.resolve(null),
