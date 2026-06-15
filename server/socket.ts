@@ -7,19 +7,24 @@ import { buildCiSystemPrompt, pickFallback } from './ciLines.js';
 
 const CI_USER_ID = '00000000-0000-0000-0000-000000000001';
 
-// DeepSeek AI client for "辞"
-const apiKey = process.env.DEEPSEEK_API_KEY;
-const proxyUrl = process.env.http_proxy || process.env.HTTP_PROXY || process.env.all_proxy || process.env.ALL_PROXY || 'http://127.0.0.1:7897';
-
-let aiClient: OpenAI | null = null;
-if (apiKey) {
-  const agent = new HttpsProxyAgent(proxyUrl);
-  aiClient = new OpenAI({
+// DeepSeek AI client for "辞" —— 懒加载：必须在 dotenv.config() 之后才读 env，
+// 否则在 import 阶段读到的 DEEPSEEK_API_KEY 是 undefined（辞就永远不回复）。
+let _aiClient: OpenAI | null = null;
+let _aiInited = false;
+function getAiClient(): OpenAI | null {
+  if (_aiInited) return _aiClient;
+  _aiInited = true;
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) return null;
+  // 只有在确实配置了代理时才用代理（服务器上一般没有，硬编码 7897 会导致请求全失败）
+  const proxyUrl = process.env.http_proxy || process.env.HTTP_PROXY || process.env.all_proxy || process.env.ALL_PROXY;
+  _aiClient = new OpenAI({
     apiKey,
     baseURL: 'https://api.deepseek.com',
     // @ts-ignore
-    httpAgent: agent
+    ...(proxyUrl ? { httpAgent: new HttpsProxyAgent(proxyUrl) } : {}),
   });
+  return _aiClient;
 }
 
 
@@ -122,92 +127,72 @@ export function setupSocket(io: SocketServer) {
       // 发回给自己（确认）
       socket.emit('chat:message', message);
 
-      // ====== 如果对方是"辞"，自动AI回复 ======
-      if (data.toId === CI_USER_ID && aiClient) {
-        try {
-          // 获取最近几条聊天记录作为上下文（保留更长上下文，让辞记得整段对话）
-          const recentMessages: any[] = db.prepare(`
-            SELECT from_id, content FROM chat_messages
-            WHERE (from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?)
-            ORDER BY created_at DESC LIMIT 24
-          `).all(userId, CI_USER_ID, CI_USER_ID, userId);
+      // ====== 如果对方是"辞"，自动回复（无论 AI 是否可用，都保证有回复）======
+      if (data.toId === CI_USER_ID) {
+        let replyContent = '';
+        const client = getAiClient();
+        if (client) {
+          try {
+            // 获取最近几条聊天记录作为上下文（保留更长上下文，让辞记得整段对话）
+            const recentMessages: any[] = db.prepare(`
+              SELECT from_id, content FROM chat_messages
+              WHERE (from_id = ? AND to_id = ?) OR (from_id = ? AND to_id = ?)
+              ORDER BY created_at DESC LIMIT 24
+            `).all(userId, CI_USER_ID, CI_USER_ID, userId);
 
-          const chatHistory: { role: 'user' | 'assistant'; content: string }[] = recentMessages.reverse().map((m: any) => ({
-            role: (m.from_id === CI_USER_ID ? 'assistant' : 'user') as 'user' | 'assistant',
-            content: String(m.content)
-          }));
+            const chatHistory: { role: 'user' | 'assistant'; content: string }[] = recentMessages.reverse().map((m: any) => ({
+              role: (m.from_id === CI_USER_ID ? 'assistant' : 'user') as 'user' | 'assistant',
+              content: String(m.content)
+            }));
 
-          // 从聊天记录中提取记忆摘要（最近 5 条用户消息）
-          const userMessages = chatHistory.filter(m => m.role === 'user').slice(-5);
-          const memorySummary = userMessages.map(m => m.content).join('；');
+            const userMessages = chatHistory.filter(m => m.role === 'user').slice(-5);
+            const memorySummary = userMessages.map(m => m.content).join('；');
 
-          // 客户端传来的实时岛屿上下文（让辞"看见"当前的岛）
-          const ctx = data.ctx || {};
-          const weatherCn = ctx.weather === 'sunny' ? '晴天' : ctx.weather === 'rainy' ? '雨天' : ctx.weather === 'snowy' ? '雪天' : ctx.weather === 'cloudy' ? '多云' : ctx.weather === 'foggy' ? '浓雾' : ctx.weather === 'stormy' ? '雷暴' : ctx.weather;
-          // 好感等级优先用客户端账号级数据，回退到按聊天条数估算
-          const totalChats = recentMessages.length;
-          const affinityLevel = ctx.affinityLevel || (totalChats > 30 ? 'close' : totalChats > 10 ? 'familiar' : 'stranger');
-          const recentEvent = (ctx.assetsCount != null)
-            ? `岛上有${ctx.assetsCount}个物件、${ctx.deerCount ?? 0}只鹿、${ctx.wolfCount ?? 0}只狼，草地健康度${Math.floor(ctx.grassHealth ?? 0)}%`
-            : '岛友正在和你聊天';
+            const ctx = data.ctx || {};
+            const weatherCn = ctx.weather === 'sunny' ? '晴天' : ctx.weather === 'rainy' ? '雨天' : ctx.weather === 'snowy' ? '雪天' : ctx.weather === 'cloudy' ? '多云' : ctx.weather === 'foggy' ? '浓雾' : ctx.weather === 'stormy' ? '雷暴' : ctx.weather;
+            const totalChats = recentMessages.length;
+            const affinityLevel = ctx.affinityLevel || (totalChats > 30 ? 'close' : totalChats > 10 ? 'familiar' : 'stranger');
+            const recentEvent = (ctx.assetsCount != null)
+              ? `岛上有${ctx.assetsCount}个物件、${ctx.deerCount ?? 0}只鹿、${ctx.wolfCount ?? 0}只狼，草地健康度${Math.floor(ctx.grassHealth ?? 0)}%`
+              : '岛友正在和你聊天';
 
-          // 构建动态 system prompt（注入实时岛屿状态）
-          const systemPrompt = buildCiSystemPrompt({
-            islandName: ctx.islandName || undefined,
-            weather: weatherCn,
-            timeOfDay: ctx.timeOfDay,
-            season: ctx.season || undefined,
-            affinityLevel,
-            memorySummary: memorySummary || undefined,
-            recentEvent,
-          });
+            const systemPrompt = buildCiSystemPrompt({
+              islandName: ctx.islandName || undefined,
+              weather: weatherCn,
+              timeOfDay: ctx.timeOfDay,
+              season: ctx.season || undefined,
+              affinityLevel,
+              memorySummary: memorySummary || undefined,
+              recentEvent,
+            });
 
-          const response = await aiClient.chat.completions.create({
-            model: 'deepseek-chat',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              ...chatHistory
-            ],
-            max_tokens: 150
-          });
-
-          const aiContent = response.choices[0].message.content?.trim() || pickFallback();
-
-          const aiMsgId = crypto.randomUUID();
-          const aiNow = Math.floor(Date.now() / 1000);
-
-          const aiMessage = {
-            id: aiMsgId,
-            from_id: CI_USER_ID,
-            to_id: userId,
-            content: aiContent,
-            created_at: aiNow,
-            read: 0
-          };
-
-          // 保存AI回复到数据库
-          db.prepare('INSERT INTO chat_messages (id, from_id, to_id, content) VALUES (?, ?, ?, ?)')
-            .run(aiMsgId, CI_USER_ID, userId, aiContent);
-
-          // 发送给用户
-          io.to(`user:${userId}`).emit('chat:message', aiMessage);
-        } catch (err) {
-          console.error('[辞] AI回复失败:', err);
-          // 发送一条fallback消息（使用本地文案库兜底）
-          const fallbackId = crypto.randomUUID();
-          const fallbackContent = pickFallback();
-          const fallbackMsg = {
-            id: fallbackId,
-            from_id: CI_USER_ID,
-            to_id: userId,
-            content: fallbackContent,
-            created_at: Math.floor(Date.now() / 1000),
-            read: 0
-          };
-          db.prepare('INSERT INTO chat_messages (id, from_id, to_id, content) VALUES (?, ?, ?, ?)')
-            .run(fallbackId, CI_USER_ID, userId, fallbackContent);
-          io.to(`user:${userId}`).emit('chat:message', fallbackMsg);
+            const response = await client.chat.completions.create({
+              model: 'deepseek-chat',
+              messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
+              max_tokens: 150
+            });
+            replyContent = response.choices[0].message.content?.trim() || pickFallback();
+          } catch (err) {
+            console.error('[辞] AI回复失败，使用本地文案兜底:', err);
+            replyContent = pickFallback();
+          }
+        } else {
+          // 没有配置 AI（或 key 缺失）：用本地文案库兜底，保证辞一定有回应
+          replyContent = pickFallback();
         }
+
+        const aiMsgId = crypto.randomUUID();
+        const aiMessage = {
+          id: aiMsgId,
+          from_id: CI_USER_ID,
+          to_id: userId,
+          content: replyContent,
+          created_at: Math.floor(Date.now() / 1000),
+          read: 0
+        };
+        db.prepare('INSERT INTO chat_messages (id, from_id, to_id, content) VALUES (?, ?, ?, ?)')
+          .run(aiMsgId, CI_USER_ID, userId, replyContent);
+        io.to(`user:${userId}`).emit('chat:message', aiMessage);
       }
     });
 
