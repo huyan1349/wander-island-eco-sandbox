@@ -100,6 +100,7 @@ import { WeatherForecast } from "./components/ui/WeatherForecast";
 import { api } from "./lib/api";
 import { connectSocket, onUserOnline, onUserOffline, onFriendRequest, onIslandVisitData, onIslandVisitError } from "./lib/socket";
 import { AudioSystem } from "./lib/audio";
+import { BRUSH_MODES } from "./utils/terrainBrush";
 
 export default function App() {
   const screen = useGameStore(state => state.screen);
@@ -604,6 +605,10 @@ export default function App() {
     },
   ];
 
+  const brushMode = useGameStore(s => s.brushMode);
+  const brushSize = useGameStore(s => s.brushSize);
+  const brushStrength = useGameStore(s => s.brushStrength);
+
   const activeCatObj = categories.find(c => c.name === activeCategory);
 
   const handleFullscreen = () => {
@@ -836,8 +841,8 @@ export default function App() {
 
       {/* Liquid Glass Bottom Dock - Tools & Categories */}
       {!isImmersive && (
-        <div className={`absolute left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-3 pointer-events-none ${isTouch ? 'bottom-3 touch-safe-bottom' : 'bottom-8 gap-4'}`}>
-          
+        <div id="tool-dock" className={`absolute left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-3 pointer-events-none ${isTouch ? 'bottom-3 touch-safe-bottom' : 'bottom-8 gap-4'}`}>
+
           {/* Touch tooltip banner */}
           {touchTooltip && isTouch && (
             <div className="hand-drawn-panel px-4 py-2 text-sm font-bold text-slate-800 animate-in fade-in duration-200 pointer-events-none">
@@ -884,6 +889,8 @@ export default function App() {
                       else if (t.id === 'load') { useGameStore.getState().loadGame(); alert('岛屿已加载！'); }
                       else if (t.id === 'clear') { if (confirm('确定清空岛屿？')) clearAll(); }
                       else setSelectedTool(t.id as ToolType);
+                      if (t.id === 'terrainUp') useGameStore.getState().setBrushMode('raise');
+                      if (t.id === 'terrainDown') useGameStore.getState().setBrushMode('lower');
                       showTouchTooltip(t.label);
                     }}
                     className={`hand-drawn-btn relative flex items-center justify-center group shrink-0
@@ -1126,6 +1133,31 @@ export default function App() {
       </div>
       )}
       </>
+      )}
+      {screen === 'PLAYING' && (selectedTool === 'terrainUp' || selectedTool === 'terrainDown') && (
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-44 z-50 hand-drawn-panel px-4 py-3 flex items-center gap-4 pointer-events-auto">
+          <div className="flex gap-1.5">
+            {BRUSH_MODES.map(m => (
+              <button key={m.id}
+                onClick={() => { AudioSystem.playTap(); useGameStore.getState().setBrushMode(m.id); }}
+                className={`hand-drawn-btn px-3 py-1.5 text-xs font-bold ${brushMode === m.id ? 'hand-drawn-btn-active' : ''}`}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-slate-600">大小</span>
+            <input type="range" min={0.5} max={10} step={0.5} value={brushSize}
+              onChange={e => useGameStore.getState().setBrushSize(parseFloat(e.target.value))}
+              className="w-24 h-1 bg-slate-200 rounded-full appearance-none cursor-pointer" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-slate-600">力度</span>
+            <input type="range" min={0.05} max={1} step={0.05} value={brushStrength}
+              onChange={e => useGameStore.getState().setBrushStrength(parseFloat(e.target.value))}
+              className="w-24 h-1 bg-slate-200 rounded-full appearance-none cursor-pointer" />
+          </div>
+        </div>
       )}
       {screen === 'PLAYING' && <Toast />}
       {screen === 'PLAYING' && showWelcomeGuide && <WelcomeGuide />}

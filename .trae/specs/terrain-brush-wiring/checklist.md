@@ -1,0 +1,21 @@
+- [x] store.ts 中已导入 BrushMode 类型（在 `import { getGlobalXP` 下方）
+- [x] store.ts GameState 接口包含 brushMode: BrushMode、brushSize: number、brushStrength: number 及其 setter（在 `setMailboxOpen: (v: boolean) => void;` 下方）
+- [x] store.ts 实现中包含默认值（'raise', 3.5, 0.5）和 setter 实现（在 `setMailboxOpen: (v) => set({ mailboxOpen: v }),` 下方）
+- [x] Terrain.tsx 已导入 applyTerrainBrush
+- [x] Terrain.tsx 添加了 flattenTargetY ref（在 lastBrushPoint ref 下方）
+- [x] Terrain.tsx 中 applyBrush 内的 terrainUp/terrainDown 旧逻辑（带 posAttr.setY 的 if 块）已被 applyTerrainBrush 替换
+- [x] 替换后 refreshTerrainColors / types / ISAND_SIZE 仍可正常引用（未删多）
+- [x] Terrain.tsx 中 cursorScale 跟随 brushSize 而非固定 3.5（onPointerMove 内）
+- [x] Terrain.tsx 中 baseScale 跟随 brushSize 而非固定 3.5（useFrame 内）
+- [x] App.tsx 已导入 BRUSH_MODES
+- [x] App.tsx 组件内订阅了 brushMode、brushSize、brushStrength
+- [x] App.tsx 在地形工具激活时显示笔刷面板（5 个模式按钮 + 大小/力度滑块），位于 Toast 上方
+- [x] 笔刷面板使用 hand-drawn-btn / hand-drawn-panel 样式，符合游戏手绘美术风格
+- [x] 笔刷面板在非地形工具时隐藏
+- [x] 选择「隆起地形」工具时 brushMode 自动切为 'raise'
+- [x] 选择「降低地形」工具时 brushMode 自动切为 'lower'
+- [x] `npx tsc --noEmit` 零错误
+- [x] `npx vite build` 成功
+- [x] 未修改 src/index.css
+- [x] 未修改 terrainBrush.ts 核心算法文件
+- [x] 未修改除指定文件外的任何文件

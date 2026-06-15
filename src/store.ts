@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { AudioSystem } from './lib/audio';
 import { getGlobalXP, addGlobalXP, levelFromXP } from './lib/globalProgress';
+import type { BrushMode } from './utils/terrainBrush';
 import { FlourishCardId, FLOURISH_CARDS, STARTING_DECK, HAND_SIZE, SEASON_BASE_ECO, evaluateSymbiosis, shuffle } from './game/flourish';
 
 export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox';
@@ -202,6 +203,12 @@ interface GameState {
   setOnline: (v: boolean) => void;
   mailboxOpen: boolean; // 点击岛上信箱物件打开
   setMailboxOpen: (v: boolean) => void;
+  brushMode: BrushMode;
+  brushSize: number;
+  brushStrength: number;
+  setBrushMode: (m: BrushMode) => void;
+  setBrushSize: (n: number) => void;
+  setBrushStrength: (n: number) => void;
   openPlayerPanel: boolean; // 用户面板开关（头像 / 左边栏按钮共用）
   setOpenPlayerPanel: (v: boolean) => void;
   panelInitialTab: string | null; // 打开用户面板时定位到的标签
@@ -367,6 +374,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   setOnline: (v) => set({ online: v }),
   mailboxOpen: false,
   setMailboxOpen: (v) => set({ mailboxOpen: v }),
+  brushMode: 'raise',
+  brushSize: 3.5,
+  brushStrength: 0.5,
+  setBrushMode: (m) => set({ brushMode: m }),
+  setBrushSize: (n) => set({ brushSize: n }),
+  setBrushStrength: (n) => set({ brushStrength: n }),
   openPlayerPanel: false,
   setOpenPlayerPanel: (v) => set({ openPlayerPanel: v }),
   panelInitialTab: null,
