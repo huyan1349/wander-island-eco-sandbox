@@ -385,6 +385,8 @@ export function Terrain() {
   const pathColor = new THREE.Color('#adb5bd'); // Light stone path
   const rainyGrassTint = useMemo(() => new THREE.Color(biome === 'volcanic' ? '#000000' : '#344e41'), [biome]);
 
+  const SLOPE_THRESHOLD = 1.2; // 高度差阈值，超过此值视为陡坡
+
   const refreshTerrainColors = useCallback(() => {
      if (!meshRef.current) return;
      const geometry = meshRef.current.geometry;
@@ -411,10 +413,33 @@ export function Terrain() {
 
         const isPath = types[i] === 1 || types[i + 1] === 1 || types[i + 2] === 1;
 
+        // ── 坡度检测：陡坡自动变岩石 ──
+        let maxSlope = 0;
+        for (let v = 0; v < 3; v++) {
+          const vi = i + v;
+          const vy = posAttr.getY(vi);
+          const vx = posAttr.getX(vi);
+          const vz = posAttr.getZ(vi);
+          for (let v2 = v + 1; v2 < 3; v2++) {
+            const vi2 = i + v2;
+            const dy = Math.abs(vy - posAttr.getY(vi2));
+            const dx = Math.abs(vx - posAttr.getX(vi2));
+            const dz = Math.abs(vz - posAttr.getZ(vi2));
+            const horizDist = Math.sqrt(dx * dx + dz * dz);
+            if (horizDist > 0.001) {
+              const slope = dy / horizDist;
+              if (slope > maxSlope) maxSlope = slope;
+            }
+          }
+        }
+        const isSteep = maxSlope > SLOPE_THRESHOLD;
+
         if (isPath) {
              targetColor.copy(pathColor);
+        } else if (isSteep) {
+             targetColor.copy(new THREE.Color('#6c757d')); // 岩石
         } else {
-             if (faceHeight < 0.8) {
+             if (faceHeight < 1.0) {
                  targetColor.copy(sandColor);
              } else if (faceHeight < 4.5) {
                  // GRASS
