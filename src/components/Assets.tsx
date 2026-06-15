@@ -378,29 +378,158 @@ function Rock({ position, rotation, scale = 1 }: { position: any, rotation?: any
   );
 }
 
+// Shared natural water surface: a low-poly disc with gentle JS-driven vertex
+// ripples (no GLSL) + a soft expanding ring, so springs/ponds read as real,
+// moving water instead of a flat metal disc. depthWrite stays on so it never
+// clips through terrain.
+function WaterSurface({
+  radius = 1,
+  color = '#5fb4e6',
+  deep = '#2f6f9e',
+  opacity = 0.78,
+  segments = 28,
+}: { radius?: number; color?: string; deep?: string; opacity?: number; segments?: number }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
+  const matRef = useRef<THREE.MeshStandardMaterial>(null);
+  const base = useRef<Float32Array | null>(null);
+
+  // Snapshot the flat geometry once so ripples are applied relative to it.
+  useEffect(() => {
+    const geo = meshRef.current?.geometry as THREE.BufferGeometry | undefined;
+    if (geo) base.current = (geo.attributes.position.array as Float32Array).slice();
+  }, []);
+
+  useFrame((s) => {
+    const t = s.clock.elapsedTime;
+    const geo = meshRef.current?.geometry as THREE.BufferGeometry | undefined;
+    if (geo && base.current) {
+      const pos = geo.attributes.position as THREE.BufferAttribute;
+      const b = base.current;
+      const amp = radius * 0.025;
+      for (let i = 0; i < pos.count; i++) {
+        const x = b[i * 3];
+        const y = b[i * 3 + 1];
+        const r = Math.sqrt(x * x + y * y);
+        // CircleGeometry lies in its local XY plane (z is the surface normal).
+        const z = (Math.sin(r * 2.2 - t * 1.6) + Math.sin(x * 1.7 + t * 1.1)) * amp;
+        pos.setZ(i, z);
+      }
+      pos.needsUpdate = true;
+    }
+    if (matRef.current) matRef.current.opacity = opacity + Math.sin(t * 1.3) * 0.03;
+    if (ringRef.current) {
+      const p = (t * 0.35) % 1;
+      const sc = 0.15 + p * 0.95;
+      ringRef.current.scale.set(sc, sc, sc);
+      (ringRef.current.material as THREE.MeshBasicMaterial).opacity = (1 - p) * 0.22;
+    }
+  });
+
+  return (
+    <group rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh ref={meshRef} receiveShadow>
+        <circleGeometry args={[radius, segments]} />
+        <meshStandardMaterial
+          ref={matRef}
+          color={color}
+          emissive={deep}
+          emissiveIntensity={0.18}
+          transparent
+          opacity={opacity}
+          roughness={0.12}
+          metalness={0.55}
+          flatShading
+        />
+      </mesh>
+      {/* Soft concentric ripple ring radiating from the centre */}
+      <mesh ref={ringRef} position={[0, 0, 0.02]}>
+        <ringGeometry args={[radius * 0.82, radius * 0.98, 40]} />
+        <meshBasicMaterial color="#cdeeff" transparent opacity={0.2} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
 function Spring({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
   const groupRef = usePopIn(scale * 1.2);
 
+  // A handful of mossy rim stones at irregular angles around the pool.
+  const stones = useMemo(() => {
+    const arr: { a: number; r: number; s: number; c: string }[] = [];
+    const palette = ['#8a9aa6', '#76858f', '#9bab9a'];
+    const n = 9;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + (Math.sin(i * 2.3) * 0.25);
+      arr.push({ a, r: 1.15 + Math.sin(i * 1.7) * 0.1, s: 0.22 + Math.abs(Math.sin(i * 3.1)) * 0.18, c: palette[i % palette.length] });
+    }
+    return arr;
+  }, []);
+
   return (
     <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(rotation?.x || 0, rotation?.y || 0, rotation?.z || 0, 'YXZ')} scale={0} ref={groupRef}>
-       {/* Basin Base */}
-       <mesh position={[0, 0.1, 0]} castShadow receiveShadow>
-         <cylinderGeometry args={[1.2, 1.4, 0.3, 16]} />
-         <meshStandardMaterial color="#94a3b8" roughness={0.8} />
+       {/* Sunken earthen basin so the water reads as set into the ground */}
+       <mesh position={[0, -0.05, 0]} receiveShadow>
+         <cylinderGeometry args={[1.15, 0.95, 0.35, 24]} />
+         <meshStandardMaterial color="#5d4b3a" roughness={1} />
        </mesh>
-       {/* Water */}
-       <mesh position={[0, 0.25, 0]}>
-         <cylinderGeometry args={[1.0, 1.0, 0.05, 16]} />
-         <meshStandardMaterial color="#38bdf8" emissive="#0ea5e9" emissiveIntensity={0.5} transparent opacity={0.9} roughness={0.1} metalness={0.8} />
-       </mesh>
-       {/* Small fountain spout */}
-       <mesh position={[0, 0.3, 0]} castShadow>
-         <cylinderGeometry args={[0.2, 0.3, 0.4, 8]} />
-         <meshStandardMaterial color="#cbd5e1" roughness={0.7} />
-       </mesh>
-       {/* Decor stones */}
-       <mesh position={[0.8, 0.15, 0]} castShadow><dodecahedronGeometry args={[0.3, 1]} /><meshStandardMaterial color="#cbd5e1" roughness={0.9}/></mesh>
-       <mesh position={[-0.6, 0.15, 0.6]} castShadow><dodecahedronGeometry args={[0.2, 1]} /><meshStandardMaterial color="#94a3b8" roughness={0.9}/></mesh>
+       {/* Real rippling water surface, just below ground level */}
+       <group position={[0, 0.18, 0]}>
+         <WaterSurface radius={1.0} opacity={0.8} />
+       </group>
+       {/* Irregular mossy rim stones */}
+       {stones.map((st, i) => (
+         <mesh key={i} position={[Math.cos(st.a) * st.r, 0.12, Math.sin(st.a) * st.r]} rotation={[st.a, st.a * 1.3, 0]} castShadow>
+           <dodecahedronGeometry args={[st.s, 0]} />
+           <meshStandardMaterial color={st.c} roughness={0.95} flatShading />
+         </mesh>
+       ))}
+       {/* A few reeds at the water's edge */}
+       {[[-0.7, 0.5], [0.6, -0.6], [0.85, 0.35]].map(([rx, rz], i) => (
+         <mesh key={`reed${i}`} position={[rx, 0.45, rz]} rotation={[0.12 * (i - 1), 0, 0.1 * (i - 1)]} castShadow>
+           <coneGeometry args={[0.05, 0.9, 5]} />
+           <meshStandardMaterial color="#5a9b4a" roughness={0.8} flatShading />
+         </mesh>
+       ))}
+    </group>
+  );
+}
+
+// Inland water body — a lake/pond for filling valleys and shaping river runs.
+// Sits flat at its placement height; size scales with the placement scale.
+function Pond({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
+  const groupRef = usePopIn(scale);
+  const radius = 3.0 * (scale || 1);
+
+  // Pebble shore ring around the water for a soft, natural edge.
+  const pebbles = useMemo(() => {
+    const arr: { a: number; s: number; c: string }[] = [];
+    const palette = ['#b9a890', '#a89880', '#cdbda6', '#9fae9a'];
+    const n = 18;
+    for (let i = 0; i < n; i++) {
+      arr.push({ a: (i / n) * Math.PI * 2 + Math.sin(i * 1.9) * 0.18, s: 0.16 + Math.abs(Math.sin(i * 2.7)) * 0.16, c: palette[i % palette.length] });
+    }
+    return arr;
+  }, []);
+
+  return (
+    <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0, 'YXZ')} scale={0} ref={groupRef}>
+      {/* Dark basin floor giving the water visual depth */}
+      <mesh position={[0, -0.18, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[radius * 1.02, 36]} />
+        <meshStandardMaterial color="#21384a" roughness={1} />
+      </mesh>
+      {/* Rippling water surface */}
+      <group position={[0, 0.06, 0]}>
+        <WaterSurface radius={radius} color="#4ea7df" deep="#1f5f8c" opacity={0.82} segments={40} />
+      </group>
+      {/* Pebble shore */}
+      {pebbles.map((p, i) => (
+        <mesh key={i} position={[Math.cos(p.a) * radius * 1.0, 0.04, Math.sin(p.a) * radius * 1.0]} rotation={[p.a, p.a, 0]} castShadow>
+          <dodecahedronGeometry args={[p.s, 0]} />
+          <meshStandardMaterial color={p.c} roughness={0.95} flatShading />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -2097,7 +2226,7 @@ export function SubIsland(props: any) {
       let color = "#ffffff";
       if (['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'].includes(selectedTool)) color = "#4ade80";
       if (['terrainUp', 'terrainDown', 'rock', 'pave'].includes(selectedTool)) color = "#d1d5db";
-      if (selectedTool === 'spring') color = "#3b82f6";
+      if (selectedTool === 'spring' || selectedTool === 'pond') color = "#3b82f6";
       if (['deer', 'wolf'].includes(selectedTool)) color = "#fbbf24";
       if (selectedTool === 'eraser') color = "#ef4444";
       setClicks(prev => [...prev.slice(-9), { id: Date.now() + Math.random(), pos: worldPoint.clone(), color }]);
@@ -2131,7 +2260,9 @@ export function SubIsland(props: any) {
           const smoothInfluence = influence * influence * (3 - 2 * influence);
           const strength = isDragEvent ? 0.3 : 0.6;
           const delta = (selectedTool === 'terrainUp' ? strength : -strength) * smoothInfluence;
-          const newY = Math.max(-0.5, brushVertex.y + delta);
+          // Allow digging real valleys/canyons (not just shallow dips) so
+          // water bodies have somewhere to sit.
+          const newY = Math.max(-3.0, brushVertex.y + delta);
           if (newY !== brushVertex.y) {
             posAttr.setY(i, newY);
             positionsRef.current[i * 3 + 1] = newY;
@@ -2153,13 +2284,15 @@ export function SubIsland(props: any) {
       return;
     }
 
-    const landPlaceableTools = ['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'deer', 'wolf', 'spring', 'streetlamp', 'house', 'windmill', 'lighthouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
+    const landPlaceableTools = ['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'deer', 'wolf', 'spring', 'pond', 'streetlamp', 'house', 'windmill', 'lighthouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
     if (!isDragEvent && landPlaceableTools.includes(selectedTool)) {
-      if (placementY <= -0.5) return;
+      // Ponds may sit in dug-out valleys below sea level; everything else
+      // must rest on land.
+      if (placementY <= -0.5 && selectedTool !== 'pond') return;
 
       let rx = 0;
       let rz = 0;
-      const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island', 'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
+      const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island', 'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'pond', 'spring'];
       if (event && event.face && event.face.normal && !verticalTools.includes(selectedTool)) {
         const normal = event.face.normal.clone();
         const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
@@ -2294,7 +2427,7 @@ export function BridgePillar(props: any) {
             if (a.id === props.assetId || a.id === connectingPillarId) continue;
             // Ignore small or flat items (balloons float far above bridge
             // height — only a thin stake sits on the ground)
-            if (['platform', 'spring', 'pave', 'boat', 'bridge', 'rope', 'balloon', 'balloon_ladder', 'balloon_bridge'].includes(a.type)) continue;
+            if (['platform', 'spring', 'pond', 'pave', 'boat', 'bridge', 'rope', 'balloon', 'balloon_ladder', 'balloon_bridge'].includes(a.type)) continue;
             
             // Define obstacle center and radius based on type
             let height = 2;
@@ -3831,6 +3964,7 @@ export function Assets() {
           case 'dolphin': content = <Dolphin {...asset} />; break;
           case 'fish': content = <FishSchool {...asset} />; break;
           case 'spring': content = <Spring {...asset} />; break;
+          case 'pond': content = <Pond {...asset} />; break;
           case 'streetlamp': content = <Streetlamp {...asset} />; break;
           case 'house': content = <House {...asset} />; break;
           case 'windmill': content = <Windmill {...asset} />; break;

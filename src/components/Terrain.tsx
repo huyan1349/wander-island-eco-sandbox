@@ -584,7 +584,9 @@ export function Terrain() {
             // Lower intensity per-frame if dragging
             const strength = isDragEvent ? 0.3 : 0.6;
             const delta = (selectedTool === 'terrainUp' ? strength : -strength) * smoothInfluence;
-            const newY = Math.max(-0.5, v.y + delta);
+            // Allow digging real valleys/canyons (not just shallow dips) so
+            // water bodies have somewhere to sit.
+            const newY = Math.max(-3.0, v.y + delta);
             if (newY !== v.y) {
                 posAttr.setY(i, newY);
                 changed = true;
