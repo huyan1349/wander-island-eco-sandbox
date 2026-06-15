@@ -2711,12 +2711,29 @@ function Crop({ position, scale = 1, type, growthProgress = 0, plantedAt }: any)
   const isWheat = type === 'crop_wheat';
   const playtime = useGameStore(state => state.stats.playtime);
   const localProgress = getCropGrowthProgress({ growthProgress, plantedAt }, playtime);
-  
+
+  // Visual growth stages based on progress
+  let visualScale: number;
+  let color: string;
+
+  if (localProgress < 0.3) {
+    // Small green sprout
+    visualScale = 0.3;
+    color = '#4ade80';
+  } else if (localProgress < 0.7) {
+    // Medium green stalk/top
+    visualScale = 0.6;
+    color = '#22c55e';
+  } else {
+    // Full grown
+    visualScale = 1.0;
+    color = isWheat ? '#eab308' : '#22c55e';
+  }
+
   const h = isWheat ? 1.5 : 0.6;
-  const currentHeight = Math.max(0.1, h * localProgress);
-  const isGrown = localProgress > 0.8;
-  const color = isWheat ? (isGrown ? '#fcd34d' : '#84cc16') : (isGrown ? '#f97316' : '#4ade80');
-  
+  const currentHeight = Math.max(0.1, h * visualScale);
+  const isGrown = localProgress >= 0.7;
+
   return (
     <group position={[position.x, position.y, position.z]} scale={scale}>
        <group position={[0, currentHeight / 2, 0]}>
@@ -2732,7 +2749,7 @@ function Crop({ position, scale = 1, type, growthProgress = 0, plantedAt }: any)
                <meshStandardMaterial color={color} roughness={0.8} side={THREE.DoubleSide} transparent opacity={0.9} flatShading />
              </mesh>
              
-             {/* Carrot orange top */}
+             {/* Carrot orange root visible when grown */}
              {!isWheat && isGrown && (
                <mesh position={[0, -currentHeight/2 + 0.15, 0]} castShadow>
                  <coneGeometry args={[0.15, 0.4, 4]} />
@@ -2740,7 +2757,7 @@ function Crop({ position, scale = 1, type, growthProgress = 0, plantedAt }: any)
                </mesh>
              )}
              
-             {/* Wheat gold top */}
+             {/* Wheat golden head when grown */}
              {isWheat && isGrown && (
                <mesh position={[0, currentHeight/2 - 0.1, 0]} castShadow>
                  <octahedronGeometry args={[0.18, 0]} />
@@ -2846,6 +2863,55 @@ export function Tent(props: any) {
   );
 }
 
+function SparkParticles({ position }: { position: [number, number, number] }) {
+  const count = 8;
+  const meshRef = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+
+  const sparks = useMemo(() => {
+    return Array.from({ length: count }).map(() => ({
+      vx: (Math.random() - 0.5) * 0.8,
+      vy: 2 + Math.random() * 1,
+      vz: (Math.random() - 0.5) * 0.8,
+      life: Math.random(), // stagger initial life so they don't all reset together
+      maxLife: 0.8 + Math.random() * 0.4
+    }));
+  }, []);
+
+  useFrame((_, delta) => {
+    if (!meshRef.current) return;
+    for (let i = 0; i < count; i++) {
+      const s = sparks[i];
+      s.life += delta;
+      if (s.life >= s.maxLife) {
+        // Reset spark
+        s.life = 0;
+        s.vx = (Math.random() - 0.5) * 0.8;
+        s.vy = 2 + Math.random() * 1;
+        s.vz = (Math.random() - 0.5) * 0.8;
+        s.maxLife = 0.8 + Math.random() * 0.4;
+      }
+      const progress = s.life / s.maxLife;
+      const x = position[0] + s.vx * s.life;
+      const y = position[1] + s.vy * s.life - 2 * s.life * s.life; // gravity-like arc
+      const z = position[2] + s.vz * s.life;
+      const scale = 0.03 * (1 - progress); // fade out by shrinking
+      dummy.position.set(x, y, z);
+      dummy.scale.setScalar(Math.max(0.001, scale));
+      dummy.updateMatrix();
+      meshRef.current.setMatrixAt(i, dummy.matrix);
+    }
+    meshRef.current.instanceMatrix.needsUpdate = true;
+  });
+
+  return (
+    <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
+      <sphereGeometry args={[1, 4, 4]} />
+      <meshStandardMaterial color="#f97316" emissive="#f97316" emissiveIntensity={2} transparent opacity={0.9} />
+    </instancedMesh>
+  );
+}
+
 export function Campfire(props: any) {
   const ref = usePopIn(props.scale || 1);
   const fireGroupRef = useRef<any>(null);
@@ -2928,6 +2994,9 @@ export function Campfire(props: any) {
 
       {/* Fire Particles */}
       <ParticleBurst position={new THREE.Vector3(0, 0.5, 0)} color="#fcd34d" />
+
+      {/* Spark Particles */}
+      <SparkParticles position={[0, 0.5, 0]} />
 
       {/* Light Source */}
       <pointLight ref={lightRef} color="#fbbf24" distance={8} decay={2} castShadow intensity={2.5} position={[0, 0.8, 0]} />
@@ -3165,13 +3234,65 @@ export function Bench(props: any) {
 export function SpiritTree(props: any) {
   const ref = usePopIn(props.scale || 1.5);
   const leavesRef = useRef<any>(null);
-  
+  const particleMeshRef = useRef<THREE.InstancedMesh>(null);
+  const grassHealth = useGameStore(state => state.grassHealth);
+  const particleCount = 20;
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+
+  const particles = useMemo(() => {
+    return Array.from({ length: particleCount }).map(() => ({
+      angle: Math.random() * Math.PI * 2,
+      radius: 0.8 + Math.random() * 2.2,
+      baseY: 2.5 + Math.random() * 3.5,
+      speed: 0.3 + Math.random() * 0.5,
+      phase: Math.random() * Math.PI * 2,
+      drift: (Math.random() - 0.5) * 0.3,
+      baseScale: 0.15 + Math.random() * 0.25
+    }));
+  }, []);
+
+  // Determine particle visibility and color based on grassHealth
+  const ecologyState = useMemo(() => {
+    if (grassHealth > 80) return { visibleRatio: 1.0, color: new THREE.Color('#4ade80'), speedMul: 1.0 };
+    if (grassHealth > 50) return { visibleRatio: 0.7, color: new THREE.Color('#86efac'), speedMul: 0.7 };
+    if (grassHealth > 20) return { visibleRatio: 0.3, color: new THREE.Color('#fde047'), speedMul: 0.4 };
+    return { visibleRatio: 0.1, color: new THREE.Color('#fca5a5'), speedMul: 0.2 };
+  }, [grassHealth]);
+
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
     if (leavesRef.current) {
       leavesRef.current.position.y = 3.5 + Math.sin(clock.elapsedTime * 2) * 0.1;
       leavesRef.current.rotation.y = Math.sin(clock.elapsedTime * 0.5) * 0.05;
     }
+    if (!particleMeshRef.current) return;
+
+    const visibleCount = Math.max(1, Math.floor(particleCount * ecologyState.visibleRatio));
+    const speedMul = ecologyState.speedMul;
+    // Unhealthy: more erratic movement
+    const erraticMul = grassHealth > 50 ? 1 : (1 + (50 - grassHealth) * 0.03);
+
+    for (let i = 0; i < particleCount; i++) {
+      if (i < visibleCount) {
+        const p = particles[i];
+        const t = clock.elapsedTime * p.speed * speedMul + p.phase;
+        const x = Math.cos(p.angle + t * 0.2) * p.radius + Math.sin(t * erraticMul * 1.3) * p.drift;
+        const y = p.baseY + Math.sin(t * 1.5) * 0.4;
+        const z = Math.sin(p.angle + t * 0.2) * p.radius + Math.cos(t * erraticMul * 1.1) * p.drift;
+        dummy.position.set(x, y, z);
+        dummy.scale.setScalar(p.baseScale);
+        dummy.updateMatrix();
+        particleMeshRef.current.setMatrixAt(i, dummy.matrix);
+        particleMeshRef.current.setColorAt(i, ecologyState.color);
+      } else {
+        dummy.position.set(0, -100, 0);
+        dummy.scale.setScalar(0);
+        dummy.updateMatrix();
+        particleMeshRef.current.setMatrixAt(i, dummy.matrix);
+      }
+    }
+    particleMeshRef.current.instanceMatrix.needsUpdate = true;
+    if (particleMeshRef.current.instanceColor) particleMeshRef.current.instanceColor.needsUpdate = true;
   });
 
   return (
@@ -3202,8 +3323,11 @@ export function SpiritTree(props: any) {
         })}
       </group>
       
-      {/* Floating Particles */}
-      <ParticleBurst position={new THREE.Vector3(0, 4, 0)} color="#6ee7b7" />
+      {/* Ecology-responsive Floating Particles */}
+      <instancedMesh ref={particleMeshRef} args={[undefined, undefined, particleCount]}>
+        <dodecahedronGeometry args={[0.3, 0]} />
+        <meshStandardMaterial emissive="#4ade80" emissiveIntensity={0.6} flatShading />
+      </instancedMesh>
     </group>
   );
 }
@@ -3318,11 +3442,35 @@ export function RuinsArch(props: any) {
 export function Waterwheel(props: any) {
   const ref = usePopIn(props.scale || 1.4);
   const wheelRef = useRef<any>(null);
-  
+  const assets = useGameStore(state => state.assets);
+  const season = useGameStore(state => state.season);
+  const weather = useGameStore(state => state.weather);
+
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
     if (wheelRef.current) {
-      wheelRef.current.rotation.x = clock.elapsedTime * 0.5; // Slowly rotating
+      // Count nearby springs within 8 units
+      const wx = props.position.x, wz = props.position.z;
+      const nearbySprings = assets.filter(a =>
+        a.type === 'spring' &&
+        Math.sqrt((a.position.x - wx) ** 2 + (a.position.z - wz) ** 2) <= 8
+      ).length;
+
+      // Base speed + spring bonus
+      const baseSpeed = 0.3;
+      const springBonus = nearbySprings * 0.15;
+
+      // Season multiplier
+      const seasonMult = season === 'spring' ? 1.0
+        : season === 'summer' ? 1.3
+        : season === 'autumn' ? 0.9
+        : 0.4; // winter
+
+      // Rainy weather multiplier
+      const weatherMult = (weather === 'rainy' || weather === 'stormy') ? 1.5 : 1.0;
+
+      const speed = (baseSpeed + springBonus) * seasonMult * weatherMult;
+      wheelRef.current.rotation.x = clock.elapsedTime * speed;
     }
   });
 
