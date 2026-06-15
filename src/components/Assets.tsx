@@ -8,6 +8,13 @@ import { createNoise2D } from 'simplex-noise';
 import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
 import { applyTerrainBrush } from '../utils/terrainBrush';
 import { getWaterHeight as getOceanHeight, getWaveAmplitude } from './Water';
+import {
+  createLocomotionState,
+  stepCreature,
+  updateWanderTarget,
+  computeLegAngles,
+  applyLocomotionToGroup,
+} from '../game/creatures/locomotion';
 
 const subIslandNoise = createNoise2D();
 const MAIN_ISLAND_SIZE = 40;
@@ -612,17 +619,37 @@ export function getWalkableHeight(x: number, z: number, time: number, weather: s
 
 function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: string }) {
   const groupRef = useRef<THREE.Group>(null);
-  const targetPos = useRef(new THREE.Vector3(position.x, position.y, position.z));
-  const currentPos = useRef(new THREE.Vector3(position.x, position.y, position.z));
   const currentScale = useRef(0);
   const aiTickRef = useRef(0);
-  
   const hunger = useRef(Math.random() * 50);
-  const stateRef = useRef<any>('wander');
-  
+
+  // 使用 locomotion 模块
+  const locoRef = useRef<ReturnType<typeof createLocomotionState> | null>(null);
+  if (locoRef.current === null) {
+    locoRef.current = createLocomotionState(
+      position.x, position.y, position.z,
+      Math.random() * Math.PI * 2
+    );
+    locoRef.current.aiState = 'wander';
+  }
+  const loco = locoRef.current;
+
+  const DEER_CFG = useMemo(() => ({
+    speed: 1.2,
+    runSpeed: 4.0,
+    fleeSpeed: 5.0,
+    turnRate: 2.5,
+    arriveRadius: 1.5,
+    stepLength: 0.6,
+    obstacleProbeDistance: 1.5,
+    wanderDriftRate: 0.3,
+    wanderTargetInterval: 3,
+    slopeAlignStrength: 0.4,
+  }), []);
+
   useFrame((state, delta) => {
     if (!groupRef.current) return;
-    
+
     // Pop in scale
     if (useGameStore.getState().isSplashDone && currentScale.current < scale * 0.5) {
          currentScale.current = THREE.MathUtils.damp(currentScale.current, scale * 0.5, 5, delta);
@@ -631,15 +658,15 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
 
     const t = state.clock.getElapsedTime();
     const allAssets = useGameStore.getState().assets;
-    let speed = 0.3;
+    const weather = useGameStore.getState().weather;
 
     hunger.current += delta;
     aiTickRef.current += delta;
 
+    // ── AI 逻辑 (设定 target 与 state) ─────────────────
     if (aiTickRef.current >= 0.18) {
         aiTickRef.current = 0;
 
-        // AI Logic
         let nearestWolf = null;
         let nearestWolfDx = 0;
         let nearestWolfDz = 0;
@@ -648,8 +675,8 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
         let wolfDistSq = Infinity;
         for (const asset of allAssets) {
             if (asset.type === 'wolf') {
-                const dx = currentPos.current.x - asset.position.x;
-                const dz = currentPos.current.z - asset.position.z;
+                const dx = loco.position.x - asset.position.x;
+                const dz = loco.position.z - asset.position.z;
                 const distSq = dx * dx + dz * dz;
                 if (distSq < wolfDistSq) {
                     wolfDistSq = distSq;
@@ -669,11 +696,41 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
         }
 
         if (wolfDistSq < 15 * 15) {
-            stateRef.current = 'flee';
+            loco.aiState = 'flee';
+            // 逃跑方向：远离狼
+            const wolfLen = Math.hypot(nearestWolfDx, nearestWolfDz) || 1;
+            const dirX = nearestWolfDx / wolfLen;
+            const dirZ = nearestWolfDz / wolfLen;
+            const fleeDist = 8;
+            loco.target.set(
+              loco.position.x + dirX * fleeDist,
+              0,
+              loco.position.z + dirZ * fleeDist
+            );
         } else if (hunger.current > 30) {
-            stateRef.current = 'eat';
+            loco.aiState = 'graze';
+            if (nearestFood) {
+                loco.target.set(nearestFood.position.x, 0, nearestFood.position.z);
+                const foodDx = nearestFood.position.x - loco.position.x;
+                const foodDz = nearestFood.position.z - loco.position.z;
+                if (foodDx * foodDx + foodDz * foodDz < 1.0) {
+                    useGameStore.getState().removeAsset(nearestFood.id);
+                    hunger.current = 0;
+                    loco.aiState = 'idle';
+                }
+            } else if (nearestTree) {
+                loco.target.set(nearestTree.position.x, 0, nearestTree.position.z);
+                const treeDx = nearestTree.position.x - loco.position.x;
+                const treeDz = nearestTree.position.z - loco.position.z;
+                if (treeDx * treeDx + treeDz * treeDz < 9) {
+                    hunger.current = 0;
+                    loco.aiState = 'graze';
+                }
+            } else {
+                loco.aiState = 'wander';
+            }
         } else {
-            stateRef.current = 'wander';
+            loco.aiState = 'wander';
         }
 
         const grassHealth = useGameStore.getState().grassHealth;
@@ -682,124 +739,42 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
             return;
         }
 
-        if (stateRef.current === 'flee' && nearestWolf) {
-            const wolfLen = Math.hypot(nearestWolfDx, nearestWolfDz) || 1;
-            const dirX = nearestWolfDx / wolfLen;
-            const dirZ = nearestWolfDz / wolfLen;
-            let newTargetX = currentPos.current.x + dirX * 4;
-            let newTargetZ = currentPos.current.z + dirZ * 4;
-            if (isWalkable(newTargetX, newTargetZ, allAssets)) {
-                targetPos.current.set(newTargetX, 0, newTargetZ);
-            } else {
-                const cos45 = Math.SQRT1_2;
-                const sin45 = Math.SQRT1_2;
-                const rightDirX = dirX * cos45 + dirZ * sin45;
-                const rightDirZ = -dirX * sin45 + dirZ * cos45;
-                newTargetX = currentPos.current.x + rightDirX * 4;
-                newTargetZ = currentPos.current.z + rightDirZ * 4;
-                if (isWalkable(newTargetX, newTargetZ, allAssets)) {
-                    targetPos.current.set(newTargetX, 0, newTargetZ);
-                } else {
-                    targetPos.current.copy(currentPos.current);
-                }
-            }
-        } else if (stateRef.current === 'eat') {
-            if (nearestFood) {
-                targetPos.current.set(nearestFood.position.x, 0, nearestFood.position.z);
-                const foodDx = nearestFood.position.x - currentPos.current.x;
-                const foodDz = nearestFood.position.z - currentPos.current.z;
-                if (foodDx * foodDx + foodDz * foodDz < 1.0) {
-                    useGameStore.getState().removeAsset(nearestFood.id);
-                    hunger.current = 0;
-                }
-            } else if (nearestTree) {
-                targetPos.current.set(nearestTree.position.x, 0, nearestTree.position.z);
-                const treeDx = nearestTree.position.x - currentPos.current.x;
-                const treeDz = nearestTree.position.z - currentPos.current.z;
-                if (treeDx * treeDx + treeDz * treeDz < 9) {
-                    hunger.current = 0;
-                }
-            } else {
-                const randX = currentPos.current.x + (Math.random() - 0.5) * 4;
-                const randZ = currentPos.current.z + (Math.random() - 0.5) * 4;
-                if (isWalkable(randX, randZ, allAssets)) {
-                    targetPos.current.set(randX, 0, randZ);
-                }
-                if (Math.random() < 0.01) hunger.current = 0;
-            }
-            stateRef.current = 'wander';
-        } else if (Math.random() < 0.01) {
-            const randX = currentPos.current.x + (Math.random() - 0.5) * 8;
-            const randZ = currentPos.current.z + (Math.random() - 0.5) * 8;
-            if (isWalkable(randX, randZ, allAssets)) {
-                targetPos.current.set(randX, 0, randZ);
-            }
+        // 游荡目标更新
+        if (loco.aiState === 'wander') {
+            updateWanderTarget(loco, DEER_CFG, allAssets);
         }
     }
 
-    if (stateRef.current === 'flee') speed = 4.0;
-    else if (stateRef.current === 'eat') speed = 0.5;
-    else speed = 0.3;
-    
-    // Move towards target
-    const nextX = THREE.MathUtils.lerp(currentPos.current.x, targetPos.current.x, delta * speed);
-    const nextZ = THREE.MathUtils.lerp(currentPos.current.z, targetPos.current.z, delta * speed);
-    
-    if (isWalkable(nextX, nextZ, allAssets)) {
-        currentPos.current.x = nextX;
-        currentPos.current.z = nextZ;
-    } else {
-        targetPos.current.copy(currentPos.current); // Stop
-    }
-    
-    const weather = useGameStore.getState().weather;
-    const { y: surfaceY } = getWalkableHeight(currentPos.current.x, currentPos.current.z, t, weather, allAssets);
-    currentPos.current.y = surfaceY;
-    
-    const offset = id.charCodeAt(0);
-    let bobFreq = speed * 10;
-    let bobAmp = 0.015 * speed; // Much smaller bob since legs do the walking
-    if (stateRef.current === 'flee') {
-        bobFreq = speed * 5; 
-        bobAmp = 0.1;
-    }
-    
-    groupRef.current.position.set(
-        currentPos.current.x,
-        currentPos.current.y + Math.abs(Math.sin(t * bobFreq + offset)) * bobAmp,
-        currentPos.current.z
-    );
+    // ── 运动逻辑 (交给 locomotion 模块) ─────────────────
+    stepCreature(loco, delta, DEER_CFG, {
+      time: t,
+      delta,
+      assets: allAssets,
+      weather,
+    });
 
-    // Look at target direction with shortest angle
-    const dx = targetPos.current.x - currentPos.current.x;
-    const dz = targetPos.current.z - currentPos.current.z;
-    const isMoving = dx*dx + dz*dz > 0.01;
-    if (isMoving) {
-        const targetAngle = Math.atan2(dx, dz);
-        let diff = targetAngle - groupRef.current.rotation.y;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        groupRef.current.rotation.y += diff * delta * 5;
-    }
-    
-    // Head & Leg animations
+    // ── 应用到 Three.js Group ───────────────────────────
+    applyLocomotionToGroup(groupRef.current, loco, 0.02);
+
+    // ── 头部动画 ────────────────────────────────────────
     const head = groupRef.current.children[1];
     if (head) {
-         if (stateRef.current === 'eat' && !isMoving) head.rotation.x = 0.8; // head down eating
-         else head.rotation.x = Math.sin(t * bobFreq * 0.5 + offset) * 0.2;
+         if (loco.aiState === 'graze' && !loco.isMoving) head.rotation.x = 0.8;
+         else head.rotation.x = Math.sin(loco.legPhase * Math.PI * 2 * 0.5) * 0.15;
     }
 
-    const legRot = isMoving ? Math.sin(t * speed * 15 + offset) * 0.5 : 0;
+    // ── 腿部动画 (位移驱动) ─────────────────────────────
+    const legAngles = computeLegAngles(loco.legPhase, loco.isMoving);
     const legFL = groupRef.current.children[2];
     const legFR = groupRef.current.children[3];
     const legBL = groupRef.current.children[4];
     const legBR = groupRef.current.children[5];
 
     if (legFL && legFR && legBL && legBR) {
-        legFL.rotation.x = legRot;
-        legBR.rotation.x = legRot;
-        legFR.rotation.x = -legRot;
-        legBL.rotation.x = -legRot;
+        legFL.rotation.x = legAngles.fl;
+        legBR.rotation.x = legAngles.br;
+        legFR.rotation.x = legAngles.fr;
+        legBL.rotation.x = legAngles.bl;
     }
   });
 
@@ -850,27 +825,47 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
 
 function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: string }) {
   const groupRef = useRef<THREE.Group>(null);
-  const targetPos = useRef(new THREE.Vector3(position.x, position.y, position.z));
-  const currentPos = useRef(new THREE.Vector3(position.x, position.y, position.z));
   const currentScale = useRef(0);
   const aiTickRef = useRef(0);
-  
-  const stateRef = useRef<any>('wander');
-  
+
+  // 使用 locomotion 模块
+  const locoRef = useRef<ReturnType<typeof createLocomotionState> | null>(null);
+  if (locoRef.current === null) {
+    locoRef.current = createLocomotionState(
+      position.x, position.y, position.z,
+      Math.random() * Math.PI * 2
+    );
+    locoRef.current.aiState = 'wander';
+  }
+  const loco = locoRef.current;
+
+  const WOLF_CFG = useMemo(() => ({
+    speed: 1.5,
+    runSpeed: 4.5,
+    turnRate: 3.0,
+    arriveRadius: 1.2,
+    stepLength: 0.7,
+    obstacleProbeDistance: 1.5,
+    wanderDriftRate: 0.4,
+    wanderTargetInterval: 2.5,
+    slopeAlignStrength: 0.3,
+  }), []);
+
   useFrame((state, delta) => {
     if (!groupRef.current) return;
-    
+
     // Pop in scale
     if (useGameStore.getState().isSplashDone && currentScale.current < scale * 0.4) {
          currentScale.current = THREE.MathUtils.damp(currentScale.current, scale * 0.4, 5, delta);
          groupRef.current.scale.setScalar(currentScale.current);
     }
-    
+
     const t = state.clock.getElapsedTime();
     const allAssets = useGameStore.getState().assets;
-    let speed = 0.8;
+    const weather = useGameStore.getState().weather;
     aiTickRef.current += delta;
 
+    // ── AI 逻辑 (设定 target 与 state) ─────────────────
     if (aiTickRef.current >= 0.18) {
         aiTickRef.current = 0;
 
@@ -878,8 +873,8 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
         let deerDistSq = Infinity;
         for (const asset of allAssets) {
             if (asset.type !== 'deer') continue;
-            const dx = currentPos.current.x - asset.position.x;
-            const dz = currentPos.current.z - asset.position.z;
+            const dx = loco.position.x - asset.position.x;
+            const dz = loco.position.z - asset.position.z;
             const distSq = dx * dx + dz * dz;
             if (distSq < deerDistSq) {
                 deerDistSq = distSq;
@@ -888,82 +883,48 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
         }
 
         if (nearestDeer && deerDistSq < 25 * 25) {
-            stateRef.current = 'chase';
-            targetPos.current.set(nearestDeer.position.x, 0, nearestDeer.position.z);
+            loco.aiState = 'chase';
+            loco.target.set(nearestDeer.position.x, 0, nearestDeer.position.z);
             if (deerDistSq < 4) {
                 useGameStore.getState().spawnVFX('blood', nearestDeer.position);
                 useGameStore.getState().removeAsset(nearestDeer.id);
             }
         } else {
-            stateRef.current = 'wander';
-            if (Math.random() < 0.01) {
-               const randX = currentPos.current.x + (Math.random() - 0.5) * 15;
-               const randZ = currentPos.current.z + (Math.random() - 0.5) * 15;
-               if (isWalkable(randX, randZ, allAssets)) {
-                   targetPos.current.set(randX, 0, randZ);
-               }
-            }
+            loco.aiState = 'wander';
+            updateWanderTarget(loco, WOLF_CFG, allAssets);
         }
     }
 
-    speed = stateRef.current === 'chase' ? 4.5 : 0.8;
+    // ── 运动逻辑 (交给 locomotion 模块) ─────────────────
+    stepCreature(loco, delta, WOLF_CFG, {
+      time: t,
+      delta,
+      assets: allAssets,
+      weather,
+    });
 
-    const nextX = THREE.MathUtils.lerp(currentPos.current.x, targetPos.current.x, delta * speed);
-    const nextZ = THREE.MathUtils.lerp(currentPos.current.z, targetPos.current.z, delta * speed);
-    
-    if (isWalkable(nextX, nextZ, allAssets)) {
-        currentPos.current.x = nextX;
-        currentPos.current.z = nextZ;
-    } else {
-        targetPos.current.copy(currentPos.current); // Stop
-    }
-    
-    const weather = useGameStore.getState().weather;
-    const { y: surfaceY } = getWalkableHeight(currentPos.current.x, currentPos.current.z, t, weather, allAssets);
-    currentPos.current.y = surfaceY;
+    // ── 应用到 Three.js Group ───────────────────────────
+    applyLocomotionToGroup(groupRef.current, loco, 0.025);
 
-    const offset = id.charCodeAt(0);
-    let bobFreq = speed * 8;
-    let bobAmp = 0.02 * speed;
-    if (stateRef.current === 'chase') {
-        bobAmp = 0.08; // aggressive jumps
-    }
-    
-    groupRef.current.position.set(
-        currentPos.current.x,
-        currentPos.current.y + Math.abs(Math.sin(t * bobFreq + offset)) * bobAmp,
-        currentPos.current.z
-    );
-
-    const dx = targetPos.current.x - currentPos.current.x;
-    const dz = targetPos.current.z - currentPos.current.z;
-    const isMoving = dx*dx + dz*dz > 0.01;
-    if (isMoving) {
-        const targetAngle = Math.atan2(dx, dz);
-        let diff = targetAngle - groupRef.current.rotation.y;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        groupRef.current.rotation.y += diff * delta * 8; // fast turning
-    }
-    
-    // Head & Leg animations
+    // ── 头部动画 ────────────────────────────────────────
     const head = groupRef.current.children[1];
     if (head) {
-         if (stateRef.current === 'chase') head.rotation.x = 0.3; // head down aggressive
-         else head.rotation.x = Math.sin(t * bobFreq * 0.5 + offset) * 0.1;
+         if (loco.aiState === 'chase') head.rotation.x = 0.3;
+         else head.rotation.x = Math.sin(loco.legPhase * Math.PI * 2 * 0.5) * 0.1;
     }
 
-    const legRot = isMoving ? Math.sin(t * speed * 12 + offset) * 0.6 : 0;
+    // ── 腿部动画 (位移驱动) ─────────────────────────────
+    const legAngles = computeLegAngles(loco.legPhase, loco.isMoving);
     const legFL = groupRef.current.children[2];
     const legFR = groupRef.current.children[3];
     const legBL = groupRef.current.children[4];
     const legBR = groupRef.current.children[5];
 
     if (legFL && legFR && legBL && legBR) {
-        legFL.rotation.x = legRot;
-        legBR.rotation.x = legRot;
-        legFR.rotation.x = -legRot;
-        legBL.rotation.x = -legRot;
+        legFL.rotation.x = legAngles.fl;
+        legBR.rotation.x = legAngles.br;
+        legFR.rotation.x = legAngles.fr;
+        legBL.rotation.x = legAngles.bl;
     }
   });
 
@@ -972,7 +933,7 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
       {/* Body */}
       <mesh position={[0, 0.7, 0]} castShadow>
         <boxGeometry args={[0.4, 0.5, 1.3]} />
-        <meshStandardMaterial color="#475569" flatShading /> {/* Slate grey */}
+        <meshStandardMaterial color="#475569" flatShading />
       </mesh>
       {/* Head */}
       <group position={[0, 1.0, 0.7]}>
