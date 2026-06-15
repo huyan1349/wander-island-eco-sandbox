@@ -8,6 +8,9 @@ import { createNoise2D } from 'simplex-noise';
 import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
 import { applyTerrainBrush, paintSurface } from '../utils/terrainBrush';
 import { getWaterHeight as getOceanHeight, getWaveAmplitude } from './Water';
+import { StylizedWater } from '../game/water/StylizedWater';
+import { decodePondState } from '../game/water/pondFit';
+import { buildStream, decodeStreamState } from '../game/water/streamPath';
 import {
   createLocomotionState,
   stepCreature,
@@ -384,7 +387,7 @@ function Spring({ position, rotation, scale = 1 }: { position: any, rotation?: a
        </mesh>
        {/* Real rippling water surface, just below ground level */}
        <group position={[0, 0.18, 0]}>
-         <WaterSurface radius={1.0} opacity={0.8} />
+         <StylizedWater radius={1.0} segments={28} shallow="#9fe0f5" deep="#2f6f9e" opacity={0.82} waveAmp={0.7} />
        </group>
        {/* Irregular mossy rim stones */}
        {stones.map((st, i) => (
@@ -406,9 +409,15 @@ function Spring({ position, rotation, scale = 1 }: { position: any, rotation?: a
 
 // Inland water body — a lake/pond for filling valleys and shaping river runs.
 // Sits flat at its placement height; size scales with the placement scale.
-function Pond({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
+function Pond({ position, rotation, scale = 1, customState }: { position: any, rotation?: any, scale?: number, customState?: string }) {
   const groupRef = usePopIn(scale);
-  const radius = 3.0 * (scale || 1);
+
+  // 贴地拟合：放置时已写入 customState("pond:水位:半径")。有则按洼地岸线渲染，
+  // 水面落在拟合水位（不再是悬浮糙盘）；无则回退旧的固定半径行为。
+  const fit = decodePondState(customState);
+  const radius = fit ? fit.radius : 3.0 * (scale || 1);
+  // customState 里水位是世界 Y；本 group 位于 position.y，换算成局部高度。
+  const waterLocalY = fit ? (fit.waterLevel - position.y) : 0.06;
 
   // Pebble shore ring around the water for a soft, natural edge.
   const pebbles = useMemo(() => {
@@ -424,21 +433,71 @@ function Pond({ position, rotation, scale = 1 }: { position: any, rotation?: any
   return (
     <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0, 'YXZ')} scale={0} ref={groupRef}>
       {/* Dark basin floor giving the water visual depth */}
-      <mesh position={[0, -0.18, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh position={[0, waterLocalY - 0.24, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[radius * 1.02, 36]} />
         <meshStandardMaterial color="#21384a" roughness={1} />
       </mesh>
-      {/* Rippling water surface */}
-      <group position={[0, 0.06, 0]}>
-        <WaterSurface radius={radius} color="#4ea7df" deep="#1f5f8c" opacity={0.82} segments={40} />
+      {/* Stylized water surface: depth gradient + shore foam, sits at fitted water level */}
+      <group position={[0, waterLocalY, 0]}>
+        <StylizedWater radius={radius} segments={44} shallow="#7fd0f2" deep="#1f5f8c" opacity={0.85} waveAmp={1} />
       </group>
       {/* Pebble shore */}
       {pebbles.map((p, i) => (
-        <mesh key={i} position={[Math.cos(p.a) * radius * 1.0, 0.04, Math.sin(p.a) * radius * 1.0]} rotation={[p.a, p.a, 0]} castShadow>
+        <mesh key={i} position={[Math.cos(p.a) * radius * 1.0, waterLocalY - 0.02, Math.sin(p.a) * radius * 1.0]} rotation={[p.a, p.a, 0]} castShadow>
           <dodecahedronGeometry args={[p.s, 0]} />
           <meshStandardMaterial color={p.c} roughness={0.95} flatShading />
         </mesh>
       ))}
+    </group>
+  );
+}
+
+// 溪流 / 瀑布：从 customState 解析折线，构建贴地水带 + 落差处竖直水帘。
+// 几何已是世界坐标，外层 wrapper group 位于原点，故本组件不再做位移。
+function Stream({ customState }: { customState?: string }) {
+  const build = useMemo(() => {
+    const pts = decodeStreamState(customState);
+    if (!pts) return null;
+    return buildStream(pts, 1.5);
+  }, [customState]);
+
+  if (!build || !build.ribbon) return null;
+  const flow: [number, number] = [build.flowDir.x * 0.06, build.flowDir.z * 0.06];
+
+  return (
+    <group>
+      {/* 贴地水带：沿流向滚动 UV → 有流动感；两侧成沫(ribbon foam) */}
+      <StylizedWater
+        geometry={build.ribbon}
+        foamMode="ribbon"
+        lieFlat={false}
+        shallow="#8fd8f5"
+        deep="#2c7fb8"
+        opacity={0.84}
+        waveAmp={0.5}
+        flow={flow}
+        renderOrder={1}
+      />
+      {/* 瀑布：落差处竖直水帘 + 底部水花 */}
+      {build.falls.map((f, i) => {
+        const h = Math.max(0.3, f.topY - f.bottomY);
+        const yaw = Math.atan2(f.dir.x, f.dir.z);
+        return (
+          <group key={i} position={[f.x, (f.topY + f.bottomY) / 2, f.z]} rotation={[0, yaw, 0]}>
+            <mesh>
+              <planeGeometry args={[f.width, h, 1, 6]} />
+              <meshStandardMaterial color="#bfe6f7" transparent opacity={0.8} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} flatShading />
+            </mesh>
+            {/* 底部水花：几颗白色小球 */}
+            {[-0.3, 0, 0.3].map((dx, k) => (
+              <mesh key={k} position={[dx * f.width, -h / 2 + 0.05, 0]}>
+                <sphereGeometry args={[0.12, 6, 6]} />
+                <meshStandardMaterial color="#eaf8ff" transparent opacity={0.7} flatShading />
+              </mesh>
+            ))}
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -3958,6 +4017,7 @@ export function Assets() {
           case 'fish': content = <FishSchool {...asset} />; break;
           case 'spring': content = <Spring {...asset} />; break;
           case 'pond': content = <Pond {...asset} />; break;
+          case 'water_flow': content = <Stream {...asset} />; break;
           case 'streetlamp': content = <Streetlamp {...asset} />; break;
           case 'house': content = <House {...asset} />; break;
           case 'windmill': content = <Windmill {...asset} />; break;

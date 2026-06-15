@@ -564,6 +564,7 @@ export default function App() {
         { id: "terrainUp", icon: ArrowUp, label: "隆起地形", cost: 0 },
         { id: "terrainDown", icon: ArrowDown, label: "降低地形（可挖谷）", cost: 0 },
         { id: "pond", icon: Waves, label: "水塘 / 湖泊", cost: 100 },
+        { id: "water_flow", icon: Waves, label: "溪流 / 瀑布（拖绘）", cost: 100 },
         { id: "pave", icon: Hammer, label: "铺设石板路", cost: 0 },
       ]
     },

@@ -6,8 +6,14 @@ import { useGameStore, ToolType } from '../store';
 import { AudioSystem } from '../lib/audio';
 import { emitHermitPlace } from '../lib/socket';
 import { applyTerrainBrush, paintSurface } from '../utils/terrainBrush';
+import { fitPond, encodePondState } from '../game/water/pondFit';
+import { encodeStreamState } from '../game/water/streamPath';
+import { getTerrainHeight } from '../utils/terrain';
 
 const noise2D = createNoise2D();
+
+// 「挖低」自动出水的全局水位线：地形被挖到此线以下，松手自动在洼地生成水塘。
+const AUTO_WATER_LINE = -0.2;
 
 // Generate a static heightmap for the island
 const ISAND_SIZE = 40;
@@ -554,6 +560,10 @@ export function Terrain() {
 
   const lastBrushPoint = useRef(new THREE.Vector3());
   const flattenTargetY = useRef(0);
+  // 溪流拖绘：落笔到松手之间累积的折线点（世界 x,z）。
+  const streamPoints = useRef<{ x: number; z: number }[]>([]);
+  // 「挖低」一笔里触到的最低点 + 中心，松手判定是否自动出水。
+  const digLowest = useRef({ y: 999, x: 0, z: 0 });
   const lastBrushTime = useRef(0);
 
   const applyBrush = (point: THREE.Vector3, isDragEvent: boolean, e?: any) => {
@@ -690,12 +700,21 @@ export function Terrain() {
         if (selectedTool === 'seed_wheat') assetType = 'crop_wheat';
         if (selectedTool === 'seed_carrot') assetType = 'crop_carrot';
 
+        let placedCustom = String(selectedTool).startsWith('balloon') ? useGameStore.getState().balloonColor : undefined;
+        let placedY = Math.max(point.y, 0);
+        if (selectedTool === 'pond') {
+            // 贴地拟合：探测洼地岸线，水面落在真实水位（不再悬浮）。
+            const fit = fitPond(point.x, point.z);
+            placedCustom = encodePondState(fit);
+            placedY = point.y;
+        }
+
         const placed = {
             type: assetType as any,
-            position: { x: point.x, y: Math.max(point.y, 0), z: point.z },
+            position: { x: point.x, y: placedY, z: point.z },
             rotation: { x: rx, y: targetRotY, z: rz },
             scale: targetScale,
-            customState: String(selectedTool).startsWith('balloon') ? useGameStore.getState().balloonColor : undefined
+            customState: placedCustom
         };
         addAsset(placed);
         if (useGameStore.getState().online) emitHermitPlace(placed); // 联机：广播放置
@@ -714,6 +733,16 @@ export function Terrain() {
         return;
     }
 
+    // 溪流：落笔开始记录折线，不走笔刷。
+    if (selectedTool === 'water_flow') {
+        streamPoints.current = [{ x: e.point.x, z: e.point.z }];
+        useGameStore.getState().setIsDrawing(true);
+        if (e.target && e.pointerId !== undefined) {
+            (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        }
+        return;
+    }
+
     useGameStore.getState().setIsDrawing(true);
     applyBrush(e.point, false, e);
     // Explicit pointer capture so drag outside of mesh continues
@@ -725,11 +754,59 @@ export function Terrain() {
   const onPointerUp = (e: any) => {
     if (useGameStore.getState().isDrawing) {
        useGameStore.getState().setIsDrawing(false);
+
+       // 溪流：松手把折线提交为一个 water_flow 物件。
+       if (selectedTool === 'water_flow') {
+          const pts = streamPoints.current;
+          if (pts.length >= 2) {
+             const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+             const cz = pts.reduce((s, p) => s + p.z, 0) / pts.length;
+             const placed = {
+                type: 'water_flow' as any,
+                position: { x: cx, y: 0, z: cz },
+                rotation: { x: 0, y: 0, z: 0 },
+                scale: 1,
+                customState: encodeStreamState(pts),
+             };
+             addAsset(placed);
+             if (useGameStore.getState().online) emitHermitPlace(placed);
+          }
+          streamPoints.current = [];
+          if (e.target && e.pointerId !== undefined) {
+             try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { }
+          }
+          return;
+       }
+
        if (meshRef.current) {
           const geometry = meshRef.current.geometry;
           const posAttr = geometry.attributes.position;
           useGameStore.getState().setTerrainData(posAttr.array as Float32Array, types, ISAND_SIZE, SEGMENTS);
        }
+
+       // 「挖低」自动出水：刚挖的洼地中心低于水位线、附近又没有水体 → 自动漫上一汪水塘。
+       const st = useGameStore.getState();
+       if ((selectedTool === 'terrainUp' || selectedTool === 'terrainDown') && st.brushMode === 'lower') {
+          const cx = lastBrushPoint.current.x;
+          const cz = lastBrushPoint.current.z;
+          const floor = getTerrainHeight(cx, cz);
+          if (floor < AUTO_WATER_LINE) {
+             const hasWaterNear = st.assets.some(a =>
+                (a.type === 'pond' || a.type === 'spring') &&
+                Math.hypot(a.position.x - cx, a.position.z - cz) < 4.5);
+             if (!hasWaterNear) {
+                const fit = fitPond(cx, cz, { minR: 1.5, maxR: 7 });
+                st.addAsset({
+                   type: 'pond' as any,
+                   position: { x: cx, y: floor, z: cz },
+                   rotation: { x: 0, y: 0, z: 0 },
+                   scale: 1,
+                   customState: encodePondState(fit),
+                });
+             }
+          }
+       }
+
        if (e.target && e.pointerId !== undefined) {
            try {
               (e.target as HTMLElement).releasePointerCapture(e.pointerId);
@@ -763,7 +840,15 @@ export function Terrain() {
 
     if (useGameStore.getState().isDrawing) {
         e.stopPropagation();
-        applyBrush(e.point, true, e);
+        if (selectedTool === 'water_flow') {
+            const pts = streamPoints.current;
+            const last = pts[pts.length - 1];
+            if (!last || Math.hypot(e.point.x - last.x, e.point.z - last.z) > 0.6) {
+                pts.push({ x: e.point.x, z: e.point.z });
+            }
+        } else {
+            applyBrush(e.point, true, e);
+        }
     }
   };
 
