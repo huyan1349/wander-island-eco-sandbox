@@ -149,7 +149,7 @@ export const CiSpirit: React.FC = () => {
 
       {/* 小聊天窗 */}
       {chatOpen && (
-        <div className="pointer-events-auto w-[300px] max-w-[calc(100vw-2.5rem)] h-[400px] max-h-[60vh] flex flex-col hand-drawn-panel shadow-xl animate-in slide-in-from-bottom-2 fade-in duration-300 overflow-hidden" style={{ borderWidth: '2px' }}>
+        <div className="pointer-events-auto w-[300px] max-w-[calc(100vw-2.5rem)] h-[400px] max-h-[60vh] flex flex-col hand-drawn-panel shadow-xl animate-in slide-in-from-bottom-2 fade-in duration-300 overflow-hidden" style={{ borderWidth: '2px', borderRadius: '0' }}>
           {/* 头部 */}
           <div className="flex items-center gap-2 px-3 py-2.5 border-b-2 border-slate-800 shrink-0">
             <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-slate-800 shrink-0">
@@ -172,7 +172,7 @@ export const CiSpirit: React.FC = () => {
               const isMine = msg.from_id !== CI_USER_ID;
               return (
                 <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[78%] px-3 py-2 text-[13px] leading-relaxed hand-drawn-panel ${isMine ? 'bg-emerald-50' : ''}`} style={{ borderWidth: '2px' }}>
+                  <div className={`max-w-[78%] px-3 py-2 text-[13px] leading-relaxed hand-drawn-panel ${isMine ? 'bg-emerald-50' : ''}`} style={{ borderWidth: '2px', borderRadius: '0' }}>
                     <p className="text-slate-800 whitespace-pre-wrap">{msg.content}</p>
                   </div>
                 </div>
@@ -192,7 +192,7 @@ export const CiSpirit: React.FC = () => {
               onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
               placeholder="和辞说点什么..."
               className="flex-1 min-w-0 hand-drawn-panel px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 outline-none"
-              style={{ borderWidth: '2px' }}
+              style={{ borderWidth: '2px', borderRadius: '0' }}
             />
             <button onClick={handleSend} disabled={isSending} className="hand-drawn-btn w-9 h-9 flex items-center justify-center shrink-0 disabled:opacity-50" title="发送">
               {isSending ? <span className="text-indigo-500 animate-spin text-sm">⟳</span> : <Send size={14} className="text-indigo-500" />}

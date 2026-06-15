@@ -169,7 +169,7 @@ export function setupSocket(io: SocketServer) {
             const response = await client.chat.completions.create({
               model: 'deepseek-chat',
               messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
-              max_tokens: 150
+              max_tokens: 60
             });
             replyContent = response.choices[0].message.content?.trim() || pickFallback();
           } catch (err) {
