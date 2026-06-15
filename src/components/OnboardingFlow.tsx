@@ -117,7 +117,7 @@ export const OnboardingFlow: React.FC = () => {
     addToast(`${STARTER.length} 段记忆已收入行囊 ♪`, 'info');
     setShowWelcomeGuide(true);
     setFlyOut(true);
-    const finalIsland = islandName.trim() || `${name.trim() || authUser?.username || '漫游者'}的岛`;
+    const finalIsland = islandName.trim() || `${name.trim() || authUser?.username || '漫游者'}的小岛`;
     // 持久化居民证，供游戏内重复查看
     try {
       localStorage.setItem('resident_card', JSON.stringify({

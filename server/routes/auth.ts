@@ -51,15 +51,47 @@ function sendCardMail(db: any, userId: string, card: { url: string; title: strin
     );
 }
 
+// —— 服务器公告邮件 ——
+const SERVER_ANNOUNCEMENTS = [
+  {
+    id: 'announcement_deepseek_multiplayer',
+    subject: '辞升级了 · 联机开放',
+    content: `亲爱的漫游者：
+
+「辞」有了新的变化——
+
+现在，「辞」接入了 DeepSeek 的能力，对话变得更聪明、更自然了。你可以和「辞」聊更多话题，它会用更丰富的方式回应你。
+
+同时，小岛服务器已正式开放联机功能！你可以访问其他漫游者的岛屿，也可以邀请他们来你的岛上做客。去漂流广场看看，说不定会遇见有趣的灵魂。
+
+期待在海上与你相遇。
+
+—— 辞`,
+  },
+];
+
+function sendAnnouncementMail(db: any, userId: string, announcement: typeof SERVER_ANNOUNCEMENTS[number]) {
+  const exists = db.prepare('SELECT id FROM mailbox WHERE to_id = ? AND gift_type = ?').get(userId, announcement.id);
+  if (exists) return;
+  db.prepare('INSERT INTO mailbox (id, from_id, to_id, subject, content, gift_type) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(
+      crypto.randomUUID(), CI_USER_ID, userId,
+      announcement.subject,
+      announcement.content,
+      announcement.id
+    );
+}
+
 function backfillCardMails(db: any, userId: string) {
   try {
     const ci = db.prepare('SELECT id FROM users WHERE id = ?').get(CI_USER_ID);
     if (!ci) return; // 「辞」尚未 seed
     for (const card of NEW_CARD_MAILS) sendCardMail(db, userId, card);
+    for (const ann of SERVER_ANNOUNCEMENTS) sendAnnouncementMail(db, userId, ann);
   } catch { /* 补发失败不阻断登录 */ }
 }
 
-// 启动时批量发给所有现有用户（除「辞」自己），保证人人都收到新卡邮件
+// 启动时批量发给所有现有用户（除「辞」自己），保证人人都收到新卡邮件和公告
 export function sendNewCardMailsToAll(db: any) {
   try {
     const ci = db.prepare('SELECT id FROM users WHERE id = ?').get(CI_USER_ID);
@@ -72,9 +104,13 @@ export function sendNewCardMailsToAll(db: any) {
         const exists = db.prepare('SELECT id FROM mailbox WHERE to_id = ? AND gift_type = ?').get(u.id, giftType);
         if (!exists) { sendCardMail(db, u.id, card); sent++; }
       }
+      for (const ann of SERVER_ANNOUNCEMENTS) {
+        const exists = db.prepare('SELECT id FROM mailbox WHERE to_id = ? AND gift_type = ?').get(u.id, ann.id);
+        if (!exists) { sendAnnouncementMail(db, u.id, ann); sent++; }
+      }
     }
-    if (sent) console.log(`📬 新卡邮件已补发给 ${sent} 位用户`);
-  } catch (e) { console.error('批量补发新卡邮件失败', e); }
+    if (sent) console.log(`📬 邮件已补发给 ${sent} 位用户（含新卡+公告）`);
+  } catch (e) { console.error('批量补发邮件失败', e); }
 }
 
 // GET /api/auth/check-username?username=xxx  —— 注册时实时校验用户名是否可用
@@ -132,6 +168,9 @@ router.post('/register', (req: AuthRequest, res: Response) => {
         .run(id, CI_USER_ID, 'accepted');
     }
   } catch { /* 辞可能还没被seed */ }
+
+  // 发送新卡邮件和服务器公告
+  backfillCardMails(db, id);
 
   // 加入序号：当前用户总数（含本人）= 第 N 位漫游者
   let memberNo = 1;
