@@ -152,6 +152,12 @@
     transform: translate(-2px, -2px) rotate(1deg);
   }
 
+  /* 常驻「选择 / 橡皮擦」按钮：保留手绘圆角，但不要旋转倾斜（仅作用于这两个，不影响全局） */
+  #guide-modes .hand-drawn-btn,
+  #guide-modes .hand-drawn-btn-active { transform: none; }
+  #guide-modes .hand-drawn-btn:hover { transform: translate(-2px, -2px); }
+  #guide-modes .hand-drawn-btn:active { transform: translate(2px, 2px); }
+
   /* Keep legacy glass styles just in case for overlays, but mostly unused now */
   .glass-panel {
     @apply bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl transition-all duration-500 relative overflow-hidden;

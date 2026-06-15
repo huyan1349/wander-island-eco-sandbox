@@ -74,7 +74,8 @@ import {
   Clover,
   Undo2,
   Redo2,
-  Signpost
+  Signpost,
+  TreePalm
 } from "lucide-react";
 
 import { PlayerPanel } from "./components/PlayerPanel";
@@ -381,6 +382,26 @@ export default function App() {
     }
   }, [screen]);
 
+  // 进入游戏后自动全屏：浏览器要求全屏必须由用户手势触发，故挂在进入后“首次交互”上
+  useEffect(() => {
+    if (screen !== 'PLAYING') return;
+    if (document.fullscreenElement) return;
+    const goFs = () => {
+      const el = document.documentElement as any;
+      if (!document.fullscreenElement) {
+        try { el.requestFullscreen?.()?.catch?.(() => {}); el.webkitRequestFullscreen?.(); } catch { /* ignore */ }
+      }
+      cleanup();
+    };
+    const cleanup = () => {
+      window.removeEventListener('pointerdown', goFs);
+      window.removeEventListener('keydown', goFs);
+    };
+    window.addEventListener('pointerdown', goFs);
+    window.addEventListener('keydown', goFs);
+    return cleanup;
+  }, [screen]);
+
   // 撤销 / 重做快捷键（仅游戏内）
   useEffect(() => {
     if (screen !== 'PLAYING') return;
@@ -524,7 +545,8 @@ export default function App() {
       icon: Mountain,
       tools: [
         { id: "terrainUp", icon: ArrowUp, label: "隆起地形", cost: 0 },
-        { id: "terrainDown", icon: ArrowDown, label: "降低地形", cost: 0 },
+        { id: "terrainDown", icon: ArrowDown, label: "降低地形（可挖谷）", cost: 0 },
+        { id: "pond", icon: Waves, label: "水塘 / 湖泊", cost: 100 },
         { id: "pave", icon: Hammer, label: "铺设石板路", cost: 0 },
       ]
     },
@@ -654,10 +676,24 @@ export default function App() {
 
            {/* Tool Column (Below Avatar) */}
            <div className={`flex ${isTouch ? 'flex-row gap-2' : 'flex-col gap-4'}`}>
+             {/* 小岛面板（概况·成就·居民证·明信片）— 直达打开用户面板 */}
+             <button
+                id="guide-islandhub"
+                onClick={() => { AudioSystem.playClick(); useGameStore.getState().setPanelInitialTab('stats'); useGameStore.getState().setOpenPlayerPanel(true); showTouchTooltip('小岛面板'); }}
+                className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 transition-transform duration-200 hover:scale-110 active:scale-95 ${isTouch ? 'w-11 h-11' : 'w-12 h-12'}`}
+             >
+                <TreePalm size={isTouch ? 20 : 24} className="text-slate-800 group-hover:text-emerald-600 transition-colors" />
+                {!isTouch && (
+                <span className="absolute -right-24 top-1/2 -translate-y-1/2 hand-drawn-panel text-slate-800 text-xs font-bold py-1 px-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                    小岛面板
+                </span>
+                )}
+             </button>
+
              <button
                 id="guide-immersive"
                 onClick={() => { setIsImmersive(!isImmersive); showTouchTooltip(isImmersive ? '退出沉浸模式' : '沉浸模式'); }}
-                className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 ${isTouch ? 'w-11 h-11' : 'w-12 h-12'}`}
+                className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 transition-transform duration-200 hover:scale-110 active:scale-95 ${isTouch ? 'w-11 h-11' : 'w-12 h-12'}`}
              >
                 {isImmersive ? <EyeOff size={isTouch ? 20 : 24} className="text-slate-800" /> : <Eye size={isTouch ? 20 : 24} className="text-slate-800" />}
                 {!isTouch && (
@@ -669,7 +705,7 @@ export default function App() {
 
              <button
                 onClick={() => { setEnvMenuOpen(!envMenuOpen); showTouchTooltip('生态面板'); }}
-                className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 ${isTouch ? 'w-11 h-11' : 'w-12 h-12'} ${envMenuOpen ? 'hand-drawn-btn-active' : ''}`}
+                className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 transition-transform duration-200 hover:scale-110 active:scale-95 ${isTouch ? 'w-11 h-11' : 'w-12 h-12'} ${envMenuOpen ? 'hand-drawn-btn-active' : ''}`}
              >
                 <Globe size={isTouch ? 20 : 24} className={envMenuOpen ? 'text-amber-700' : 'text-slate-800'} />
                 {!isTouch && (

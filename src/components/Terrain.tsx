@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useGameStore, ToolType } from '../store';
 import { AudioSystem } from '../lib/audio';
 import { emitHermitPlace } from '../lib/socket';
+import { applyTerrainBrush } from '../utils/terrainBrush';
 
 const noise2D = createNoise2D();
 
@@ -512,6 +513,7 @@ export function Terrain() {
   }, [isDrawing, refreshTerrainColors, terrainData, types]);
 
   const lastBrushPoint = useRef(new THREE.Vector3());
+  const flattenTargetY = useRef(0);
   const lastBrushTime = useRef(0);
 
   const applyBrush = (point: THREE.Vector3, isDragEvent: boolean, e?: any) => {
@@ -570,39 +572,19 @@ export function Terrain() {
        if (!meshRef.current) return;
        const geometry = meshRef.current.geometry;
        const posAttr = geometry.attributes.position;
-       
-       const v = new THREE.Vector3();
-       let changed = false;
-       for (let i = 0; i < posAttr.count; i++) {
-         v.fromBufferAttribute(posAttr, i);
-         // Find horizontal distance
-         const dist = Math.sqrt((v.x - point.x) ** 2 + (v.z - point.z) ** 2);
-         if (dist < 3.5) { // Matched cursor scale
-            const influence = (3.5 - dist) / 3.5;
-            // Smooth curve for deformation
-            const smoothInfluence = influence * influence * (3 - 2 * influence);
-            // Lower intensity per-frame if dragging
-            const strength = isDragEvent ? 0.3 : 0.6;
-            const delta = (selectedTool === 'terrainUp' ? strength : -strength) * smoothInfluence;
-            const newY = Math.max(-0.5, v.y + delta);
-            if (newY !== v.y) {
-                posAttr.setY(i, newY);
-                changed = true;
-            }
-         }
-       }
-
+       const { brushMode, brushSize, brushStrength } = useGameStore.getState();
+       if (!isDragEvent) flattenTargetY.current = point.y;
+       const changed = applyTerrainBrush(posAttr.array as Float32Array, {
+         mode: brushMode, size: brushSize, strength: brushStrength, isDrag: isDragEvent,
+         px: point.x, pz: point.z, targetY: flattenTargetY.current, minY: -3.0, maxY: 8.0,
+       });
        if (changed) {
-           posAttr.needsUpdate = true;
-           geometry.computeVertexNormals();
-           geometry.computeBoundingBox();
-           geometry.computeBoundingSphere();
-           refreshTerrainColors();
-           // Update global store
-           if (!isDragEvent) {
-               // If it's just a click, update immediately
-               useGameStore.getState().setTerrainData(posAttr.array as Float32Array, types, ISAND_SIZE, SEGMENTS);
-           }
+         posAttr.needsUpdate = true;
+         geometry.computeVertexNormals();
+         geometry.computeBoundingBox();
+         geometry.computeBoundingSphere();
+         refreshTerrainColors();
+         if (!isDragEvent) useGameStore.getState().setTerrainData(posAttr.array as Float32Array, types, ISAND_SIZE, SEGMENTS);
        }
        return;
     }
@@ -614,7 +596,7 @@ export function Terrain() {
     }
 
     // Add object tool (only on single clicks)
-    const placeableTools = ['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'streetlamp', 'house', 'windmill', 'lighthouse', 'platform', 'pier', 'boat', 'bridge_pillar', 'sub_island', 'birdhouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'tent', 'campfire', 'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
+    const placeableTools = ['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'streetlamp', 'house', 'windmill', 'lighthouse', 'platform', 'pier', 'boat', 'bridge_pillar', 'sub_island', 'birdhouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'tent', 'campfire', 'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
     if (!isDragEvent && placeableTools.includes(selectedTool)) {
         
         let rx = 0, rz = 0;
@@ -719,7 +701,7 @@ export function Terrain() {
       }
       
       let cursorScale = 1;
-      if (selectedTool === 'terrainUp' || selectedTool === 'terrainDown') cursorScale = 3.5;
+      if (selectedTool === 'terrainUp' || selectedTool === 'terrainDown') cursorScale = useGameStore.getState().brushSize;
       if (selectedTool === 'eraser') cursorScale = 2;
       cursorRef.current.scale.setScalar(cursorScale);
     }
@@ -736,7 +718,7 @@ export function Terrain() {
          
          let baseScale = 1;
          const tool = useGameStore.getState().selectedTool;
-         if (tool === 'terrainUp' || tool === 'terrainDown') baseScale = 3.5;
+         if (tool === 'terrainUp' || tool === 'terrainDown') baseScale = useGameStore.getState().brushSize;
          if (tool === 'eraser') baseScale = 2;
 
          cursorRef.current.scale.setScalar(baseScale * (1 + Math.sin(clock.elapsedTime * 8) * 0.1));

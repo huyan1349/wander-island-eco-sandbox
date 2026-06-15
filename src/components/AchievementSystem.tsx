@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../store';
 import { AudioSystem } from '../lib/audio';
 import { evaluateAchievements, Achievement } from '../lib/achievements';
@@ -22,20 +22,22 @@ export const AchievementSystem: React.FC = () => {
     if (newly.length) setQueue(q => [...q, ...newly]);
   }, [assets, stats, deerCount, wolfCount, playerLevel]);
 
-  // 串行播放横幅
-  const busyRef = useRef(false);
+  // 取号：空闲且有队列时，取下一个展示（不挂定时器，避免被 cleanup 误清）
   useEffect(() => {
-    if (busyRef.current || queue.length === 0) return;
-    busyRef.current = true;
-    const next = queue[0];
+    if (current || queue.length === 0) return;
+    setCurrent(queue[0]);
     setQueue(q => q.slice(1));
-    setCurrent(next);
+  }, [current, queue]);
+
+  // 展示生命周期：只依赖 current，定时器稳定不被打断 → 一定会自动消失
+  useEffect(() => {
+    if (!current) { setShown(false); return; }
     AudioSystem.playSynergyChord();
-    requestAnimationFrame(() => setShown(true));
+    const raf = requestAnimationFrame(() => setShown(true));
     const t1 = setTimeout(() => setShown(false), 3600);
-    const t2 = setTimeout(() => { setCurrent(null); busyRef.current = false; }, 4000);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [queue, current]);
+    const t2 = setTimeout(() => setCurrent(null), 4000);
+    return () => { cancelAnimationFrame(raf); clearTimeout(t1); clearTimeout(t2); };
+  }, [current]);
 
   if (!current) return null;
 

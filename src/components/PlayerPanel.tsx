@@ -9,13 +9,26 @@ import { SocialPlaza } from './SocialPlaza';
 import {
   User, Edit2, BarChart2, Leaf, Unlock, Settings, LogOut, Clock, Layers,
   Wifi, WifiOff, Camera, X, Users, MessageCircle, Globe, Search, Send,
-  UserPlus, Check, ArrowLeft, Mail, BookOpen, Compass, Star, Waves, Download, Gift, Upload, Trash2
+  UserPlus, Check, ArrowLeft, Mail, BookOpen, Compass, Star, Waves, Download, Gift, Upload, Trash2,
+  Award, Trophy, TreePine, Home, Rabbit, ChevronRight, Lock, Sparkles, Image as ImageIcon, IdCard
 } from 'lucide-react';
-import { exportIslandFile, applyIslandData } from '../utils/islandIO';
+import QRCode from 'qrcode';
+import { exportIslandFile, applyIslandData, captureScreenshot } from '../utils/islandIO';
 import { GiftModal } from './GiftModal';
-import { IslandHubModal } from './IslandHubModal';
+import { THEMES } from './OnboardingFlow';
+import { ACHIEVEMENTS, getUnlocked, buildSnapshot } from '../lib/achievements';
 
-type Tab = 'stats' | 'ecology' | 'unlocks' | 'social' | 'system';
+// 段位称号：随等级成长，给玩家明确的进阶身份感
+function getRankTitle(level: number): string {
+  if (level >= 20) return '漫游岛传奇';
+  if (level >= 12) return '漫游岛大师';
+  if (level >= 8) return '岛屿守护者';
+  if (level >= 5) return '资深漫游者';
+  if (level >= 3) return '漫游者';
+  return '初临漫游者';
+}
+
+type Tab = 'stats' | 'card' | 'ecology' | 'unlocks' | 'social' | 'system';
 type SocialTab = 'friends' | 'chat' | 'mailbox' | 'visitors' | 'plaza';
 
 export const PlayerPanel: React.FC = () => {
@@ -33,11 +46,66 @@ export const PlayerPanel: React.FC = () => {
   const unreadCount = useGameStore(state => state.unreadCount);
   const setUnreadCount = useGameStore(state => state.setUnreadCount);
 
-  const [isOpen, setIsOpen] = useState(false);
+  const isOpen = useGameStore(state => state.openPlayerPanel);
+  const setIsOpen = useGameStore(state => state.setOpenPlayerPanel);
+  const panelInitialTab = useGameStore(state => state.panelInitialTab);
+  const setPanelInitialTab = useGameStore(state => state.setPanelInitialTab);
   const [activeTab, setActiveTab] = useState<Tab>('stats');
   const [showGift, setShowGift] = useState(false);
-  const [showHub, setShowHub] = useState(false);
   const [activeSocialTab, setActiveSocialTab] = useState<SocialTab>('friends');
+
+  // 居民证 / 明信片（自 IslandHubModal 并入）
+  const [cardFlipped, setCardFlipped] = useState(false);
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [postcardBusy, setPostcardBusy] = useState(false);
+
+  // 左边栏按钮请求打开面板时，定位到指定标签
+  useEffect(() => {
+    if (isOpen && panelInitialTab) {
+      setActiveTab(panelInitialTab as Tab);
+      setPanelInitialTab(null);
+    }
+  }, [isOpen, panelInitialTab, setPanelInitialTab]);
+
+  // 居民证数据：优先持久化，缺失则从账号/存档回退
+  const residentCard = (() => {
+    try { const v = localStorage.getItem('resident_card'); if (v) return JSON.parse(v); } catch { /* ignore */ }
+    const memberNo = authUser?.memberNo || 1;
+    const d = new Date();
+    return {
+      name: authUser?.username || playerName, islandName, motto: authUser?.motto || '', themeIdx: 1, memberNo,
+      joinDate: `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`,
+      uid: `WI-${d.getFullYear()}-${String(memberNo).padStart(6, '0')}`,
+    };
+  })();
+  const cardTheme = THEMES[residentCard.themeIdx] || THEMES[1];
+
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'card') return;
+    QRCode.toDataURL(`${location.origin}/?resident=${residentCard.uid}`, { margin: 1, width: 200, errorCorrectionLevel: 'M' }).then(setQrUrl).catch(() => {});
+  }, [isOpen, activeTab, residentCard.uid]);
+
+  const downloadPostcard = async () => {
+    setPostcardBusy(true);
+    try {
+      const shot = captureScreenshot(1200);
+      const img = new window.Image();
+      await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = () => rej(new Error()); img.src = shot; });
+      const W = 1200, H = 820, pad = 40, iw = W - pad * 2, ih = 560;
+      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      const ctx = cv.getContext('2d')!;
+      ctx.fillStyle = '#fbf7ec'; ctx.fillRect(0, 0, W, H);
+      ctx.drawImage(img, pad, pad, iw, ih);
+      ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 3; ctx.strokeRect(pad, pad, iw, ih);
+      ctx.textAlign = 'left'; ctx.fillStyle = '#1e293b'; ctx.font = "bold 52px 'ZCOOL KuaiLe', sans-serif";
+      ctx.fillText(residentCard.islandName || islandName, pad, ih + pad + 78);
+      ctx.fillStyle = '#64748b'; ctx.font = "500 26px sans-serif";
+      ctx.fillText(`漫游岛 · ${residentCard.joinDate}`, pad, ih + pad + 120);
+      ctx.textAlign = 'right'; ctx.fillStyle = '#15803d'; ctx.font = "bold 28px sans-serif";
+      ctx.fillText('WANDER ISLAND', W - pad, ih + pad + 120);
+      const a = document.createElement('a'); a.href = cv.toDataURL('image/png'); a.download = `${residentCard.islandName || 'island'}-明信片.png`; a.click();
+    } catch (e) { console.error('明信片生成失败', e); } finally { setPostcardBusy(false); }
+  };
 
   const [isEditing, setIsEditing] = useState(false);
   const [tempName, setTempName] = useState(playerName);
@@ -224,12 +292,6 @@ export const PlayerPanel: React.FC = () => {
           {authUser && (
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-800 animate-pulse" title="在线" />
           )}
-          {authUser && (
-            <label onClick={(e) => e.stopPropagation()} className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-              <Camera size={16} className="text-white" />
-              <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
-            </label>
-          )}
         </div>
         {/* 无背景：仅名字 */}
         <div className="flex flex-col min-w-[80px]">
@@ -274,6 +336,9 @@ export const PlayerPanel: React.FC = () => {
                 <button onClick={() => { AudioSystem.playTap(); setActiveTab('stats'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'stats' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
                   <BarChart2 size={16} /> 护照
                 </button>
+                <button onClick={() => { AudioSystem.playTap(); setActiveTab('card'); setCardFlipped(false); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'card' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
+                  <IdCard size={16} /> 居民证
+                </button>
                 <button onClick={() => { AudioSystem.playTap(); setActiveTab('ecology'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'ecology' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
                   <Leaf size={16} /> 生态
                 </button>
@@ -297,6 +362,9 @@ export const PlayerPanel: React.FC = () => {
               <div className="flex-shrink-0 border-t-2 border-slate-800 flex items-center justify-around px-2 py-2 touch-safe-bottom bg-[#fcf8ec]">
                 <button onClick={() => { AudioSystem.playTap(); setActiveTab('stats'); }} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'stats' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
                   <BarChart2 size={20} /><span className="text-[10px] font-bold">护照</span>
+                </button>
+                <button onClick={() => { AudioSystem.playTap(); setActiveTab('card'); setCardFlipped(false); }} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'card' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
+                  <IdCard size={20} /><span className="text-[10px] font-bold">居民证</span>
                 </button>
                 <button onClick={() => { AudioSystem.playTap(); setActiveTab('ecology'); }} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl ${activeTab === 'ecology' ? 'hand-drawn-btn-active' : 'text-slate-500'}`}>
                   <Leaf size={20} /><span className="text-[10px] font-bold">生态</span>
@@ -324,37 +392,157 @@ export const PlayerPanel: React.FC = () => {
                 <X size={20} />
               </button>
 
-              {/* ====== Passport Tab ====== */}
-              {activeTab === 'stats' && (
+              {/* ====== Passport Tab (玩家档案 / 角色卡) ====== */}
+              {activeTab === 'stats' && (() => {
+                const snap = buildSnapshot(useGameStore.getState());
+                const unlockedAch = getUnlocked();
+                const achDone = ACHIEVEMENTS.filter(a => unlockedAch.has(a.id)).length;
+                const nextAch = ACHIEVEMENTS.find(a => !unlockedAch.has(a.id));
+                const rank = getRankTitle(playerLevel);
+                const avatarSrc = authUser ? authUser.avatar : playerAvatar;
+                return (
                 <div className="flex-1 p-10 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto custom-scrollbar">
-                  <h2 className="text-4xl hand-drawn-title mb-10 border-b-2 border-slate-800 pb-6 -rotate-1">岛民护照</h2>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="hand-drawn-panel p-8" style={{ borderWidth: '2px' }}>
-                      <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-2">岛屿</p>
-                      <p className="text-3xl font-light text-slate-800 tracking-widest">{islandName}</p>
+
+                  {/* Hero header：头像 + 可改名 + 段位 + 经验条 */}
+                  <div className="flex items-center gap-6 mb-8 border-b-2 border-slate-800 pb-8">
+                    <div className="relative shrink-0 group">
+                      <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-800 shadow-[4px_4px_0_rgba(15,23,42,0.2)] bg-gradient-to-br from-emerald-400/30 to-cyan-400/30 flex items-center justify-center">
+                        {avatarSrc ? <img src={avatarSrc} alt="" className="w-full h-full object-cover" /> : <User size={40} className="text-slate-500" />}
+                      </div>
+                      {authUser && (
+                        <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" title="更换头像">
+                          <Camera size={20} className="text-white" />
+                          <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
+                        </label>
+                      )}
+                      <div className="absolute -bottom-1 -right-1 bg-slate-900 text-emerald-400 text-xs font-black px-2 py-0.5 rounded-lg border border-slate-700 shadow">LV.{playerLevel}</div>
                     </div>
-                    <div className="hand-drawn-panel p-8 bg-gradient-to-br from-emerald-500/10 to-transparent" style={{ borderWidth: '2px' }}>
-                      <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-2">生态点</p>
-                      <p className="text-4xl font-light text-emerald-400 tracking-wider">{ecoPoints}</p>
-                    </div>
-                    <div className="hand-drawn-panel p-8 flex items-center gap-8" style={{ borderWidth: '2px' }}>
-                      <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center ring-1 ring-blue-500/20">
-                        <Clock size={24} className="text-blue-400" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        {isEditing ? (
+                          <div className="flex items-center gap-2">
+                            <input autoFocus value={tempName} onChange={e => setTempName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveName()} className="hand-drawn-panel px-3 py-1 text-2xl font-bold text-slate-800 focus:outline-none max-w-[260px]" style={{ borderWidth: '2px' }} />
+                            <button onClick={handleSaveName} className="hand-drawn-btn p-2 text-emerald-600"><Check size={16} /></button>
+                          </div>
+                        ) : (
+                          <>
+                            <h2 className="text-3xl hand-drawn-title text-slate-800 truncate">{authUser ? authUser.username : playerName}</h2>
+                            <button onClick={() => { AudioSystem.playClick(); setTempName(authUser ? authUser.username : playerName); setIsEditing(true); }} className="hand-drawn-btn p-1.5 shrink-0" title="修改名字"><Edit2 size={13} /></button>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mb-3 flex-wrap">
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-100 ring-1 ring-amber-300 px-2.5 py-1 rounded-full"><Star size={12} /> {rank}</span>
+                        <span className="text-xs text-slate-500 truncate">🏝️ {islandName}</span>
+                        {authUser && <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">在线</span>}
                       </div>
                       <div>
-                        <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-1">游戏时长</p>
-                        <p className="text-2xl font-light text-slate-800 tracking-widest">{Math.floor(stats.playtime / 60)} min</p>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] font-mono text-slate-500 tracking-[0.2em] uppercase">经验 · 距下一级还差 {xpForNextLevel - currentLevelXP}</span>
+                          <span className="text-[10px] font-bold text-slate-600">{currentLevelXP} / {xpForNextLevel}</span>
+                        </div>
+                        <div className="w-full h-3 bg-black/10 rounded-full overflow-hidden shadow-inner ring-1 ring-slate-300/60">
+                          <div className="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-700 rounded-full" style={{ width: `${xpPercentage}%` }} />
+                        </div>
                       </div>
                     </div>
-                    <div className="hand-drawn-panel p-8 flex items-center gap-8" style={{ borderWidth: '2px' }}>
-                      <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center ring-1 ring-amber-500/20">
-                        <Layers size={24} className="text-amber-400" />
+                  </div>
+
+                  {/* 数据网格 */}
+                  <div className="grid grid-cols-3 gap-4 mb-8">
+                    {[
+                      { icon: <Leaf size={20} className="text-emerald-500" />, label: '生态点', value: ecoPoints, accent: 'from-emerald-500/10' },
+                      { icon: <Clock size={20} className="text-blue-500" />, label: '游戏时长', value: `${Math.floor(stats.playtime / 60)}m` },
+                      { icon: <Layers size={20} className="text-amber-500" />, label: '已放置', value: stats.itemsPlaced },
+                      { icon: <TreePine size={20} className="text-green-600" />, label: '树木', value: snap.treeCount },
+                      { icon: <Home size={20} className="text-orange-500" />, label: '建筑', value: snap.buildingCount },
+                      { icon: <Rabbit size={20} className="text-rose-500" />, label: '生灵', value: deerCount + wolfCount },
+                    ].map((s, i) => (
+                      <div key={i} className={`hand-drawn-panel p-5 flex items-center gap-4 ${s.accent ? `bg-gradient-to-br ${s.accent} to-transparent` : ''}`} style={{ borderWidth: '2px' }}>
+                        <div className="w-11 h-11 rounded-2xl bg-white/60 ring-1 ring-slate-200 flex items-center justify-center shrink-0">{s.icon}</div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-mono text-slate-500 tracking-[0.2em] uppercase truncate">{s.label}</p>
+                          <p className="text-2xl font-light text-slate-800 tracking-wider">{s.value}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-1">已放置物体</p>
-                        <p className="text-2xl font-light text-slate-800 tracking-widest">{stats.itemsPlaced}</p>
+                    ))}
+                  </div>
+
+                  {/* 成就陈列 */}
+                  <div className="hand-drawn-panel p-6" style={{ borderWidth: '2px' }}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Trophy size={18} className="text-amber-500" />
+                        <span className="font-bold text-slate-800 tracking-wide">成就</span>
+                        <span className="text-sm font-bold text-amber-600">{achDone}/{ACHIEVEMENTS.length}</span>
+                      </div>
+                      <button onClick={() => { AudioSystem.playClick(); setActiveTab('card'); }} className="hand-drawn-btn px-3 py-1.5 text-xs font-bold flex items-center gap-1">居民证 <ChevronRight size={13} /></button>
+                    </div>
+                    <div className="w-full h-2 bg-black/10 rounded-full overflow-hidden shadow-inner mb-4">
+                      <div className="h-full bg-gradient-to-r from-amber-400 to-yellow-500 transition-all duration-700" style={{ width: `${(achDone / ACHIEVEMENTS.length) * 100}%` }} />
+                    </div>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {ACHIEVEMENTS.map(a => {
+                        const done = unlockedAch.has(a.id);
+                        return (
+                          <div key={a.id} title={`${a.title} · ${a.desc}`} className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-transform hover:scale-110 ${done ? 'bg-gradient-to-tr from-amber-300 to-yellow-500 border-slate-800 shadow-[2px_2px_0_rgba(15,23,42,0.25)]' : 'bg-slate-200 border-slate-300'}`}>
+                            {done ? <Award size={18} className="text-slate-900" /> : <Lock size={15} className="text-slate-400" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="text-sm text-slate-600 bg-amber-50/60 rounded-xl px-4 py-2.5 ring-1 ring-amber-100">
+                      {nextAch ? <><span className="font-bold text-amber-700">下一目标：</span>{nextAch.title} — {nextAch.desc}</> : <span className="font-bold text-emerald-600">🎉 已集齐全部成就，了不起的漫游者！</span>}
+                    </div>
+                  </div>
+                </div>
+                );
+              })()}
+
+              {/* ====== Resident Card Tab (居民证 · 明信片，并入自小岛面板) ====== */}
+              {activeTab === 'card' && (
+                <div className="flex-1 p-10 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto custom-scrollbar">
+                  <div className="mb-8 border-b-2 border-slate-800 pb-6"><h2 className="text-4xl hand-drawn-title -rotate-1 inline-block">居民证</h2></div>
+
+                  <div className="flex flex-col items-center gap-4" style={{ perspective: 1200 }}>
+                    <div onClick={() => { AudioSystem.playTap(); setCardFlipped(f => !f); }} className="relative w-[360px] max-w-full h-[227px] cursor-pointer" style={{ transformStyle: 'preserve-3d', transform: cardFlipped ? 'rotateY(180deg)' : 'rotateY(0)', transition: 'transform .6s cubic-bezier(.4,.2,.2,1)' }}>
+                      {/* 正面 */}
+                      <div className="absolute inset-0 rounded-2xl overflow-hidden border-[3px] border-slate-900 shadow-[8px_10px_0_rgba(15,23,42,0.4)]" style={{ background: cardTheme.bg, backfaceVisibility: 'hidden' }}>
+                        <div className="flex items-center justify-between px-4 pt-3">
+                          <p className="text-[12px] font-black tracking-[0.15em] text-slate-900">WANDER ISLAND</p>
+                          <Sparkles size={14} style={{ color: cardTheme.accent }} />
+                        </div>
+                        <div className="flex items-center gap-3 px-4 mt-2">
+                          <div className="w-16 h-16 rounded-lg overflow-hidden border-2 border-slate-900 bg-white shrink-0">
+                            {authUser?.avatar ? <img src={authUser.avatar} alt="" className="w-full h-full object-cover" /> : <User size={28} className="text-slate-500 m-auto mt-4" />}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[8px] font-bold tracking-[0.3em] uppercase text-slate-500">Resident</p>
+                            <p className="text-xl font-black text-slate-900 truncate">{residentCard.name}</p>
+                            {residentCard.islandName && <p className="text-[11px] font-bold truncate" style={{ color: cardTheme.ink }}>{residentCard.islandName}</p>}
+                          </div>
+                        </div>
+                        <div className="absolute bottom-0 inset-x-0 px-4 py-2 flex items-end justify-between border-t-2 border-slate-900/15 bg-white/30">
+                          <div><p className="text-[8px] uppercase tracking-widest text-slate-500">第 {residentCard.memberNo} 位</p><p className="text-base font-black font-mono" style={{ color: cardTheme.accent }}>NO.{String(residentCard.memberNo).padStart(5, '0')}</p></div>
+                          <p className="text-xs font-bold text-slate-700 font-mono">{residentCard.joinDate}</p>
+                        </div>
+                      </div>
+                      {/* 背面 */}
+                      <div className="absolute inset-0 rounded-2xl overflow-hidden border-[3px] border-slate-900 shadow-[8px_10px_0_rgba(15,23,42,0.4)] flex flex-col" style={{ background: cardTheme.bg, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+                        <div className="flex-1 flex items-center px-5"><p className="text-lg text-slate-800" style={{ fontFamily: "'ZCOOL KuaiLe', cursive" }}>{residentCard.motto ? `「${residentCard.motto}」` : ''}</p></div>
+                        <div className="flex items-end justify-between px-4 py-2 border-t-2 border-slate-900/15 bg-white/30">
+                          <div><p className="text-[8px] uppercase tracking-widest text-slate-500">专属编号</p><p className="text-sm font-black font-mono" style={{ color: cardTheme.ink }}>{residentCard.uid}</p></div>
+                          <div className="w-12 h-12 rounded border-2 border-slate-900 bg-white p-0.5">{qrUrl ? <img src={qrUrl} alt="" className="w-full h-full" /> : <div className="w-full h-full bg-slate-100 animate-pulse" />}</div>
+                        </div>
                       </div>
                     </div>
+                    <p className="text-slate-400 text-xs">点击卡片 · 翻面</p>
+                  </div>
+
+                  {/* 明信片 / 礼物 */}
+                  <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mt-8">
+                    <button onClick={() => { AudioSystem.playClick(); downloadPostcard(); }} disabled={postcardBusy} className="hand-drawn-btn px-4 py-4 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50"><ImageIcon size={18} className="text-sky-600" /> {postcardBusy ? '生成中…' : '生成明信片'}</button>
+                    <button onClick={() => { AudioSystem.playClick(); setShowGift(true); }} className="hand-drawn-btn px-4 py-4 text-sm font-bold flex items-center justify-center gap-2"><Gift size={18} className="text-rose-500" /> 赠送礼物</button>
                   </div>
                 </div>
               )}
@@ -362,7 +550,7 @@ export const PlayerPanel: React.FC = () => {
               {/* ====== Ecology Tab ====== */}
               {activeTab === 'ecology' && (
                 <div className="flex-1 p-10 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto custom-scrollbar">
-                  <h2 className="text-4xl hand-drawn-title mb-10 border-b-2 border-slate-800 pb-6 -rotate-1">岛屿生态</h2>
+                  <div className="mb-10 border-b-2 border-slate-800 pb-6"><h2 className="text-4xl hand-drawn-title -rotate-1 inline-block">岛屿生态</h2></div>
                   <div className="hand-drawn-panel p-8 mb-8" style={{ borderWidth: '2px' }}>
                     <div className="flex justify-between items-center mb-4">
                       <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase">草地健康度</p>
@@ -395,7 +583,7 @@ export const PlayerPanel: React.FC = () => {
               {/* ====== Unlocks Tab ====== */}
               {activeTab === 'unlocks' && (
                 <div className="flex-1 p-10 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto custom-scrollbar">
-                  <h2 className="text-4xl hand-drawn-title mb-10 border-b-2 border-slate-800 pb-6 -rotate-1">已解锁蓝图</h2>
+                  <div className="mb-10 border-b-2 border-slate-800 pb-6"><h2 className="text-4xl hand-drawn-title -rotate-1 inline-block">已解锁蓝图</h2></div>
                   <div className="grid grid-cols-2 gap-4">
                     {unlockedAssets.map(asset => (
                       <div key={asset} className="hand-drawn-panel px-6 py-4 flex items-center justify-between group transition-colors cursor-default" style={{ borderWidth: '2px' }}>
@@ -576,7 +764,7 @@ export const PlayerPanel: React.FC = () => {
               {/* ====== System Tab ====== */}
               {activeTab === 'system' && (
                 <div className="flex-1 p-10 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto custom-scrollbar">
-                  <h2 className="text-4xl hand-drawn-title mb-10 border-b-2 border-slate-800 pb-6 -rotate-1">系统菜单</h2>
+                  <div className="mb-10 border-b-2 border-slate-800 pb-6"><h2 className="text-4xl hand-drawn-title -rotate-1 inline-block">系统菜单</h2></div>
                   <div className="flex flex-col gap-6 max-w-sm mt-4">
                     <div className="hand-drawn-panel p-4" style={{ borderWidth: '2px' }}>
                       <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-1">版本</p>
@@ -599,7 +787,7 @@ export const PlayerPanel: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    <button onClick={() => { AudioSystem.playClick(); setShowHub(true); }} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Globe size={18} /> 小岛面板（概况·居民证·明信片）</button>
+                    <button onClick={() => { AudioSystem.playClick(); setActiveTab('card'); }} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><IdCard size={18} /> 居民证 · 明信片</button>
                     <button onClick={() => { AudioSystem.playConfirm(); saveGame(); alert("Game Saved Successfully!"); }} className="hand-drawn-btn px-8 py-4 text-xl font-bold w-full">保存进度</button>
                     <div className="grid grid-cols-2 gap-3 w-full">
                       <button onClick={() => { AudioSystem.playClick(); exportIslandFile(); }} className="hand-drawn-btn px-4 py-4 text-sm font-bold flex items-center justify-center gap-2"><Download size={16} /> 导出文件</button>
@@ -633,7 +821,6 @@ export const PlayerPanel: React.FC = () => {
           onClose={() => setShowGift(false)}
         />
       )}
-      {showHub && <IslandHubModal onClose={() => setShowHub(false)} />}
     </>
   );
 };
