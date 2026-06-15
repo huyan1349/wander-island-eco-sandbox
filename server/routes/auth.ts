@@ -54,7 +54,7 @@ function sendCardMail(db: any, userId: string, card: { url: string; title: strin
 // —— 服务器公告邮件 ——
 const SERVER_ANNOUNCEMENTS = [
   {
-    id: 'announcement_deepseek_multiplayer',
+    id: 'announcement_deepseek_multiplayer_v2',
     subject: '辞升级了 · 联机开放',
     content: `亲爱的漫游者：
 

@@ -352,6 +352,9 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
   // 解析教程邮件：gift_type = "tutorial_guide"
   const isTutorialMail = (mail: any) => mail?.gift_type === 'tutorial_guide';
 
+  // DeepSeek升级公告邮件
+  const isDeepseekAnnouncement = (mail: any) => mail?.gift_type === 'announcement_deepseek_multiplayer_v2' || mail?.gift_type === 'announcement_deepseek_multiplayer';
+
   const claimCard = (url: string) => {
     grantCard(url);
     AudioSystem.playSynergyChord();
@@ -550,6 +553,18 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
             <div className={`hand-drawn-panel p-6 bg-amber-50/50 ${isTutorialMail(selectedMail) ? 'overflow-y-auto max-h-[70vh] custom-scrollbar' : ''}`} style={{ borderWidth: '2px' }}>
               {isTutorialMail(selectedMail) ? (
                 <TutorialGuideContent />
+              ) : isDeepseekAnnouncement(selectedMail) ? (
+                <div className="relative">
+                  <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedMail.content}</p>
+                  <div className="flex justify-end mt-4">
+                    <img
+                      src="/mail-illustration.png"
+                      alt="辞升级了"
+                      className="w-36 h-36 object-contain rounded-lg"
+                      style={{ mixBlendMode: 'multiply' }}
+                    />
+                  </div>
+                </div>
               ) : (
                 <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedMail.content}</p>
               )}
