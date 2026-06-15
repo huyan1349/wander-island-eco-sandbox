@@ -751,7 +751,10 @@ export const PlayerPanel: React.FC = () => {
 
                         <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-3">我的好友 ({friends.length})</p>
                         {friends.length === 0 ? (
-                          <p className="text-sm text-slate-400 text-center py-8">还没有好友，搜索添加吧</p>
+                          <div className="text-center py-10">
+                            <p className="text-sm text-slate-500 font-bold">岛和岛之间，隔着一片云海。</p>
+                            <p className="text-xs text-slate-400 mt-1.5">把上面的编号告诉朋友，或搜个名字，去认识第一位岛友吧。</p>
+                          </div>
                         ) : (
                           friends.map((friend, i) => (
                             <div key={friend.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-amber-50 transition-colors cursor-pointer animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: `${i * 40}ms` }} onClick={() => handleOpenChat(friend)}>

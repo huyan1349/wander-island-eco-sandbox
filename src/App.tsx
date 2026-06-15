@@ -223,6 +223,8 @@ export default function App() {
         ownerName: data.ownerName,
         data: data.data
       });
+      // 真正把对方的岛应用到场景，让玩家看见别人的岛（返回时 loadGame 会恢复自己的岛）
+      import('./utils/islandIO').then(m => m.applyIslandSnapshot(data.data || {})).catch(() => {});
     });
     const unsubVisitError = onIslandVisitError((data: any) => {
       addToast(data.error || '串门失败', 'info');

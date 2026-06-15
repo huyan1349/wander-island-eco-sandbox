@@ -461,8 +461,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   ciSay: (line) => {
     const state = get();
     const now = Date.now();
-    // 8s 节流：距离上次说话不足 8s 则跳过
-    if (now - state.ci.lastSpokenAt < 8000) return;
+    // 10s 节流：距离上次说话不足 10s 则跳过，避免辞连发气泡话痨
+    if (now - state.ci.lastSpokenAt < 10000) return;
     const newAffinity = addCiAffinity(1);
     addCiMemoryEntry({ text: line, at: now, type: 'event' });
     set({
