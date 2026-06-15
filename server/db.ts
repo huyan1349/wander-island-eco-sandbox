@@ -125,6 +125,16 @@ function initTables() {
       created_at INTEGER DEFAULT (unixepoch()),
       claimed_count INTEGER DEFAULT 0
     );
+
+    CREATE TABLE IF NOT EXISTS board_posts (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      content TEXT NOT NULL,
+      mood TEXT DEFAULT '',
+      created_at INTEGER DEFAULT (unixepoch()),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_board_created ON board_posts(created_at);
   `);
 
   try {

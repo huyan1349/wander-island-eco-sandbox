@@ -255,6 +255,18 @@ class ApiClient {
     return this.request<{ bottles: any[] }>('/api/bottles/sent');
   }
 
+  // Board (全岛留言板)
+  async getBoardPosts() {
+    return this.request<{ posts: any[] }>('/api/board');
+  }
+
+  async postBoardMessage(content: string, mood: string = '') {
+    return this.request<{ post: any }>('/api/board', {
+      method: 'POST',
+      body: JSON.stringify({ content, mood })
+    });
+  }
+
   // Stats
   async getStats() {
     return this.request<{ userCount: number; islandCount: number; onlineCount: number }>('/api/stats');

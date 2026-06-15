@@ -61,34 +61,75 @@ export const SocialPlaza: React.FC<{ onClose: () => void; embedded?: boolean }> 
   );
 };
 
-/* ========== Bulletin Board ========== */
+/* ========== Bulletin Board（全岛留言板，真后端） ========== */
+const PINNED = [
+  { id: 'sys1', username: '系统', content: '欢迎来到漂流广场——岛民们交流的公共空间。在这里给全岛留下一句话吧。', pinned: true },
+  { id: 'sys2', username: '系统', content: '点击橱窗里的公开岛屿即可串门，别忘了在访客簿上留言、留个小礼物！', pinned: true },
+];
 const BulletinBoard: React.FC = () => {
-  const [notes] = useState([
-    { id: '1', title: '欢迎来到漂流广场', content: '这里是岛民们交流的公共空间。你可以投递漂流瓶、浏览其他岛民的岛屿，或者在这里留下你的足迹。', author: '系统', pinned: true },
-    { id: '2', title: '如何串门', content: '在岛屿橱窗中点击任意公开岛屿，即可前往参观。别忘了在访客簿上留言！', author: '系统', pinned: true },
-    { id: '3', title: '漂流瓶指南', content: '将你的心情装入漂流瓶投入大海，等待有缘人捡到。你也可以在海边捡到其他岛民的瓶子。', author: '系统', pinned: false },
-  ]);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [content, setContent] = useState('');
+  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    try { const res = await api.getBoardPosts(); setPosts(res.posts || []); }
+    catch { /* ignore */ } finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, []);
+
+  const send = async () => {
+    const c = content.trim();
+    if (!c || sending) return;
+    setSending(true);
+    AudioSystem.playConfirm();
+    try {
+      const res = await api.postBoardMessage(c);
+      setContent('');
+      if (res.post) setPosts(prev => [res.post, ...prev]);
+    } catch (e: any) { alert(e?.message || '留言失败'); }
+    finally { setSending(false); }
+  };
 
   return (
     <div className="flex flex-col gap-4">
+      {/* 发留言 */}
+      <div className="hand-drawn-panel p-4" style={{ borderWidth: '2px' }}>
+        <div className="flex gap-2">
+          <input
+            type="text" value={content} maxLength={200}
+            onChange={e => setContent(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && send()}
+            placeholder="给全岛留一句话…"
+            className="flex-1 hand-drawn-panel px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 outline-none"
+            style={{ borderWidth: '2px' }}
+          />
+          <button onClick={send} disabled={sending || !content.trim()} className="hand-drawn-btn px-4 py-2 disabled:opacity-40 flex items-center gap-1">
+            <Send size={14} /> 留言
+          </button>
+        </div>
+      </div>
+
+      {/* 留言列表 */}
       <div className="hand-drawn-panel p-6 bg-gradient-to-br from-amber-50 to-orange-50" style={{ borderWidth: '2px' }}>
-        <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-3">Bulletin Board</p>
+        <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-3">Bulletin Board · {posts.length} 条留言</p>
         <div className="flex flex-col gap-3">
-          {notes.map(note => (
+          {[...PINNED, ...posts].map((p, i) => (
             <div
-              key={note.id}
-              className={`p-4 border-2 border-slate-800 shadow-[3px_3px_0_#2d3436] ${note.pinned ? 'bg-amber-100' : 'bg-white'}`}
-              style={{ transform: note.pinned ? 'rotate(-1deg)' : 'rotate(0.5deg)' }}
+              key={p.id}
+              className={`p-4 border-2 border-slate-800 shadow-[3px_3px_0_#2d3436] animate-in fade-in slide-in-from-bottom-2 ${p.pinned ? 'bg-amber-100' : 'bg-white'}`}
+              style={{ transform: `rotate(${(i % 2 === 0 ? -1 : 1) * 0.6}deg)`, animationDelay: `${Math.min(i, 8) * 40}ms` }}
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <h4 className="font-bold text-slate-800 text-sm tracking-wide mb-1">{note.title}</h4>
-                  <p className="text-xs text-slate-600 leading-relaxed">{note.content}</p>
+                <p className="text-sm text-slate-700 leading-relaxed flex-1 whitespace-pre-wrap">{p.content}</p>
+                <div className="flex flex-col items-end shrink-0">
+                  <span className="text-[11px] font-bold text-slate-500">{p.username}</span>
+                  {p.created_at && <span className="text-[9px] text-slate-400 font-mono">{new Date(p.created_at * 1000).toLocaleDateString()}</span>}
                 </div>
-                <span className="text-[10px] text-slate-400 font-mono shrink-0">{note.author}</span>
               </div>
             </div>
           ))}
+          {loading && <p className="text-center text-xs text-slate-400 py-4">加载留言中…</p>}
         </div>
       </div>
     </div>

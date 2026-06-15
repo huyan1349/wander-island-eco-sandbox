@@ -18,6 +18,7 @@ import visitorsRouter from './routes/visitors.js';
 import bottlesRouter from './routes/bottles.js';
 import adminRouter from './routes/admin.js';
 import giftsRouter from './routes/gifts.js';
+import boardRouter from './routes/board.js';
 import { setupSocket } from './socket.js';
 import { buildCiSystemPrompt, pickFallback, pickWeatherLine, pickSeasonLine } from './ciLines.js';
 
@@ -74,6 +75,7 @@ app.use('/api/visitors', visitorsRouter);
 app.use('/api/bottles', bottlesRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/gifts', giftsRouter);
+app.use('/api/board', boardRouter);
 
 // AI Narration endpoint (preserved from original server.js)
 const apiKey = process.env.DEEPSEEK_API_KEY;
