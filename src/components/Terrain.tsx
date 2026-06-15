@@ -434,10 +434,25 @@ export function Terrain() {
         }
         const isSteep = maxSlope > SLOPE_THRESHOLD;
 
-        if (isPath) {
+        // ── 手动材质笔刷覆盖（types: 0=草 1=路 2=沙 3=石 4=雪 5=花草）──
+        const faceType = types[i]; // 3 顶点同类型（paintSurface 保证）
+        const isPainted = faceType >= 2; // 2/3/4/5 是手动刷的材质
+
+        if (faceType === 1) {
              targetColor.copy(pathColor);
+        } else if (faceType === 2) {
+             targetColor.copy(sandColor);  // 沙滩
+        } else if (faceType === 3) {
+             targetColor.copy(new THREE.Color('#6c757d')); // 石滩
+        } else if (faceType === 4) {
+             targetColor.copy(new THREE.Color('#f8f9fa')); // 雪地
+        } else if (faceType === 5) {
+             // 花草：草地底色 + 粉紫点缀
+             targetColor.copy(healthyGrass);
+             if (i % 9 < 3) targetColor.lerp(new THREE.Color('#e879f9'), 0.4); // 粉花
+             else if (i % 9 < 5) targetColor.lerp(new THREE.Color('#fbbf24'), 0.3); // 黄花
         } else if (isSteep) {
-             targetColor.copy(new THREE.Color('#6c757d')); // 岩石
+             targetColor.copy(new THREE.Color('#6c757d')); // 岩石（自动坡度）
         } else {
              if (faceHeight < 1.0) {
                  targetColor.copy(sandColor);
