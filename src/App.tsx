@@ -94,6 +94,8 @@ import { FlourishHUD } from "./components/FlourishHUD";
 import { GiftModal } from "./components/GiftModal";
 import { PomodoroTimer } from "./components/PomodoroTimer";
 import { VisitOverlay } from "./components/VisitOverlay";
+import { CiSpirit } from "./components/CiSpirit";
+import { useCiProactive } from "./hooks/useCiProactive";
 import { TimeWeatherSystem } from "./components/systems/TimeWeatherSystem";
 import { SolarMeridian } from "./components/ui/SolarMeridian";
 import { WeatherForecast } from "./components/ui/WeatherForecast";
@@ -109,6 +111,9 @@ export default function App() {
   const mailboxOpen = useGameStore(state => state.mailboxOpen);
   const setMailboxOpen = useGameStore(state => state.setMailboxOpen);
   const mode = useGameStore(state => state.mode);
+
+  // 辞的主动性：监听游戏事件驱动辞冒泡
+  useCiProactive();
   const canUndo = useGameStore(state => state._history.length > 0);
   const canRedo = useGameStore(state => state._future.length > 0);
   const undo = useGameStore(state => state.undo);
@@ -178,6 +183,11 @@ export default function App() {
     setUserInput("");
     
     try {
+      // 注入辞的好感等级和记忆摘要
+      const ciState = useGameStore.getState().ci;
+      const affinityLevel = ciState.affinity >= 61 ? 'close' : ciState.affinity >= 21 ? 'familiar' : 'stranger';
+      const memorySummary = ciState.memory.slice(-5).join('；');
+
       const response = await fetch('/api/generate-event', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -188,15 +198,28 @@ export default function App() {
            deerCount,
            wolfCount,
            assetsCount: assetCount,
-           userMessage: messageToSend
+           userMessage: messageToSend,
+           affinityLevel,
+           memorySummary,
+           islandName: useGameStore.getState().islandName,
+           season,
         })
       });
       if (response.ok) {
          const data = await response.json();
          setAiNarration(data.narration);
+         // 同时让辞在游戏内冒泡
+         if (data.narration) {
+           useGameStore.getState().ciSay(data.narration);
+         }
       }
     } catch (e) {
       console.error("Failed to fetch AI narration:", e);
+      // 前端兜底：API 失败时使用本地文案
+      const { pickLine, IDLE_LINES } = await import('./game/ci/lines');
+      const fallbackLine = pickLine(IDLE_LINES);
+      setAiNarration(fallbackLine);
+      useGameStore.getState().ciSay(fallbackLine);
     }
     setIsGeneratingAi(false);
   };
@@ -1161,6 +1184,7 @@ export default function App() {
       )}
       {screen === 'PLAYING' && <Toast />}
       {screen === 'PLAYING' && showWelcomeGuide && <WelcomeGuide />}
+      {screen === 'PLAYING' && !isImmersive && <CiSpirit />}
       {screen === 'PLAYING' && <SignEditorModal />}
       {screen === 'PLAYING' && <AchievementSystem />}
       {screen === 'PLAYING' && online && <HermitOnline />}

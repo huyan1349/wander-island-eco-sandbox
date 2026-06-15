@@ -19,6 +19,7 @@ import bottlesRouter from './routes/bottles.js';
 import adminRouter from './routes/admin.js';
 import giftsRouter from './routes/gifts.js';
 import { setupSocket } from './socket.js';
+import { buildCiSystemPrompt, pickFallback, pickWeatherLine, pickSeasonLine } from './ciLines.js';
 
 dotenv.config({ path: '.env.local' });
 dotenv.config();
@@ -90,27 +91,30 @@ app.post('/api/generate-event', async (req, res) => {
       return res.status(500).json({ error: 'API key is missing. Please set DEEPSEEK_API_KEY.' });
     }
 
-    const { timeOfDay, weather, grassHealth, deerCount, wolfCount, assetsCount, userMessage } = req.body;
+    const { timeOfDay, weather, grassHealth, deerCount, wolfCount, assetsCount, userMessage, affinityLevel, memorySummary, islandName, season } = req.body;
 
-    const systemPrompt = `你现在是 3D 生态沙盒游戏 "Wander Island" 的全知旁白和岛屿神明。
-玩家正在建造和观察这个岛屿。
-不要表现得像个 AI 助手，要像一个带有神秘感、风趣且全知的自然神灵。请用【中文】回答。
-保持你的回答非常简短、沉浸感强（最多两到三句话）。`;
+    // 构建动态 system prompt（注入好感等级 + 记忆 + 上下文）
+    const systemPrompt = buildCiSystemPrompt({
+      islandName: islandName || 'Wander Island',
+      weather: weather === 'sunny' ? '晴天' : weather === 'rainy' ? '雨天' : weather === 'snowy' ? '雪天' : weather === 'cloudy' ? '多云' : weather === 'foggy' ? '浓雾' : weather === 'stormy' ? '雷暴' : weather,
+      timeOfDay,
+      season: season || 'summer',
+      affinityLevel: affinityLevel || 'stranger',
+      memorySummary: memorySummary || undefined,
+      recentEvent: assetsCount > 0 ? `岛上有${assetsCount}个物件、${deerCount}只鹿、${wolfCount}只狼，草地健康度${Math.floor(grassHealth)}%` : undefined,
+    });
 
-    let userPrompt = `当前岛屿状态：
-- 时间: ${Math.floor(timeOfDay)}:00
-- 天气: ${weather === 'sunny' ? '晴天' : weather === 'rainy' ? '雨天' : '雪天'}
-- 草地健康度: ${Math.floor(grassHealth)}%
-- 鹿的数量: ${deerCount}
-- 狼的数量: ${wolfCount}
-- 建筑/植物总数: ${assetsCount}
-
-`;
+    let userPrompt = '';
 
     if (userMessage && userMessage.trim() !== '') {
-      userPrompt += `岛屿的主人（玩家）对你说："${userMessage}"\n请直接回应玩家的话，并结合当前的岛屿状态给出你的神明启示。`;
+      userPrompt += `岛友对你说："${userMessage}"\n请直接回应岛友的话，结合当前岛屿状态给出你的低语。`;
     } else {
-      userPrompt += `请对当前生态系统的平衡、天气、时间或玩家的建造选择发表一句简短、风趣的观察。`;
+      // 无用户消息时：优先用本地文案库（省 API 调用）
+      const localLine = pickWeatherLine(weather) || pickSeasonLine(season || 'summer');
+      if (localLine && !userMessage) {
+        return res.json({ narration: localLine });
+      }
+      userPrompt += `请对当前生态系统的平衡、天气、时间或岛友的建造选择发表一句简短、诗意的观察。`;
     }
 
     const response = await ai.chat.completions.create({
@@ -118,13 +122,15 @@ app.post('/api/generate-event', async (req, res) => {
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
-      ]
+      ],
+      max_tokens: 80 // 主动旁白用短 max_tokens 控制成本
     });
 
     res.json({ narration: response.choices[0].message.content });
   } catch (error) {
     console.error('Error generating AI content:', error);
-    res.status(500).json({ error: 'Failed to generate AI content' });
+    // 兜底：API 失败时回退本地文案库
+    res.json({ narration: pickFallback() });
   }
 });
 

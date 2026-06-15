@@ -768,8 +768,31 @@ export const PlayerPanel: React.FC = () => {
                   <div className="flex flex-col gap-6 max-w-sm mt-4">
                     <div className="hand-drawn-panel p-4" style={{ borderWidth: '2px' }}>
                       <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-1">版本</p>
-                      <p className="text-sm font-bold text-slate-800 tracking-wider">v2.2.0 Touch</p>
+                      <p className="text-sm font-bold text-slate-800 tracking-wider">v2.3.0 岛灵辞</p>
                     </div>
+                    {/* 辞的好感度面板 */}
+                    {(() => {
+                      const ciAffinity = useGameStore.getState().ci.affinity;
+                      const ciLevel = ciAffinity >= 61 ? '亲近老友' : ciAffinity >= 21 ? '熟稔' : '礼貌疏离';
+                      const ciLevelColor = ciAffinity >= 61 ? 'text-rose-600' : ciAffinity >= 21 ? 'text-emerald-600' : 'text-slate-500';
+                      return (
+                        <div className="hand-drawn-panel p-4" style={{ borderWidth: '2px' }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-400 to-cyan-400 border border-slate-800 flex items-center justify-center">
+                                <span className="text-[8px] font-black text-slate-900">辞</span>
+                              </div>
+                              <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase">岛灵好感度</p>
+                            </div>
+                            <span className={`text-xs font-bold ${ciLevelColor}`}>{ciLevel}</span>
+                          </div>
+                          <div className="w-full h-2 bg-black/10 rounded-full overflow-hidden shadow-inner">
+                            <div className="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-700 rounded-full" style={{ width: `${Math.min(ciAffinity, 100)}%` }} />
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-1 text-right">{ciAffinity} / 100</p>
+                        </div>
+                      );
+                    })()}
                     <div className="hand-drawn-panel p-4" style={{ borderWidth: '2px' }}>
                       <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-2">网络</p>
                       {authUser ? (

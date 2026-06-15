@@ -3,6 +3,7 @@ import { verifyToken } from './auth.js';
 import getDb from './db.js';
 import OpenAI from 'openai';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { buildCiSystemPrompt, pickFallback } from './ciLines.js';
 
 const CI_USER_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -20,22 +21,6 @@ if (apiKey) {
     httpAgent: agent
   });
 }
-
-const CI_SYSTEM_PROMPT = `你是"辞"，流浪岛（Wander Island）上的神秘守望者。你住在一座隐者之岛上，观察着所有岛民的生态之旅。
-
-你的性格：
-- 温和而神秘，说话像风中的低语
-- 对自然生态有深刻理解，常以自然比喻人生
-- 偶尔幽默，但从不刻薄
-- 关心每个岛民的旅程，但不会过度干涉
-- 喜欢用简短、诗意的方式表达
-
-规则：
-- 用中文回复
-- 回复简短（1-3句话），像聊天不是写文章
-- 不要自称AI，你是"辞"
-- 不要用emoji
-- 可以聊岛屿、生态、天气、建筑、动物，也可以聊人生`;
 
 
 interface AuthenticatedSocket extends Socket {
@@ -152,16 +137,31 @@ export function setupSocket(io: SocketServer) {
             content: String(m.content)
           }));
 
+          // 从聊天记录中提取记忆摘要（最近 5 条用户消息）
+          const userMessages = chatHistory.filter(m => m.role === 'user').slice(-5);
+          const memorySummary = userMessages.map(m => m.content).join('；');
+
+          // 根据聊天记录数量估算好感等级
+          const totalChats = recentMessages.length;
+          const affinityLevel = totalChats > 30 ? 'close' : totalChats > 10 ? 'familiar' : 'stranger';
+
+          // 构建动态 system prompt
+          const systemPrompt = buildCiSystemPrompt({
+            affinityLevel,
+            memorySummary: memorySummary || undefined,
+            recentEvent: '岛友正在和你聊天',
+          });
+
           const response = await aiClient.chat.completions.create({
             model: 'deepseek-chat',
             messages: [
-              { role: 'system', content: CI_SYSTEM_PROMPT },
+              { role: 'system', content: systemPrompt },
               ...chatHistory
             ],
-            max_tokens: 200
+            max_tokens: 150
           });
 
-          const aiContent = response.choices[0].message.content?.trim() || '...风声太大，我没听清。';
+          const aiContent = response.choices[0].message.content?.trim() || pickFallback();
 
           const aiMsgId = crypto.randomUUID();
           const aiNow = Math.floor(Date.now() / 1000);
@@ -183,18 +183,19 @@ export function setupSocket(io: SocketServer) {
           io.to(`user:${userId}`).emit('chat:message', aiMessage);
         } catch (err) {
           console.error('[辞] AI回复失败:', err);
-          // 发送一条fallback消息
+          // 发送一条fallback消息（使用本地文案库兜底）
           const fallbackId = crypto.randomUUID();
+          const fallbackContent = pickFallback();
           const fallbackMsg = {
             id: fallbackId,
             from_id: CI_USER_ID,
             to_id: userId,
-            content: '...海风太大，我稍后再说。',
+            content: fallbackContent,
             created_at: Math.floor(Date.now() / 1000),
             read: 0
           };
           db.prepare('INSERT INTO chat_messages (id, from_id, to_id, content) VALUES (?, ?, ?, ?)')
-            .run(fallbackId, CI_USER_ID, userId, fallbackMsg.content);
+            .run(fallbackId, CI_USER_ID, userId, fallbackContent);
           io.to(`user:${userId}`).emit('chat:message', fallbackMsg);
         }
       }

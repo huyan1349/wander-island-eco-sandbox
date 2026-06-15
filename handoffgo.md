@@ -1,19 +1,16 @@
 # Handoff
 
 ## 已完成
-- 高级地形笔刷接线（全部 4 步 STEP 1~4 均已完成）
-  - store.ts: 添加 brushMode(BrushMode)/brushSize(number)/brushStrength(number) 状态及 setter
-  - Terrain.tsx: 用 applyTerrainBrush 替换旧升降逻辑，添加 flattenTargetY ref，光标跟随 brushSize
-  - App.tsx: 添加笔刷面板 UI（5模式按钮+大小/力度滑块），工具按钮联动 brushMode（terrainUp→raise, terrainDown→lower）
-  - Assets.tsx: SubIsland 子岛接入笔刷（localPoint 局部坐标 + persistTerrain 持久化）
-- README.md v1 重写（PR #14 已合并）
-- README.md v2 专业重写（PR #16 已合并）
-  - 添加在线体验徽章（wander.qiyuankaiwu.com）
-  - 移除世界观章节（待定稿）
-  - 9 大核心系统详细文档：生态沙盒、天气时间、回声音乐、AI岛灵、卡牌策略、社交多人、成就、番茄钟、存档进度
-  - 40+ 物件分类表、6 首音乐曲目表、6 种卡牌表、11 项成就表
-  - 完整项目结构（每个组件标注用途）、技术选型理由表、API 端点目录
-  - 游戏流程图（ASCII）
+- **详细计划A · 岛灵辞AI重构** — 全部 6 个 STEP 已完成
+  - STEP 2: `src/lib/ciProgress.ts` 新建（好感度/记忆 localStorage 持久化）；`store.ts` 增加 `ci` 状态对象 + `ciSay`(8s节流) + `addAffinity` + `setCiBubble` + `clearCiBubble`
+  - STEP 1: `src/components/CiSpirit.tsx` 新建（左下角2D浮层+头像+手绘气泡+8s淡出+点击打开社交面板）；挂载到 `App.tsx` PLAYING 屏幕
+  - STEP 3: `src/hooks/useCiProactive.ts` 新建（进岛欢迎/生态事件/放置物件/重复操作建议/idle计时器/好感等级变化）；`src/game/ci/lines.ts` 新建（本地文案库，按事件类型分桶）
+  - STEP 4: 好感度分级(stranger/familiar/close) + 记忆系统 + 后端 prompt 注入好感等级和记忆摘要
+  - STEP 5: 环境存在感（天气/时间/季节变化触发，60s间隔限制）— 已在 useCiProactive 中实现
+  - STEP 6: `server/ciLines.ts` 新建（服务端本地文案库+动态prompt构建+兜底）；重构 `server/socket.ts` 辞聊天（注入好感/记忆/上下文）；重构 `server/index.ts` `/api/generate-event`（动态prompt+成本控制max_tokens:80+本地文案兜底）；前端 `fetchAiNarration` 注入 affinityLevel/memorySummary/islandName/season + 前端兜底
+  - 版本号更新至 v2.3.0 岛灵辞，设置页面增加辞的好感度面板
+  - `vite build` 通过
 
 ## 未完成
-- 无
+- tsc 有 2 个预存错误（BrushOptions 缺少 falloff 属性），非本次修改引入
+- 辞的 3D 漂浮小灵形象（文档提到后续可升级为 drei `<Html>`/sprite，当前为 2D 浮层）

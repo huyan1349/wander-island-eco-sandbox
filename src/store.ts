@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { AudioSystem } from './lib/audio';
 import { getGlobalXP, addGlobalXP, levelFromXP } from './lib/globalProgress';
 import { getCiAffinity, addCiAffinity, getCiMemory, addCiMemory as addCiMemoryEntry, getCiMemorySummary } from './lib/ciProgress';
-import type { BrushMode } from './utils/terrainBrush';
+import type { BrushMode, BrushFalloff, SurfaceType } from './utils/terrainBrush';
 import { FlourishCardId, FLOURISH_CARDS, STARTING_DECK, HAND_SIZE, SEASON_BASE_ECO, evaluateSymbiosis, shuffle } from './game/flourish';
 
 export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox';
@@ -207,9 +207,13 @@ interface GameState {
   brushMode: BrushMode;
   brushSize: number;
   brushStrength: number;
+  brushFalloff: BrushFalloff;
+  brushPaintType: SurfaceType;
   setBrushMode: (m: BrushMode) => void;
   setBrushSize: (n: number) => void;
   setBrushStrength: (n: number) => void;
+  setBrushFalloff: (f: BrushFalloff) => void;
+  setBrushPaintType: (t: SurfaceType) => void;
   openPlayerPanel: boolean; // 用户面板开关（头像 / 左边栏按钮共用）
   setOpenPlayerPanel: (v: boolean) => void;
   panelInitialTab: string | null; // 打开用户面板时定位到的标签
@@ -394,6 +398,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   setBrushMode: (m) => set({ brushMode: m }),
   setBrushSize: (n) => set({ brushSize: n }),
   setBrushStrength: (n) => set({ brushStrength: n }),
+  brushFalloff: 'smooth',
+  brushPaintType: 2,
+  setBrushFalloff: (f) => set({ brushFalloff: f }),
+  setBrushPaintType: (t) => set({ brushPaintType: t }),
   openPlayerPanel: false,
   setOpenPlayerPanel: (v) => set({ openPlayerPanel: v }),
   panelInitialTab: null,
@@ -401,6 +409,45 @@ export const useGameStore = create<GameState>((set, get) => ({
   
   aiNarration: null,
   setAiNarration: (narration) => set({ aiNarration: narration }),
+
+  // ===== 辞（岛灵）状态 =====
+  ci: {
+    affinity: getCiAffinity(),
+    lastSpokenAt: 0,
+    memory: getCiMemory().map(m => m.text),
+    bubble: null,
+    bubbleAt: 0,
+  },
+  ciSay: (line) => {
+    const state = get();
+    const now = Date.now();
+    // 8s 节流：距离上次说话不足 8s 则跳过
+    if (now - state.ci.lastSpokenAt < 8000) return;
+    const newAffinity = addCiAffinity(1);
+    addCiMemoryEntry({ text: line, at: now, type: 'event' });
+    set({
+      ci: {
+        ...state.ci,
+        bubble: line,
+        bubbleAt: now,
+        lastSpokenAt: now,
+        affinity: newAffinity,
+        memory: getCiMemory().map(m => m.text),
+      }
+    });
+  },
+  addAffinity: (n) => {
+    const newAffinity = addCiAffinity(n);
+    set((state) => ({ ci: { ...state.ci, affinity: newAffinity } }));
+  },
+  setCiBubble: (s) => {
+    set((state) => ({
+      ci: { ...state.ci, bubble: s, bubbleAt: s ? Date.now() : state.ci.bubbleAt }
+    }));
+  },
+  clearCiBubble: () => {
+    set((state) => ({ ci: { ...state.ci, bubble: null } }));
+  },
 
   lastPlacedSynergy: null,
   setLastPlacedSynergy: (synergy) => set({ lastPlacedSynergy: synergy }),
