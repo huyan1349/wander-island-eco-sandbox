@@ -1563,25 +1563,56 @@ export function Pier(props: any) {
 export function Boat(props: any) {
   const ref = usePopIn(props.scale || 1);
   const weather = useGameStore(state => state.weather);
-  
+  const assets = useGameStore(state => state.assets);
+
+  const [sailParams] = useState(() => ({
+    radiusX: 12 + Math.random() * 6,
+    radiusZ: 8 + Math.random() * 4,
+    speed: 0.15 + Math.random() * 0.1,
+    offset: Math.random() * Math.PI * 2,
+  }));
+
+  const isMoored = useMemo(() => {
+    return assets.some(a => a.type === 'rope' && a.connections?.includes(props.id));
+  }, [assets, props.id]);
+
   useFrame((state) => {
-    if (ref.current) {
-        const time = state.clock.elapsedTime;
-        const px = props.position.x;
-        const pz = props.position.z;
+    if (!ref.current) return;
+    const time = state.clock.elapsedTime;
 
-        const hC = getWaterHeight(px, pz, time, weather);
-        ref.current.position.y = hC + 0.1;
+    let px: number, pz: number;
 
-        // Tilt with the actual wave slope, plus a touch of idle rocking
-        const d = 1.5;
-        const hX = getWaterHeight(px + d, pz, time, weather);
-        const hZ = getWaterHeight(px, pz + d, time, weather);
-        const targetRotX = Math.atan2(hZ - hC, d) * 0.7 + Math.cos(time * 1.6 + pz) * 0.03;
-        const targetRotZ = -Math.atan2(hX - hC, d) * 0.7 + Math.sin(time * 1.4 + px) * 0.04;
-        ref.current.rotation.x += (targetRotX - ref.current.rotation.x) * 0.15;
-        ref.current.rotation.z += (targetRotZ - ref.current.rotation.z) * 0.15;
+    if (isMoored) {
+      // Moored boats stay at home position
+      px = props.position.x;
+      pz = props.position.z;
+    } else {
+      // Sailing boats patrol around their home position
+      const angle = time * sailParams.speed * (weather === 'rainy' ? 1.4 : 1.0) + sailParams.offset;
+      px = props.position.x + Math.cos(angle) * sailParams.radiusX;
+      pz = props.position.z + Math.sin(angle) * sailParams.radiusZ;
+      ref.current.position.x = px;
+      ref.current.position.z = pz;
+
+      // Face the direction of movement
+      const nextAngle = angle + 0.01;
+      const nextPx = props.position.x + Math.cos(nextAngle) * sailParams.radiusX;
+      const nextPz = props.position.z + Math.sin(nextAngle) * sailParams.radiusZ;
+      const moveAngle = Math.atan2(nextPx - px, nextPz - pz);
+      ref.current.rotation.y += (moveAngle - ref.current.rotation.y) * 0.05;
     }
+
+    // Wave physics at current position
+    const hC = getWaterHeight(px, pz, time, weather);
+    ref.current.position.y = hC + 0.1;
+
+    const d = 1.5;
+    const hX = getWaterHeight(px + d, pz, time, weather);
+    const hZ = getWaterHeight(px, pz + d, time, weather);
+    const targetRotX = Math.atan2(hZ - hC, d) * 0.7 + Math.cos(time * 1.6 + pz) * 0.03;
+    const targetRotZ = -Math.atan2(hX - hC, d) * 0.7 + Math.sin(time * 1.4 + px) * 0.04;
+    ref.current.rotation.x += (targetRotX - ref.current.rotation.x) * 0.15;
+    ref.current.rotation.z += (targetRotZ - ref.current.rotation.z) * 0.15;
   });
 
   return (
