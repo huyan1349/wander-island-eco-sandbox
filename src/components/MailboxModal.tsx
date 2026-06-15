@@ -107,7 +107,7 @@ function TutorialGuideContent() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-3 max-h-[55vh] overflow-y-auto scrollbar-none pr-1">
+    <div className="flex flex-col gap-3 pr-1">
       {/* Header */}
       <div className="text-center mb-2" style={{ animation: 'tutorialFadeIn 0.6s ease both' }}>
         <p className="hand-drawn-title text-xl text-slate-800 -rotate-1">漫游者指南</p>
@@ -404,7 +404,7 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
               <h3 className="text-lg font-bold text-slate-800 tracking-wide">{selectedMail.subject}</h3>
             )}
 
-            <div className="hand-drawn-panel p-6 bg-amber-50/50" style={{ borderWidth: '2px' }}>
+            <div className={`hand-drawn-panel p-6 bg-amber-50/50 ${isTutorialMail(selectedMail) ? 'overflow-y-auto max-h-[65vh] custom-scrollbar' : ''}`} style={{ borderWidth: '2px' }}>
               {isTutorialMail(selectedMail) ? (
                 <TutorialGuideContent />
               ) : (
