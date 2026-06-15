@@ -804,7 +804,7 @@ export const PlayerPanel: React.FC = () => {
                   <div className="flex flex-col gap-6 max-w-sm mt-4">
                     <div className="hand-drawn-panel p-4" style={{ borderWidth: '2px' }}>
                       <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-1">辞 · 织潮者的回音</p>
-                      <p className="text-sm font-bold text-slate-800 tracking-wider">v2.3.0 岛灵辞</p>
+                      <p className="text-sm font-bold text-slate-800 tracking-wider">v2.4.0 地形笔刷</p>
                     </div>
                     {/* 辞的好感度面板 */}
                     {(() => {
