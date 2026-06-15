@@ -1269,10 +1269,51 @@ export function useMarinePhysics(ref: React.RefObject<any>, props: any, baseOffs
   });
 }
 
-// Sea Expansion Board (bobs with water)
+// Sea Expansion Board (bobs with water, slow drift on ocean)
 export function Platform(props: any) {
   const ref = usePopIn(props.scale || 1.5);
+  const driftAngle = useRef(0);
+
   useMarinePhysics(ref, props, 0.05);
+
+  useFrame((state, delta) => {
+    if (!ref.current) return;
+    const weather = useGameStore.getState().weather;
+    const assets = useGameStore.getState().assets;
+
+    // Find the "raft leader": the platform with the lowest ID within 3 units
+    // All adjacent platforms share the same drift so they move as one unit
+    const platforms = assets.filter(a => a.type === 'platform');
+    const myX = props.position.x;
+    const myZ = props.position.z;
+    let leaderId = props.id;
+    let leaderX = myX;
+    let leaderZ = myZ;
+    for (const p of platforms) {
+      const dx = p.position.x - myX;
+      const dz = p.position.z - myZ;
+      if (dx * dx + dz * dz <= 9 && p.id < leaderId) { // within 3 units
+        leaderId = p.id;
+        leaderX = p.position.x;
+        leaderZ = p.position.z;
+      }
+    }
+
+    // Use a deterministic drift angle based on the leader's position
+    // so all platforms in a raft get the same drift offset
+    const driftSeed = leaderX * 0.37 + leaderZ * 0.53;
+    const driftSpeed = (weather === 'rainy' || weather === 'stormy') ? 0.045 : 0.03;
+    driftAngle.current += driftSpeed * delta;
+
+    const driftRadius = 1.5;
+    const angle = driftAngle.current + driftSeed;
+    const driftX = Math.cos(angle) * driftRadius;
+    const driftZ = Math.sin(angle * 0.8) * driftRadius;
+
+    // Apply drift offset on top of the marine physics Y position
+    ref.current.position.x = myX + driftX;
+    ref.current.position.z = myZ + driftZ;
+  });
 
   return (
     <group ref={ref} position={[props.position.x, props.position.y, props.position.z]} scale={0}>
