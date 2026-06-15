@@ -341,9 +341,10 @@ export default function App() {
   useEffect(() => {
     if (!appLoaded || demoLoadedRef.current) return;
     const s = useGameStore.getState();
-    if (s.online || s.assets.length > 0) return;
+    // 仅当场景里已经有岛（玩家存档已载入）时才跳过；登录与否都显示「默认开屏小岛」作为标题背景
+    if (s.assets.length > 0) return;
     demoLoadedRef.current = true;
-    import('./utils/islandIO').then(m => m.loadPresetIsland('/preset-demo.json').catch(() => {}));
+    import('./utils/islandIO').then(m => m.loadPresetIsland('/preset-demo.json?v=2').catch(() => {}));
   }, [appLoaded]);
 
   // Switch BGM based on screen
