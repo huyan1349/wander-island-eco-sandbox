@@ -1077,54 +1077,61 @@ export default function App() {
       </>
       )}
       {screen === 'PLAYING' && (selectedTool === 'terrainUp' || selectedTool === 'terrainDown') && (
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-44 z-50 hand-drawn-panel px-4 py-3 flex items-center gap-3 pointer-events-auto">
-          {/* 笔刷模式按钮 */}
-          <div className="flex gap-1.5">
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-44 z-50 pointer-events-auto flex flex-col items-center gap-1.5">
+          {/* 上行：笔刷模式 */}
+          <div className="hand-drawn-panel px-3 py-2 flex items-center gap-2">
             {BRUSH_MODES.map(m => (
               <button key={m.id}
                 onClick={() => { AudioSystem.playTap(); useGameStore.getState().setBrushMode(m.id); }}
-                className={`hand-drawn-btn px-3 py-1.5 text-xs font-bold ${brushMode === m.id ? 'hand-drawn-btn-active' : ''}`}>
+                className={`hand-drawn-btn px-3 py-1.5 text-xs font-bold whitespace-nowrap ${brushMode === m.id ? 'hand-drawn-btn-active' : ''}`}>
                 {m.label}
               </button>
             ))}
           </div>
-          {/* 材质色块（仅 paint 模式显示） */}
-          {brushMode === 'paint' && (
-            <div className="flex gap-1 ml-1">
-              {([2, 3, 4, 1, 5] as SurfaceType[]).map(st => (
-                <button key={st}
-                  onClick={() => useGameStore.getState().setBrushPaintType(st)}
-                  className={`hand-drawn-btn px-2 py-1 text-[10px] font-bold ${brushPaintType === st ? 'hand-drawn-btn-active' : ''}`}
-                  title={SURFACE_LABELS[st]}>
-                  {SURFACE_LABELS[st]}
+          {/* 下行：参数（材质色块 / 羽化 / 大小 / 力度） */}
+          <div className="hand-drawn-panel px-3 py-2 flex items-center gap-3">
+            {/* 材质色块（仅 paint 模式） */}
+            {brushMode === 'paint' && (
+              <div className="flex items-center gap-1">
+                {([2, 3, 4, 1, 5] as SurfaceType[]).map(st => (
+                  <button key={st}
+                    onClick={() => useGameStore.getState().setBrushPaintType(st)}
+                    className={`hand-drawn-btn px-2 py-1 text-[10px] font-bold ${brushPaintType === st ? 'hand-drawn-btn-active' : ''}`}>
+                    {SURFACE_LABELS[st]}
+                  </button>
+                ))}
+                <div className="w-px h-5 bg-slate-300 mx-1" />
+              </div>
+            )}
+            {/* 羽化 */}
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-bold text-slate-500">羽化</span>
+              {(['smooth', 'linear', 'sharp'] as BrushFalloff[]).map(f => (
+                <button key={f}
+                  onClick={() => useGameStore.getState().setBrushFalloff(f)}
+                  className={`hand-drawn-btn px-2 py-1 text-[10px] font-bold ${brushFalloff === f ? 'hand-drawn-btn-active' : ''}`}>
+                  {f === 'smooth' ? '柔' : f === 'linear' ? '线' : '锐'}
                 </button>
               ))}
             </div>
-          )}
-          {/* 羽化曲线 */}
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] font-bold text-slate-600">羽化</span>
-            {(['smooth', 'linear', 'sharp'] as BrushFalloff[]).map(f => (
-              <button key={f}
-                onClick={() => useGameStore.getState().setBrushFalloff(f)}
-                className={`hand-drawn-btn px-2 py-1 text-[10px] font-bold ${brushFalloff === f ? 'hand-drawn-btn-active' : ''}`}>
-                {f === 'smooth' ? '柔' : f === 'linear' ? '线' : '锐'}
-              </button>
-            ))}
-          </div>
-          {/* 大小滑块 */}
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] font-bold text-slate-600">大小</span>
-            <input type="range" min={0.5} max={10} step={0.5} value={brushSize}
-              onChange={e => useGameStore.getState().setBrushSize(parseFloat(e.target.value))}
-              className="w-20 h-1 bg-slate-200 rounded-full appearance-none cursor-pointer" />
-          </div>
-          {/* 力度滑块 */}
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] font-bold text-slate-600">力度</span>
-            <input type="range" min={0.05} max={1} step={0.05} value={brushStrength}
-              onChange={e => useGameStore.getState().setBrushStrength(parseFloat(e.target.value))}
-              className="w-20 h-1 bg-slate-200 rounded-full appearance-none cursor-pointer" />
+            {/* 分隔线 */}
+            <div className="w-px h-5 bg-slate-300" />
+            {/* 大小 */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold text-slate-500">大小</span>
+              <input type="range" min={0.5} max={10} step={0.5} value={brushSize}
+                onChange={e => useGameStore.getState().setBrushSize(parseFloat(e.target.value))}
+                className="w-16 h-1 bg-slate-200 rounded-full appearance-none cursor-pointer" />
+              <span className="text-[10px] text-slate-400 w-5 text-right">{brushSize}</span>
+            </div>
+            {/* 力度 */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold text-slate-500">力度</span>
+              <input type="range" min={0.05} max={1} step={0.05} value={brushStrength}
+                onChange={e => useGameStore.getState().setBrushStrength(parseFloat(e.target.value))}
+                className="w-16 h-1 bg-slate-200 rounded-full appearance-none cursor-pointer" />
+              <span className="text-[10px] text-slate-400 w-5 text-right">{brushStrength.toFixed(2)}</span>
+            </div>
           </div>
         </div>
       )}
