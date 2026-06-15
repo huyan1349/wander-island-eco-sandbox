@@ -9,7 +9,7 @@ export function WeatherForecast() {
   const weather = useGameStore(state => state.weather);
   const forecast = useGameStore(state => state.forecast);
 
-  const [mode, setMode] = useState<'weather' | 'music'>('weather');
+  const [mode, setMode] = useState<'weather' | 'music'>('music');
   const [showLibrary, setShowLibrary] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { AudioSystem } from './lib/audio';
+import { getGlobalXP, addGlobalXP, levelFromXP } from './lib/globalProgress';
 import { FlourishCardId, FLOURISH_CARDS, STARTING_DECK, HAND_SIZE, SEASON_BASE_ECO, evaluateSymbiosis, shuffle } from './game/flourish';
 
 export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox';
@@ -201,6 +202,10 @@ interface GameState {
   setOnline: (v: boolean) => void;
   mailboxOpen: boolean; // 点击岛上信箱物件打开
   setMailboxOpen: (v: boolean) => void;
+  openPlayerPanel: boolean; // 用户面板开关（头像 / 左边栏按钮共用）
+  setOpenPlayerPanel: (v: boolean) => void;
+  panelInitialTab: string | null; // 打开用户面板时定位到的标签
+  setPanelInitialTab: (t: string | null) => void;
   
   aiNarration: string | null;
   setAiNarration: (narration: string | null) => void;
@@ -318,13 +323,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   setPlayerName: (name) => set({ playerName: name }),
   playerAvatar: 'https://api.dicebear.com/7.x/micah/svg?seed=Felix&backgroundColor=fcf8ec',
   setPlayerAvatar: (avatar) => set({ playerAvatar: avatar }),
-  playerXP: 0,
-  playerLevel: 1,
-  addXP: (amount) => set((state) => {
-     const newXP = state.playerXP + amount;
-     const newLevel = Math.floor(newXP / 100) + 1;
-     return { playerXP: newXP, playerLevel: newLevel };
-  }),
+  playerXP: getGlobalXP(),                 // 全局：跨所有小岛累加
+  playerLevel: levelFromXP(getGlobalXP()),
+  addXP: (amount) => {
+     const newXP = addGlobalXP(amount);
+     return set({ playerXP: newXP, playerLevel: levelFromXP(newXP) });
+  },
   
   ecoPoints: 200, // Initial budget
   setEcoPoints: (points) => set({ ecoPoints: points }),
@@ -339,7 +343,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   unlockedAssets: [
     'treeA', 'treeB', 'rock', 'terrainUp', 'terrainDown', 'eraser',
-    'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'streetlamp', 'house', 'windmill', 
+    'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'streetlamp', 'house', 'windmill',
     'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
     'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'
   ],
@@ -363,6 +367,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   setOnline: (v) => set({ online: v }),
   mailboxOpen: false,
   setMailboxOpen: (v) => set({ mailboxOpen: v }),
+  openPlayerPanel: false,
+  setOpenPlayerPanel: (v) => set({ openPlayerPanel: v }),
+  panelInitialTab: null,
+  setPanelInitialTab: (t) => set({ panelInitialTab: t }),
   
   aiNarration: null,
   setAiNarration: (narration) => set({ aiNarration: narration }),
@@ -396,9 +404,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     const newAssets = [...state.assets, asset];
     const deerCount = newAssets.filter(a => a.type === 'deer').length;
     const wolfCount = newAssets.filter(a => a.type === 'wolf').length;
-    const newXP = state.playerXP + 10;
-    const newLevel = Math.floor(newXP / 100) + 1;
-    
+    const newXP = addGlobalXP(10);          // 全局经验：放置任意物件 +10
+    const newLevel = levelFromXP(newXP);
+
     // Trigger Shockwave for Synergy Assets
     let synergy = state.lastPlacedSynergy;
     if (asset.type === 'spring' || asset.type === 'windmill' || asset.type === 'treeA' || asset.type === 'treeB') {
@@ -720,8 +728,8 @@ export const useGameStore = create<GameState>((set, get) => ({
           wolfCount: data.wolfCount,
           playerName: data.playerName || 'huyan',
           playerAvatar: data.playerAvatar || 'https://api.dicebear.com/7.x/micah/svg?seed=Felix&backgroundColor=fcf8ec',
-          playerXP: data.playerXP || 0,
-          playerLevel: data.playerLevel || 1,
+          playerXP: getGlobalXP(),          // 全局等级：加载任何小岛都保持联合进度，不被单岛存档覆盖
+          playerLevel: levelFromXP(getGlobalXP()),
           ecoPoints: data.ecoPoints !== undefined ? data.ecoPoints : 200,
           unlockedAssets: Array.from(new Set([
             ...(data.unlockedAssets || []),

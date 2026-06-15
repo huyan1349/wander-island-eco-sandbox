@@ -616,7 +616,7 @@ export function Terrain() {
     }
 
     // Add object tool (only on single clicks)
-    const placeableTools = ['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'streetlamp', 'house', 'windmill', 'lighthouse', 'platform', 'pier', 'boat', 'bridge_pillar', 'sub_island', 'birdhouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'tent', 'campfire', 'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
+    const placeableTools = ['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'streetlamp', 'house', 'windmill', 'lighthouse', 'platform', 'pier', 'boat', 'bridge_pillar', 'sub_island', 'birdhouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'tent', 'campfire', 'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
     if (!isDragEvent && placeableTools.includes(selectedTool)) {
         
         let rx = 0, rz = 0;
