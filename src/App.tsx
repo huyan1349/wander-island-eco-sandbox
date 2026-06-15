@@ -442,6 +442,37 @@ export default function App() {
     return () => clearInterval(interval);
   }, [updateEcology]);
 
+  // 奇观 · 遗迹破水而出：一眼生命之泉周围聚齐 ≥4 棵树 → 召唤沉睡遗迹升出水面（每眼泉仅一次）
+  const ruinsTriggeredRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (screen !== 'PLAYING') return;
+    const near = (a: any, b: any, r: number) => {
+      const dx = a.position.x - b.position.x, dz = a.position.z - b.position.z;
+      return dx * dx + dz * dz < r * r;
+    };
+    const iv = setInterval(() => {
+      const st = useGameStore.getState();
+      const springs = st.assets.filter(a => a.type === 'spring');
+      if (!springs.length) return;
+      const trees = st.assets.filter(a => a.type === 'treeA' || a.type === 'treeB' || a.type === 'pine_tree');
+      const ruins = st.assets.filter(a => a.type === 'ruins_arch');
+      for (const sp of springs) {
+        if (ruinsTriggeredRef.current.has(sp.id)) continue;
+        if (ruins.some(rn => near(rn, sp, 7))) { ruinsTriggeredRef.current.add(sp.id); continue; } // 已有遗迹(含读档)，不重复
+        if (trees.filter(t => near(t, sp, 7)).length >= 4) {
+          ruinsTriggeredRef.current.add(sp.id);
+          const pos = { x: sp.position.x, y: 0, z: sp.position.z };
+          st.spawnVFX('splash', pos);
+          st.addAsset({ type: 'ruins_arch', position: pos, rotation: { x: 0, y: 0, z: 0 }, scale: 1.4, customState: `rising:${Date.now()}` });
+          AudioSystem.playSynergyChord();
+          st.bumpAwakening(5);
+          st.addToast('遗迹破水而出！泉底古老的共鸣被唤醒了', 'info');
+        }
+      }
+    }, 2000);
+    return () => clearInterval(iv);
+  }, [screen]);
+
   useEffect(() => {
     if (selectedTool !== 'none') {
       lastToolRef.current = selectedTool;
