@@ -7,7 +7,7 @@ export function TimeWeatherSystem() {
     let lastTime = performance.now();
     let lastPublishTime = lastTime;
     let simulatedTime = useGameStore.getState().timeOfDay;
-    const publishIntervalMs = 1000 / 8;
+    const publishIntervalMs = 1000 / 30; // 8fps→30fps：时间流逝更丝滑(太阳/天空不再一卡一卡)
 
     const tick = (currentTime: number) => {
       const state = useGameStore.getState();
