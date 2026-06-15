@@ -149,7 +149,26 @@ export const CiSpirit: React.FC = () => {
 
       {/* 小聊天窗 */}
       {chatOpen && (
-        <div className="pointer-events-auto w-[300px] max-w-[calc(100vw-2.5rem)] h-[400px] max-h-[60vh] flex flex-col hand-drawn-panel shadow-xl animate-in slide-in-from-bottom-2 fade-in duration-300 overflow-hidden" style={{ borderWidth: '2px', borderRadius: '2px' }}>
+        <div className="pointer-events-auto relative ci-chat-rough w-[300px] max-w-[calc(100vw-2.5rem)] h-[400px] max-h-[60vh] flex flex-col hand-drawn-panel shadow-xl animate-in slide-in-from-bottom-2 fade-in duration-300" style={{ borderColor: 'transparent', borderRadius: '4px' }}>
+          {/* 手绘"粗细不匀"边框：SVG 湍流把直边位移成手绘线，转角仍近方正（不歪） */}
+          <svg width="0" height="0" className="absolute" aria-hidden="true">
+            <filter id="ciRoughEdge">
+              <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="2" seed="7" result="n" />
+              <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+          </svg>
+          <style>{`
+            .ci-chat-rough::before {
+              content: '';
+              position: absolute;
+              inset: -1px;
+              border: 2.5px solid #2d3436;
+              border-radius: 5px;
+              filter: url(#ciRoughEdge);
+              pointer-events: none;
+              z-index: 1;
+            }
+          `}</style>
           {/* 头部 */}
           <div className="flex items-center gap-2 px-3 py-2.5 border-b-2 border-slate-800 shrink-0">
             <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-slate-800 shrink-0">
