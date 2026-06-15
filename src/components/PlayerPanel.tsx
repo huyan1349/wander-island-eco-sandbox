@@ -164,6 +164,8 @@ export const PlayerPanel: React.FC = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchBusy, setSearchBusy] = useState(false);
   const [searchHint, setSearchHint] = useState(''); // 无结果 / 未登录 / 失败 提示
+  const [sentTo, setSentTo] = useState<Record<string, boolean>>({}); // 已送出申请的用户(按钮动画)
+  const [celebrate, setCelebrate] = useState<string | null>(null); // 成为好友庆祝浮层
   const [onlineUsers, setOnlineUsers] = useState<Record<string, boolean>>({});
   const [chatTarget, setChatTarget] = useState<any>(null);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
@@ -191,7 +193,12 @@ export const PlayerPanel: React.FC = () => {
       });
     });
     const unsubReq = onFriendRequest(() => loadFriends());
-    const unsubAcc = onFriendAccepted(() => loadFriends());
+    const unsubAcc = onFriendAccepted((data: any) => {
+      AudioSystem.playSynergyChord?.();
+      setCelebrate(data?.fromName || '新朋友');
+      setTimeout(() => setCelebrate(null), 2000);
+      loadFriends();
+    });
     const unsubVisitor = onIslandVisitor(() => {});
     const unsubPresence = onPresenceStatus((statuses) => setOnlineUsers(prev => ({ ...prev, ...statuses })));
     const unsubOnline = onUserOnline((data) => setOnlineUsers(prev => ({ ...prev, [data.userId]: true })));
@@ -288,20 +295,28 @@ export const PlayerPanel: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
-  const handleSendFriendRequest = async (userId: string) => {
-    AudioSystem.playConfirm();
+  const handleSendFriendRequest = async (userId: string, username?: string) => {
+    AudioSystem.playPop();
     try {
       await api.sendFriendRequest(userId);
       emitFriendRequest(userId);
-      setSearchResults(prev => prev.filter(u => u.id !== userId));
+      // 按钮先变「已送出 ✓」再淡出移除（飞出动画）
+      setSentTo(prev => ({ ...prev, [userId]: true }));
+      store.addToast(`好友申请已送给 ${username || '对方'} ✈`, 'friend_request');
+      setTimeout(() => setSearchResults(prev => prev.filter(u => u.id !== userId)), 900);
     } catch (err: any) { alert(err.message); }
   };
 
   const handleAcceptRequest = async (userId: string) => {
     AudioSystem.playConfirm();
+    const name = incomingRequests.find(r => r.id === userId)?.username || '新朋友';
     try {
       await api.acceptFriendRequest(userId);
       emitFriendAccepted(userId);
+      // 庆祝浮层 + 音效
+      AudioSystem.playSynergyChord?.();
+      setCelebrate(name);
+      setTimeout(() => setCelebrate(null), 2000);
       loadFriends();
     } catch (err: any) { alert(err.message); }
   };
@@ -697,8 +712,8 @@ export const PlayerPanel: React.FC = () => {
                         {searchResults.length > 0 && (
                           <div className="mb-6">
                             <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-3">搜索结果</p>
-                            {searchResults.map(user => (
-                              <div key={user.id} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-amber-50 transition-colors">
+                            {searchResults.map((user, i) => (
+                              <div key={user.id} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-amber-50 transition-all duration-500 animate-in fade-in slide-in-from-left-2" style={{ animationDelay: `${i * 50}ms`, opacity: sentTo[user.id] ? 0 : 1, transform: sentTo[user.id] ? 'translateX(40px)' : 'none' }}>
                                 <div className="flex items-center gap-3">
                                   <img src={user.avatar} alt="" className="w-8 h-8 rounded-full border border-slate-800" />
                                   <div>
@@ -706,7 +721,11 @@ export const PlayerPanel: React.FC = () => {
                                     {user.memberNo != null && <span className="ml-2 text-[10px] font-mono text-slate-400">NO.{String(user.memberNo).padStart(5, '0')}</span>}
                                   </div>
                                 </div>
-                                <button onClick={() => { AudioSystem.playConfirm(); handleSendFriendRequest(user.id); }} className="hand-drawn-btn flex items-center gap-1 px-3 py-1 text-xs"><UserPlus size={12} /> 加好友</button>
+                                {sentTo[user.id] ? (
+                                  <span className="flex items-center gap-1 px-3 py-1 text-xs font-bold text-emerald-600"><Check size={12} /> 已送出</span>
+                                ) : (
+                                  <button onClick={() => handleSendFriendRequest(user.id, user.username)} className="hand-drawn-btn flex items-center gap-1 px-3 py-1 text-xs transition-transform active:scale-90"><UserPlus size={12} /> 加好友</button>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -715,15 +734,15 @@ export const PlayerPanel: React.FC = () => {
                         {incomingRequests.length > 0 && (
                           <div className="mb-6">
                             <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-3">好友请求</p>
-                            {incomingRequests.map(req => (
-                              <div key={req.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-amber-50 mb-2 border-2 border-amber-200">
+                            {incomingRequests.map((req, i) => (
+                              <div key={req.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-amber-50 mb-2 border-2 border-amber-200 animate-in fade-in slide-in-from-top-2" style={{ animationDelay: `${i * 60}ms` }}>
                                 <div className="flex items-center gap-3">
                                   <img src={req.avatar} alt="" className="w-8 h-8 rounded-full border border-slate-800" />
                                   <span className="font-bold text-slate-800 text-sm">{req.username}</span>
                                 </div>
                                 <div className="flex gap-2">
-                                  <button onClick={() => { AudioSystem.playConfirm(); handleAcceptRequest(req.id); }} className="hand-drawn-btn p-1.5 text-emerald-600"><Check size={14} /></button>
-                                  <button onClick={() => { AudioSystem.playClose(); handleRejectRequest(req.id); }} className="hand-drawn-btn p-1.5 text-red-500"><X size={14} /></button>
+                                  <button onClick={() => handleAcceptRequest(req.id)} className="hand-drawn-btn p-1.5 text-emerald-600 transition-transform active:scale-90 hover:scale-110"><Check size={14} /></button>
+                                  <button onClick={() => { AudioSystem.playClose(); handleRejectRequest(req.id); }} className="hand-drawn-btn p-1.5 text-red-500 transition-transform active:scale-90"><X size={14} /></button>
                                 </div>
                               </div>
                             ))}
@@ -734,8 +753,8 @@ export const PlayerPanel: React.FC = () => {
                         {friends.length === 0 ? (
                           <p className="text-sm text-slate-400 text-center py-8">还没有好友，搜索添加吧</p>
                         ) : (
-                          friends.map(friend => (
-                            <div key={friend.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-amber-50 transition-colors cursor-pointer" onClick={() => handleOpenChat(friend)}>
+                          friends.map((friend, i) => (
+                            <div key={friend.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-amber-50 transition-colors cursor-pointer animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: `${i * 40}ms` }} onClick={() => handleOpenChat(friend)}>
                               <div className="flex items-center gap-3">
                                 <div className="relative">
                                   <img src={friend.avatar} alt="" className="w-9 h-9 rounded-full border border-slate-800" />
@@ -908,6 +927,26 @@ export const PlayerPanel: React.FC = () => {
           islandName={useGameStore.getState().islandName}
           onClose={() => setShowGift(false)}
         />
+      )}
+
+      {/* 成为好友庆祝浮层 */}
+      {celebrate && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center pointer-events-none">
+          <div className="relative flex flex-col items-center gap-3 animate-in zoom-in-50 fade-in duration-500">
+            <div className="text-6xl" style={{ animation: 'friendPop 0.6s cubic-bezier(0.34,1.56,0.64,1)' }}>🤝</div>
+            <div className="hand-drawn-panel px-6 py-3 shadow-xl" style={{ borderWidth: '2px' }}>
+              <p className="text-lg font-black text-slate-800">你和 <span className="text-emerald-600">{celebrate}</span> 成为好友了！</p>
+            </div>
+            {/* 飘心 */}
+            {['💚', '✨', '💛', '🌿', '✨', '💚'].map((e, i) => (
+              <span key={i} className="absolute text-2xl" style={{ left: `${15 + i * 13}%`, bottom: '30%', animation: `friendFloat ${1.4 + (i % 3) * 0.3}s ease-out ${i * 0.08}s forwards`, opacity: 0 }}>{e}</span>
+            ))}
+          </div>
+          <style>{`
+            @keyframes friendPop { 0% { transform: scale(0) rotate(-20deg); } 60% { transform: scale(1.25) rotate(8deg); } 100% { transform: scale(1) rotate(0); } }
+            @keyframes friendFloat { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateY(-120px) scale(1.1); opacity: 0; } }
+          `}</style>
+        </div>
       )}
     </>
   );

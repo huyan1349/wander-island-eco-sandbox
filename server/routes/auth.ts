@@ -68,6 +68,14 @@ const SERVER_ANNOUNCEMENTS = [
 
 —— 辞`,
   },
+  {
+    id: 'tutorial_guide',
+    subject: '漫游者指南 · 操作与秘籍',
+    content: `这份指南包含了岛上的所有操作方式，点击展开查看。
+
+快捷键：W/A/S/D 移动 · Tab 切换模式 · Esc 退出选中
+更多内容请展开下方各章节 ↓`,
+  },
 ];
 
 function sendAnnouncementMail(db: any, userId: string, announcement: typeof SERVER_ANNOUNCEMENTS[number]) {

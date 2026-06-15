@@ -6,6 +6,183 @@ import { AudioSystem } from '../lib/audio';
 import { emitFriendAccepted } from '../lib/socket';
 import { TRACKS, renderTrackTexture, isCardOwned, grantCard } from './ui/musicData';
 
+// ─── Animated Tutorial Guide Component ───
+const TUTORIAL_SECTIONS = [
+  {
+    icon: '🗺️',
+    title: '视角与移动',
+    items: [
+      { key: '🖱️ 左键拖动', desc: '旋转视角' },
+      { key: '🖱️ 滚轮', desc: '缩放远近' },
+      { key: 'W / A / S / D', desc: '前后左右移动镜头' },
+      { key: 'Tab', desc: '在光标模式与建造模式之间快速切换' },
+      { key: 'Esc', desc: '退出当前选中的建筑/工具' },
+    ],
+  },
+  {
+    icon: '🏗️',
+    title: '建造与编辑',
+    items: [
+      { key: '下方建造栏', desc: '选择分类 → 点选物品 → 点击地面放置' },
+      { key: '橡皮擦工具', desc: '点击已放置的物体将其移除' },
+      { key: '地形隆起', desc: '抬升地面，造山造丘' },
+      { key: '地形下陷', desc: '压低地面，挖湖挖河' },
+      { key: '铺地工具', desc: '改变地表材质（草地/沙地/泥土）' },
+      { key: '副岛', desc: '在海面上放置新小岛，扩展领地' },
+    ],
+  },
+  {
+    icon: '🌿',
+    title: '生态与种植',
+    items: [
+      { key: '植物', desc: '橡树、松树、竹子、柳树、樱花、灌木' },
+      { key: '动物', desc: '鹿、狼、海鸥、海豚、鱼' },
+      { key: '建筑', desc: '房屋、风车、灯塔、帐篷、天文台、遗迹拱门' },
+      { key: '锄地 → 播种', desc: '种下小麦/胡萝卜，等待生长' },
+      { key: '生态面板', desc: '左上角头像 → 生态页，调整生态配置' },
+    ],
+  },
+  {
+    icon: '💬',
+    title: '认识「辞」',
+    items: [
+      { key: '右下角头像', desc: '点击打开与「辞」的聊天窗口' },
+      { key: 'DeepSeek', desc: '「辞」已接入 DeepSeek，可以聊各种话题' },
+      { key: '好感度', desc: '多聊天提升好感，解锁更多对话' },
+    ],
+  },
+  {
+    icon: '🎵',
+    title: '音乐长廊',
+    items: [
+      { key: '左下角卡片', desc: '点击打开音乐收藏库' },
+      { key: '翻面', desc: '点击卡片查看背面故事' },
+      { key: '播放', desc: '点击「播放这首」切换背景音乐' },
+      { key: '信箱领取', desc: '新卡片通过邮件赠送，记得领取' },
+    ],
+  },
+  {
+    icon: '🌐',
+    title: '社交与联机',
+    items: [
+      { key: '好友系统', desc: '搜索用户名添加好友，聊天互访' },
+      { key: '漂流广场', desc: '公告板 / 漂流瓶 / 岛屿橱窗' },
+      { key: '漂流瓶', desc: '投入心情或捡起别人的瓶子阅读回信' },
+      { key: '岛屿橱窗', desc: '浏览公开岛屿，点击即可前往参观' },
+      { key: '访客簿', desc: '参观时留言，查看自己的访客记录' },
+    ],
+  },
+  {
+    icon: '🎁',
+    title: '礼物与存档',
+    items: [
+      { key: '赠送礼物', desc: '左上角头像 → 存档页 → 赠送礼物，打包岛屿分享' },
+      { key: '导出存档', desc: '左上角头像 → 存档页 → 导出，备份为文件' },
+      { key: '导入存档', desc: '左上角头像 → 存档页 → 导入，恢复之前的进度' },
+      { key: '信箱', desc: '好友申请、音乐卡片、系统公告都在这里' },
+    ],
+  },
+  {
+    icon: '🌙',
+    title: '沉浸与专注',
+    items: [
+      { key: '沉浸模式', desc: '隐藏所有 UI，安静欣赏岛屿' },
+      { key: '番茄钟', desc: '沉浸模式中的专注计时器' },
+      { key: '设置', desc: '左上角头像 → 设置，音量/主题/清除数据' },
+    ],
+  },
+];
+
+function TutorialGuideContent() {
+  const [visibleSections, setVisibleSections] = useState(0);
+  const [expandedSection, setExpandedSection] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Staggered reveal of sections
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 1; i <= TUTORIAL_SECTIONS.length; i++) {
+      timers.push(setTimeout(() => setVisibleSections(i), i * 200));
+    }
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-3 max-h-[55vh] overflow-y-auto scrollbar-none pr-1">
+      {/* Header */}
+      <div className="text-center mb-2" style={{ animation: 'tutorialFadeIn 0.6s ease both' }}>
+        <p className="hand-drawn-title text-xl text-slate-800 -rotate-1">漫游者指南</p>
+        <p className="text-slate-400 text-[9px] font-mono tracking-[0.3em] uppercase mt-1">WANDERER'S GUIDE</p>
+      </div>
+
+      {TUTORIAL_SECTIONS.map((section, si) => {
+        const isVisible = si < visibleSections;
+        const isExpanded = expandedSection === si;
+        return (
+          <div
+            key={si}
+            className="rounded-xl border border-slate-200/80 overflow-hidden transition-all duration-300"
+            style={{
+              opacity: isVisible ? 1 : 0,
+              transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
+              transition: `opacity 0.4s ease ${si * 0.1}s, transform 0.4s ease ${si * 0.1}s`,
+              background: isExpanded ? 'rgba(254,243,199,0.3)' : 'rgba(255,255,255,0.5)',
+            }}
+          >
+            {/* Section header */}
+            <button
+              onClick={() => { setExpandedSection(isExpanded ? null : si); AudioSystem.playTap(); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left"
+            >
+              <span className="text-lg">{section.icon}</span>
+              <span className="text-sm font-bold text-slate-800 tracking-wide flex-1">{section.title}</span>
+              <span
+                className="text-slate-400 text-xs transition-transform duration-300"
+                style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              >
+                ▾
+              </span>
+            </button>
+
+            {/* Section items */}
+            <div
+              className="overflow-hidden transition-all duration-300"
+              style={{ maxHeight: isExpanded ? section.items.length * 40 + 16 : 0, opacity: isExpanded ? 1 : 0 }}
+            >
+              <div className="px-4 pb-3 flex flex-col gap-1.5">
+                {section.items.map((item, ii) => (
+                  <div
+                    key={ii}
+                    className="flex items-start gap-2 py-1"
+                    style={{ animation: isExpanded ? `tutorialFadeIn 0.3s ease ${ii * 0.05}s both` : 'none' }}
+                  >
+                    <span className="text-[10px] font-mono text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap mt-0.5">
+                      {item.key}
+                    </span>
+                    <span className="text-[12px] text-slate-600 leading-relaxed">{item.desc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Footer */}
+      <div className="text-center mt-3 pt-3 border-t border-slate-200/50" style={{ animation: 'tutorialFadeIn 0.6s ease 1.8s both' }}>
+        <p className="text-slate-400 text-[10px] italic">愿你在流浪岛上，找到属于自己的宁静。</p>
+        <p className="text-slate-300 text-[9px] font-mono mt-1">—— 辞</p>
+      </div>
+
+      <style>{`
+        @keyframes tutorialFadeIn {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }> = ({ onClose, embedded }) => {
   const authUser = useGameStore(state => state.authUser);
   const [mails, setMails] = useState<any[]>([]);
@@ -28,6 +205,9 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
     const idx = TRACKS.findIndex(t => t.url === url);
     return idx >= 0 ? { idx, ...TRACKS[idx] } : null;
   };
+
+  // 解析教程邮件：gift_type = "tutorial_guide"
+  const isTutorialMail = (mail: any) => mail?.gift_type === 'tutorial_guide';
 
   const claimCard = (url: string) => {
     grantCard(url);
@@ -225,7 +405,11 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
             )}
 
             <div className="hand-drawn-panel p-6 bg-amber-50/50" style={{ borderWidth: '2px' }}>
-              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedMail.content}</p>
+              {isTutorialMail(selectedMail) ? (
+                <TutorialGuideContent />
+              ) : (
+                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedMail.content}</p>
+              )}
             </div>
 
             {/* 记忆卡领取 */}
