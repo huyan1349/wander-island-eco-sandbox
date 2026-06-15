@@ -32,12 +32,24 @@ const SvgLeaf = () => (
   </svg>
 );
 const SvgSpirit = () => (
-  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#2d3436" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 3C14 3 8 8 8 14C8 17 10 20 14 20C18 20 20 17 20 14C20 8 14 3 14 3Z" fill="#c4b5fd" stroke="#2d3436" />
-    <circle cx="12" cy="12" r="1" fill="#2d3436" />
-    <circle cx="16" cy="12" r="1" fill="#2d3436" />
-    <path d="M12 15C13 16 15 16 16 15" stroke="#2d3436" strokeWidth="1.5" />
-    <path d="M14 20V25" stroke="#2d3436" strokeWidth="1.5" strokeDasharray="2 2" />
+  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#2d3436" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    {/* Calligraphy brush */}
+    <path d="M10 24L13 14L14 13L15 14L12 24Z" fill="#78350f" stroke="#2d3436" />
+    <path d="M13 14L14 6L15 14" fill="#c4b5fd" stroke="#2d3436" />
+    {/* Ink drip forming a spirit silhouette */}
+    <ellipse cx="14" cy="5.5" rx="3.2" ry="3.5" fill="#c4b5fd" stroke="#2d3436" />
+    {/* Spirit eyes — gentle closed */}
+    <path d="M12.2 5C12.6 4.5 13.2 4.5 13.4 5" stroke="#2d3436" strokeWidth="1" />
+    <path d="M14.6 5C15 4.5 15.6 4.5 15.8 5" stroke="#2d3436" strokeWidth="1" />
+    {/* Tiny smile */}
+    <path d="M13.2 6.5C13.6 6.9 14.4 6.9 14.8 6.5" stroke="#2d3436" strokeWidth="0.8" />
+    {/* Flowing ink trail */}
+    <path d="M11 5C9 7 8.5 10 10 12" stroke="#2d3436" strokeWidth="1" opacity="0.4" strokeDasharray="2 1.5" />
+    <path d="M17 5C19 7 19.5 10 18 12" stroke="#2d3436" strokeWidth="1" opacity="0.4" strokeDasharray="2 1.5" />
+    {/* Ink splatter dots */}
+    <circle cx="8" cy="11" r="0.8" fill="#2d3436" opacity="0.3" />
+    <circle cx="20" cy="10" r="0.6" fill="#2d3436" opacity="0.25" />
+    <circle cx="9.5" cy="8" r="0.5" fill="#2d3436" opacity="0.2" />
   </svg>
 );
 const SvgMusic = () => (
