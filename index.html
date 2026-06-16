@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="application-name" content="流浪岛" />
+    <meta name="apple-mobile-web-app-title" content="流浪岛" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <!-- Preload the splash LCP image so it loads in parallel with the JS bundle
+         instead of being discovered only after React renders the title screen. -->
+    <link rel="preload" as="image" href="/title/island-outline.svg" type="image/svg+xml" fetchpriority="high" />
+    <title>Wander Island</title>
+    <style>
+      /* Critical: prevent FOUC and ensure fullscreen on mobile */
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+      #root { width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Mobile fullscreen on first touch
+      function tryFullscreen() {
+        const el = document.documentElement;
+        if (!document.fullscreenElement && el.requestFullscreen) {
+          el.requestFullscreen().catch(function(){});
+        } else if (!document.fullscreenElement && el.webkitRequestFullscreen) {
+          el.webkitRequestFullscreen();
+        }
+        document.removeEventListener('touchstart', tryFullscreen);
+        document.removeEventListener('click', tryFullscreen);
+      }
+      document.addEventListener('touchstart', tryFullscreen, { once: true });
+      document.addEventListener('click', tryFullscreen, { once: true });
+
+      // Prevent default mobile gestures that interfere with game
+      document.addEventListener('gesturestart', function(e) { e.preventDefault(); }, { passive: false });
+      document.addEventListener('gesturechange', function(e) { e.preventDefault(); }, { passive: false });
+      document.addEventListener('gestureend', function(e) { e.preventDefault(); }, { passive: false });
+    </script>
+  </body>
+</html>
+

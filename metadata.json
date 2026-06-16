@@ -1,0 +1,6 @@
+{
+  "name": "Wander Island: Eco-Sandbox",
+  "description": "A micro ecological sandbox simulation set on a small, isolated island with dynamic weather and ecology.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

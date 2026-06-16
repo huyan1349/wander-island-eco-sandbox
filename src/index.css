@@ -1,0 +1,418 @@
+/* Nunito - Local fonts (no Google CDN dependency) */
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/nunito-latin-300-normal.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/nunito-latin-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/nunito-latin-600-normal.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/nunito-latin-700-normal.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/nunito-latin-800-normal.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Nunito';
+  src: url('/fonts/nunito-latin-900-normal.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ZCOOL KuaiLe - Local font */
+@font-face {
+  font-family: 'ZCOOL KuaiLe';
+  src: url('/fonts/zcool-kuaile-chinese-simplified-400-normal.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Raleway Thin - Local font */
+@font-face {
+  font-family: 'Raleway';
+  src: url('/fonts/raleway-latin-100-normal.woff2') format('woff2');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Nunito', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: 'Nunito', sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow: hidden;
+    background-color: #f0fdf4;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.6);
+  }
+  /* Light-background scrollbar for panels */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+  /* Cinematic Text / Ambient Elements */
+  .cinematic-vignette {
+    background: radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.4) 100%);
+    pointer-events: none;
+  }
+
+  .hand-drawn-title {
+    @apply text-slate-800 uppercase;
+    font-family: 'ZCOOL KuaiLe', sans-serif;
+    font-weight: 900;
+    /* No text shadow */
+    transform: rotate(-2deg);
+  }
+
+  /* Hand-Drawn / Sketchy UI Styles */
+  .hand-drawn-panel {
+    background-color: #fcf8ec; /* warm paper/parchment */
+    border: 3px solid #2d3436;
+    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px; /* Sketchy irregular border */
+    box-shadow: 4px 4px 0px #2d3436;
+    color: #2d3436;
+    font-family: 'ZCOOL KuaiLe', 'Nunito', sans-serif;
+    transition: all 0.3s ease;
+  }
+  
+  .hand-drawn-panel:hover {
+    box-shadow: 6px 6px 0px #2d3436;
+  }
+  
+  .hand-drawn-btn {
+    background-color: #fcf8ec;
+    border: 3px solid transparent;
+    border-radius: 15px 225px 15px 255px/255px 15px 225px 15px;
+    color: #2d3436;
+    font-family: 'ZCOOL KuaiLe', 'Nunito', sans-serif;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: pointer;
+  }
+
+  .hand-drawn-btn:hover {
+    border-color: #2d3436;
+    transform: translate(-2px, -2px) rotate(-1deg);
+    box-shadow: 3px 3px 0px #2d3436;
+    background-color: #ffeaa7; /* warm highlight */
+  }
+
+  .hand-drawn-btn:active {
+    transform: translate(2px, 2px) rotate(1deg);
+    box-shadow: 0px 0px 0px #2d3436;
+    background-color: #fdcb6e;
+  }
+
+  .hand-drawn-btn-active {
+    background-color: #ffeaa7;
+    border: 3px solid #2d3436;
+    box-shadow: 3px 3px 0px #2d3436;
+    transform: translate(-2px, -2px) rotate(1deg);
+  }
+
+  /* 底部工具坞内的所有格子：保留手绘圆角与偏移阴影，但去掉旋转倾斜，
+     让选中高亮框端正地罩住图标（仅作用于工具坞，不影响侧栏等其它按钮） */
+  #tool-dock .hand-drawn-btn,
+  #tool-dock .hand-drawn-btn-active { transform: none; }
+  #tool-dock .hand-drawn-btn:hover { transform: translate(-2px, -2px); }
+  #tool-dock .hand-drawn-btn:active { transform: translate(2px, 2px); }
+
+  /* Keep legacy glass styles just in case for overlays, but mostly unused now */
+  .glass-panel {
+    @apply bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl transition-all duration-500 relative overflow-hidden;
+  }
+  .glass-pill {
+    @apply bg-black/60 backdrop-blur-xl border border-white/10 rounded-full transition-all duration-500 relative overflow-hidden;
+  }
+
+  .hand-drawn-ghost {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+  .hand-drawn-ghost:hover {
+    background-color: #ffeaa7 !important;
+    border-color: #2d3436 !important;
+    box-shadow: 3px 3px 0px #2d3436 !important;
+  }
+  .hand-drawn-ghost-active {
+    background-color: #ffeaa7 !important;
+    border-color: #2d3436 !important;
+    box-shadow: 3px 3px 0px #2d3436 !important;
+  }
+  
+  /* Immersive Paper Features */
+  .bg-grid-paper {
+    background-color: transparent;
+    background-image: 
+      linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-position: center center;
+  }
+
+  .stamp {
+    border: 3px dashed #ff7675;
+    color: #ff7675;
+    transform: rotate(-5deg);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+}
+
+@keyframes slideUpFade {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUpFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInFromRight {
+  0% { opacity: 0; transform: translateX(100px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideOutToRight {
+  0% { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(100px); }
+}
+
+@keyframes compassSpin {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(90deg); }
+  50% { transform: rotate(180deg); }
+  75% { transform: rotate(270deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-compass-spin {
+  animation: compassSpin 3s linear infinite;
+}
+
+/* ===== Touch Screen Optimizations ===== */
+@media (pointer: coarse), (hover: none) {
+  /* Larger touch targets for all buttons */
+  .hand-drawn-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Disable hover-dependent transforms on touch */
+  .hand-drawn-btn:hover {
+    border-color: transparent;
+    transform: none;
+    box-shadow: none;
+    background-color: #fcf8ec;
+  }
+
+  .hand-drawn-btn:active {
+    border-color: #2d3436;
+    transform: translate(1px, 1px) rotate(0.5deg);
+    box-shadow: 1px 1px 0px #2d3436;
+    background-color: #fdcb6e;
+  }
+
+  .hand-drawn-panel:hover {
+    box-shadow: 4px 4px 0px #2d3436;
+  }
+
+  .hand-drawn-ghost:hover {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* Tooltips: show on tap via JS, not hover */
+  .touch-tooltip-visible {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  /* Bottom dock: bigger spacing */
+  .touch-dock {
+    gap: 6px !important;
+    padding: 8px !important;
+  }
+
+  .touch-dock button {
+    padding: 10px !important;
+  }
+
+  /* Category tools: scrollable horizontally */
+  .touch-tools-scroll {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    flex-wrap: nowrap !important;
+    max-width: 90vw;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .touch-tools-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Right panel: full width on small screens */
+  .touch-panel-full {
+    width: 100% !important;
+    max-width: 100% !important;
+    right: 0 !important;
+    left: 0 !important;
+    top: auto !important;
+    bottom: 0 !important;
+    max-height: 60vh !important;
+    border-radius: 0 !important;
+  }
+
+  /* Player panel modal: full screen on touch */
+  .touch-modal-full {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+  }
+
+  /* Safe area padding for notched devices */
+  .touch-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+
+  .touch-safe-top {
+    padding-top: env(safe-area-inset-top, 0px) !important;
+  }
+
+  .touch-safe-left {
+    padding-left: env(safe-area-inset-left, 0px) !important;
+  }
+
+  .touch-safe-right {
+    padding-right: env(safe-area-inset-right, 0px) !important;
+  }
+}
+
+/* Touch-specific utility: always visible on touch devices */
+.is-touch .touch-show {
+  display: flex !important;
+}
+
+.is-touch .touch-hide {
+  display: none !important;
+}
+
+/* ===== Mobile Phone Specific (max-width: 768px) ===== */
+@media (max-width: 768px) {
+  /* Ensure all interactive elements are at least 44px */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Larger input fields for mobile */
+  input, textarea, select {
+    font-size: 16px !important; /* Prevent iOS zoom on focus */
+    min-height: 48px;
+  }
+
+  /* Prevent scroll chaining on modals */
+  .hand-drawn-panel {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Smaller HUD text on small screens */
+  .hand-drawn-panel.text-sm {
+    font-size: 12px;
+  }
+
+  /* Bottom dock: even bigger on phone */
+  .touch-dock {
+    gap: 4px !important;
+    padding: 6px 8px !important;
+  }
+
+  .touch-dock button {
+    padding: 8px !important;
+  }
+}
+
+/* ===== Landscape Phone ===== */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Compact HUD for landscape phones */
+  .hand-drawn-panel {
+    padding: 4px 8px !important;
+  }
+
+  /* Smaller bottom dock */
+  .touch-dock {
+    gap: 2px !important;
+    padding: 4px !important;
+  }
+
+  .touch-dock button {
+    padding: 4px !important;
+  }
+}
