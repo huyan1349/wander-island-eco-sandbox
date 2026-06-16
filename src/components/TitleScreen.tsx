@@ -50,18 +50,24 @@ export const TitleScreen: React.FC = () => {
     const clearAllData = async () => {
         setIsClearingData(true);
         AudioSystem.stopAllNow();
-        api.setToken(null);
-        disconnectSocket();
 
-        // Clear all storage
+        // 保存登录态
+        const token = api.getToken();
+        const authUserStr = localStorage.getItem('auth_user');
+
+        // 清除所有本地存储
         try { localStorage.clear(); } catch {}
         try { sessionStorage.clear(); } catch {}
-        // Clear cookies
+
+        // 恢复登录态
+        if (token) api.setToken(token);
+        if (authUserStr) try { localStorage.setItem('auth_user', authUserStr); } catch {}
+
+        // 清除 cookies、caches、service workers、IndexedDB
         document.cookie.split(';').forEach((c) => {
             const name = c.split('=')[0]?.trim();
             if (name) document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
         });
-        // Clear caches & service workers
         try {
             const keys = await window.caches?.keys?.();
             if (keys) await Promise.allSettled(keys.map((k) => caches.delete(k)));
@@ -76,7 +82,7 @@ export const TitleScreen: React.FC = () => {
             if (dbs) await Promise.allSettled(dbs.map((db) => db.name ? deleteIndexedDb(db.name) : Promise.resolve()));
         } catch {}
 
-        // Hard reload to fully reset
+        // 刷新页面彻底重置
         window.location.reload();
     };
 
