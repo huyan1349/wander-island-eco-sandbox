@@ -34,6 +34,51 @@ export const TitleScreen: React.FC = () => {
 
     const [masterVol, setMasterVol] = useState(0.6);
     const [bgmVol, setBgmVol] = useState(0.5);
+    const [isClearingData, setIsClearingData] = useState(false);
+
+    const deleteIndexedDb = (name: string) => new Promise<void>((resolve) => {
+        try {
+            const req = indexedDB.deleteDatabase(name);
+            req.onsuccess = () => resolve();
+            req.onerror = () => resolve();
+            req.onblocked = () => resolve();
+        } catch {
+            resolve();
+        }
+    });
+
+    const clearAllData = async () => {
+        setIsClearingData(true);
+        AudioSystem.stopAllNow();
+        api.setToken(null);
+        disconnectSocket();
+
+        // Clear all storage
+        try { localStorage.clear(); } catch {}
+        try { sessionStorage.clear(); } catch {}
+        // Clear cookies
+        document.cookie.split(';').forEach((c) => {
+            const name = c.split('=')[0]?.trim();
+            if (name) document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        });
+        // Clear caches & service workers
+        try {
+            const keys = await window.caches?.keys?.();
+            if (keys) await Promise.allSettled(keys.map((k) => caches.delete(k)));
+        } catch {}
+        try {
+            const regs = await navigator.serviceWorker?.getRegistrations?.();
+            if (regs) await Promise.allSettled(regs.map((r) => r.unregister()));
+        } catch {}
+        try {
+            const idb = window.indexedDB as IDBFactory & { databases?: () => Promise<Array<{ name?: string }>> };
+            const dbs = await idb.databases?.();
+            if (dbs) await Promise.allSettled(dbs.map((db) => db.name ? deleteIndexedDb(db.name) : Promise.resolve()));
+        } catch {}
+
+        // Hard reload to fully reset
+        window.location.reload();
+    };
 
     // 已登录玩家进入标题时的「欢迎回来」通知
     const [welcomeBack, setWelcomeBack] = useState(false);
@@ -332,16 +377,15 @@ export const TitleScreen: React.FC = () => {
                                 <div className="flex flex-col gap-4">
                                     <span className="text-lg font-bold text-slate-800">数据管理</span>
                                     <button
-                                        onClick={() => {
+                                        disabled={isClearingData}
+                                        onClick={async () => {
                                             AudioSystem.playClick();
-                                            if (confirm('确定清除所有浏览器数据？这将重置加载界面状态，刷新后需要重新加载资源。')) {
-                                                localStorage.clear();
-                                                location.reload();
-                                            }
+                                            if (!confirm('确定清除所有数据？将清空本地存档与进度，页面将自动刷新回到初始状态。')) return;
+                                            await clearAllData();
                                         }}
-                                        className="hand-drawn-btn px-6 py-2 text-sm text-red-700 font-bold border-red-300 hover:bg-red-50"
+                                        className="hand-drawn-btn px-6 py-2 text-sm text-red-700 font-bold border-red-300 hover:bg-red-50 disabled:opacity-60 disabled:cursor-wait"
                                     >
-                                        清除所有浏览器数据
+                                        {isClearingData ? '正在清除...' : '一键清除所有数据'}
                                     </button>
                                 </div>
                             </div>
