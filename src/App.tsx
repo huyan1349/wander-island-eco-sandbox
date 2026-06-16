@@ -4,75 +4,19 @@ const GameCanvas = lazy(() => import("./components/GameCanvas").then(m => ({ def
 import { TitleScreen } from "./components/TitleScreen";
 import { SaveSelectScreen } from "./components/SaveSelectScreen";
 import { LoadingScreen, hasVisitedBefore } from "./components/LoadingScreen";
+import { BUILD_CATEGORIES, MODE_TOOLS, WEATHER_OPTIONS } from "./config/toolCatalog";
 import { useGameStore, ToolType } from "./store";
 import {
-  TreePine,
-  TreeDeciduous,
-  Mountain,
-  MountainSnow,
-  Rabbit, // using rabbit icon as a placeholder for deer if no deer icon exists
-  Dog, // using dog for wolf
-  Bird,
-  Fish,
-  Mailbox,
-  Droplets,
-  ArrowUp,
-  ArrowDown,
-  Eraser,
-  MousePointer2,
-  Star,
-  Castle,
-  Telescope,
-  LifeBuoy,
-  Sun,
-  CloudRain,
-  Snowflake,
-  Lamp,
   Eye,
   EyeOff,
-  Home,
-  Warehouse,
-  Wind,
-  TowerControl,
-  Square,
-  Ship,
-  Link,
-  ChevronRight,
-  ChevronLeft,
-  ChevronUp,
-  ChevronDown,
   Globe,
-  Waves,
-  Save,
-  Download,
+  Dog,
+  Rabbit,
   Trash2,
-  Settings,
-  Hammer,
   Lock,
-  Box,
-  Columns,
-  Route,
-  Anchor,
-  AlignEndHorizontal,
-  Shovel,
-  Wheat,
-  Carrot,
-  Tent,
-  Flame,
-  Fence,
-  Droplet,
-  Armchair,
-  Leaf,
-  SunMedium,
-  User,
-  Cloud,
   Maximize2,
-  Flower2,
-  Sprout,
-  Clover,
   Undo2,
   Redo2,
-  Signpost,
   TreePalm
 } from "lucide-react";
 
@@ -94,17 +38,31 @@ import { PomodoroTimer } from "./components/PomodoroTimer";
 import { VisitOverlay } from "./components/VisitOverlay";
 import { CiSpirit } from "./components/CiSpirit";
 import { CiForecastAlert } from "./components/ui/CiForecastAlert";
+import {
+  useAudioBootstrap,
+  useAutoFullscreen,
+  useAuthBootstrap,
+  useAutosave,
+  useCloudIslandSync,
+  useDemoTitleIsland,
+  useEcologyAudioSync,
+  useEcologyLoop,
+  useGiftClaimQuery,
+  usePlaytimeLoop,
+  usePresenceAndVisitEvents,
+  useRestoreTitleBackground,
+  useRuinsAwakening,
+  useScreenBgm,
+  useUnreadCountPolling,
+  useUndoRedoHotkeys,
+} from "./hooks/useAppLifecycle";
 import { useCiProactive } from "./hooks/useCiProactive";
 import { TimeWeatherSystem } from "./components/systems/TimeWeatherSystem";
 import { SolarMeridian } from "./components/ui/SolarMeridian";
 import { WeatherForecast } from "./components/ui/WeatherForecast";
-import { api } from "./lib/api";
-import { syncOnLogin, pushUserState } from "./lib/cloudSync";
-import { connectSocket, onUserOnline, onUserOffline, onFriendRequest, onIslandVisitData, onIslandVisitError } from "./lib/socket";
 import { AudioSystem } from "./lib/audio";
 import { BRUSH_MODES, SURFACE_LABELS } from "./utils/terrainBrush";
 import type { BrushFalloff, SurfaceType } from "./utils/terrainBrush";
-import { applyIslandSnapshot, loadPresetIsland } from "./utils/islandIO";
 
 export default function App() {
   const screen = useGameStore(state => state.screen);
@@ -143,7 +101,6 @@ export default function App() {
   const wolfCount = useGameStore(state => state.wolfCount);
   const updateEcology = useGameStore(state => state.updateEcology);
   const saveGame = useGameStore(state => state.saveGame);
-  const clearAll = useGameStore(state => state.clearAll);
   const aiNarration = useGameStore(state => state.aiNarration);
   const setAiNarration = useGameStore(state => state.setAiNarration);
   const ecoPoints = useGameStore(state => state.ecoPoints);
@@ -175,140 +132,6 @@ export default function App() {
   const setServerIslandMap = useGameStore(state => state.setServerIslandMap);
   const islandId = useGameStore(state => state.islandId);
 
-  // Audio init moved after appLoaded declaration
-
-  useEffect(() => {
-    // Load Save 1 as Title Screen Background if it exists
-    const slots = useGameStore.getState().getSavedSlots();
-    if (slots.length > 0) {
-        useGameStore.getState().loadGame(slots[0].id, true);
-    }
-  }, []);
-
-  // 礼物链接：检测 ?gift= 自动领取并进入
-  useEffect(() => {
-    const giftId = new URLSearchParams(location.search).get('gift');
-    if (!giftId) return;
-    setGiftClaimId(giftId);
-  }, []);
-
-  // Auto-login from saved token
-  useEffect(() => {
-    const token = api.getToken();
-    if (token && !authUser) {
-      api.getMe().then(async (res) => {
-        setAuthUser(res.user);
-        connectSocket(token);
-        // 从云端同步岛屿与账号进度；完成后刷新标题页背景存档
-        await syncOnLogin();
-        const slots = useGameStore.getState().getSavedSlots();
-        if (slots.length > 0) {
-          useGameStore.getState().loadGame(slots[0].id, true);
-        }
-      }).catch(() => {
-        api.setToken(null);
-      });
-    }
-  }, []);
-
-  // Socket event listeners for toasts
-  useEffect(() => {
-    if (!authUser) return;
-
-    const unsubOnline = onUserOnline((data: any) => {
-      addToast(`${data.username} 上线了`, 'online');
-    });
-    const unsubOffline = onUserOffline((data: any) => {
-      addToast(`${data.username} 离开了`, 'offline');
-    });
-    const unsubFriendReq = onFriendRequest((data: any) => {
-      addToast(`${data.fromName} 请求添加你为好友`, 'friend_request');
-    });
-    const unsubVisitData = onIslandVisitData((data: any) => {
-      setVisitingIsland({
-        islandId: data.islandId,
-        islandName: data.islandName,
-        ownerName: data.ownerName,
-        data: data.data
-      });
-      // 真正把对方的岛应用到场景，让玩家看见别人的岛（返回时 loadGame 会恢复自己的岛）
-      try { applyIslandSnapshot(data.data || {}); } catch { /* ignore */ }
-    });
-    const unsubVisitError = onIslandVisitError((data: any) => {
-      addToast(data.error || '串门失败', 'info');
-    });
-
-    return () => {
-      unsubOnline();
-      unsubOffline();
-      unsubFriendReq();
-      unsubVisitData();
-      unsubVisitError();
-    };
-  }, [authUser]);
-
-  useEffect(() => {
-     AudioSystem.updateEcologyState(
-         springCount,
-         windmillCount,
-         weather
-     );
-  }, [springCount, windmillCount, weather]);
-
-  // Auto-save logic
-  useEffect(() => {
-      const interval = setInterval(() => {
-          saveGame();
-      }, 30000);
-      return () => clearInterval(interval);
-  }, []);
-
-  // Unread count polling
-  useEffect(() => {
-    if (!authUser || screen !== 'PLAYING') return;
-
-    const fetchUnread = async () => {
-      try {
-        const res = await api.getUnreadCount();
-        const total = res.unread?.reduce((sum: number, u: any) => sum + (u.count || 0), 0) || 0;
-        setUnreadCount(total);
-      } catch {}
-    };
-
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 15000);
-    return () => clearInterval(interval);
-  }, [authUser, screen]);
-
-  // Sync island to server on save (when logged in)
-  useEffect(() => {
-    if (!authUser || !islandId) return;
-
-    const syncInterval = setInterval(() => {
-      const state = useGameStore.getState();
-      if (state.authUser && state.islandId) {
-        const serverId = state.serverIslandMap[state.islandId];
-        if (serverId) {
-          const saveData = {
-            timeOfDay: state.timeOfDay,
-            weather: state.weather,
-            assets: state.assets,
-            grassHealth: state.grassHealth,
-            deerCount: state.deerCount,
-            wolfCount: state.wolfCount,
-            ecoPoints: state.ecoPoints,
-            stats: state.stats
-          };
-          api.updateIsland(serverId, { data: saveData }).catch(() => {});
-        }
-        // 账号级进度（XP/好感度/记忆/成就/居民卡/音乐卡）一并上云
-        pushUserState();
-      }
-    }, 60000); // Sync every 60 seconds
-
-    return () => clearInterval(syncInterval);
-  }, [authUser, islandId]);
-
   const [isImmersive, setIsImmersive] = useState(false);
   const [isFloating, setIsFloating] = useState(false);
   const [timer3D, setTimer3D] = useState(false);
@@ -319,91 +142,6 @@ export default function App() {
   const [appLoaded, setAppLoaded] = useState(() => hasVisitedBefore());
   const lastToolRef = useRef<ToolType>('none');
   const lastCategoryRef = useRef<string | null>(null);
-
-  // Audio initialization
-  // - If LoadingScreen is shown (first visit), it handles init + play in handleEnter
-  // - If LoadingScreen is skipped (return visit), we init + play here
-  useEffect(() => {
-    if (!appLoaded) return; // LoadingScreen will handle it
-
-    const initAudio = async () => {
-      AudioSystem.init();
-      await AudioSystem.loadBGM('/Tides_of_Mahogany.mp3');
-      AudioSystem.playBGM();
-    };
-    initAudio();
-
-    // Robust autoplay unlock: capture phase survives stopPropagation on UI
-    // buttons; we keep listening across multiple gesture types and re-arm until
-    // BGM is *confirmed* playing (some devices need a 2nd gesture / late ctx resume).
-    const opts: AddEventListenerOptions = { capture: true };
-    const events = ['pointerdown', 'click', 'touchstart', 'keydown'] as const;
-    const removeUnlock = () => events.forEach((e) => window.removeEventListener(e, unlock, opts));
-    const unlock = () => {
-      AudioSystem.ensureResumed();
-      // Detach only once playback is actually confirmed.
-      setTimeout(() => { if (AudioSystem.isBGMActuallyPlaying()) removeUnlock(); }, 250);
-    };
-    events.forEach((e) => window.addEventListener(e, unlock, opts));
-    return removeUnlock;
-  }, [appLoaded]);
-
-  // 首次打开：载入「开屏 demo 小岛」作为标题背景（空岛时才载入，不覆盖玩家存档）
-  const demoLoadedRef = useRef(false);
-  useEffect(() => {
-    if (!appLoaded || demoLoadedRef.current) return;
-    const s = useGameStore.getState();
-    // 仅当场景里已经有岛（玩家存档已载入）时才跳过；登录与否都显示「默认开屏小岛」作为标题背景
-    if (s.assets.length > 0) return;
-    demoLoadedRef.current = true;
-    loadPresetIsland('/preset-demo.json?v=2').catch(() => {});
-  }, [appLoaded]);
-
-  // Switch BGM based on screen
-  useEffect(() => {
-    if (screen === 'PLAYING') {
-      AudioSystem.switchBGM('/Glockenspiel_Sunprint.mp3');
-    } else if (screen === 'TITLE' || screen === 'LOGIN' || screen === 'ONBOARD' || screen === 'SAVE_SELECT') {
-      AudioSystem.switchBGM('/Tides_of_Mahogany.mp3');
-    }
-  }, [screen]);
-
-  // 进入游戏后自动全屏：浏览器要求全屏必须由用户手势触发，故挂在进入后“首次交互”上
-  useEffect(() => {
-    if (screen !== 'PLAYING') return;
-    if (document.fullscreenElement) return;
-    const goFs = () => {
-      const el = document.documentElement as any;
-      if (!document.fullscreenElement) {
-        try { el.requestFullscreen?.()?.catch?.(() => {}); el.webkitRequestFullscreen?.(); } catch { /* ignore */ }
-      }
-      cleanup();
-    };
-    const cleanup = () => {
-      window.removeEventListener('pointerdown', goFs);
-      window.removeEventListener('keydown', goFs);
-    };
-    window.addEventListener('pointerdown', goFs);
-    window.addEventListener('keydown', goFs);
-    return cleanup;
-  }, [screen]);
-
-  // 撤销 / 重做快捷键（仅游戏内）
-  useEffect(() => {
-    if (screen !== 'PLAYING') return;
-    const h = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        if (e.shiftKey) useGameStore.getState().redo(); else useGameStore.getState().undo();
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
-        e.preventDefault(); useGameStore.getState().redo();
-      }
-    };
-    window.addEventListener('keydown', h);
-    return () => window.removeEventListener('keydown', h);
-  }, [screen]);
 
   // 触屏检测 + tooltip 状态
   const [isTouch, setIsTouch] = useState(false);
@@ -425,53 +163,23 @@ export default function App() {
 
   const incrementPlaytime = useGameStore(state => state.incrementPlaytime);
 
-  // Playtime loop
-  useEffect(() => {
-      if (screen !== 'PLAYING') return;
-      const interval = setInterval(() => {
-          incrementPlaytime(1);
-      }, 1000); 
-      return () => clearInterval(interval);
-  }, [screen, incrementPlaytime]);
 
-  // Ecology loop
-  useEffect(() => {
-    const interval = setInterval(() => {
-      updateEcology();
-    }, 2000); // Every 2 seconds update ecology
-    return () => clearInterval(interval);
-  }, [updateEcology]);
-
-  // 奇观 · 遗迹破水而出：一眼生命之泉周围聚齐 ≥4 棵树 → 召唤沉睡遗迹升出水面（每眼泉仅一次）
-  const ruinsTriggeredRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (screen !== 'PLAYING') return;
-    const near = (a: any, b: any, r: number) => {
-      const dx = a.position.x - b.position.x, dz = a.position.z - b.position.z;
-      return dx * dx + dz * dz < r * r;
-    };
-    const iv = setInterval(() => {
-      const st = useGameStore.getState();
-      const springs = st.assets.filter(a => a.type === 'spring');
-      if (!springs.length) return;
-      const trees = st.assets.filter(a => a.type === 'treeA' || a.type === 'treeB' || a.type === 'pine_tree');
-      const ruins = st.assets.filter(a => a.type === 'ruins_arch');
-      for (const sp of springs) {
-        if (ruinsTriggeredRef.current.has(sp.id)) continue;
-        if (ruins.some(rn => near(rn, sp, 7))) { ruinsTriggeredRef.current.add(sp.id); continue; } // 已有遗迹(含读档)，不重复
-        if (trees.filter(t => near(t, sp, 7)).length >= 4) {
-          ruinsTriggeredRef.current.add(sp.id);
-          const pos = { x: sp.position.x, y: 0, z: sp.position.z };
-          st.spawnVFX('splash', pos);
-          st.addAsset({ type: 'ruins_arch', position: pos, rotation: { x: 0, y: 0, z: 0 }, scale: 1.4, customState: `rising:${Date.now()}` });
-          AudioSystem.playSynergyChord();
-          st.bumpAwakening(5);
-          st.addToast('遗迹破水而出！泉底古老的共鸣被唤醒了', 'info');
-        }
-      }
-    }, 2000);
-    return () => clearInterval(iv);
-  }, [screen]);
+  useRestoreTitleBackground();
+  useGiftClaimQuery(setGiftClaimId);
+  useAuthBootstrap(authUser, setAuthUser);
+  usePresenceAndVisitEvents(authUser, addToast, setVisitingIsland);
+  useEcologyAudioSync(springCount, windmillCount, weather);
+  useAutosave(saveGame);
+  useUnreadCountPolling(authUser, screen, setUnreadCount);
+  useCloudIslandSync(authUser, islandId);
+  useAudioBootstrap(appLoaded);
+  useDemoTitleIsland(appLoaded);
+  useScreenBgm(screen);
+  useAutoFullscreen(screen);
+  useUndoRedoHotkeys(screen);
+  usePlaytimeLoop(screen, incrementPlaytime);
+  useEcologyLoop(updateEcology);
+  useRuinsAwakening(screen);
 
   useEffect(() => {
     if (selectedTool !== 'none') {
@@ -522,113 +230,13 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeCategory, selectedTool, setSelectedTool]);
 
-  // 常驻模式（始终显示，不进分类）：选择 / 橡皮擦
-  const modeTools = [
-    { id: "none", icon: MousePointer2, label: "选择 / 观察" },
-    { id: "eraser", icon: Eraser, label: "橡皮擦" },
-  ] as const;
-
-  // 放置物分类（重组：自然/生物 分家，去除重复，系统操作移入头像菜单）。分类图标沿用原有 lucide SVG。
-  const categories = [
-    {
-      name: "自然",
-      icon: TreePine,
-      tools: [
-        { id: "treeA", icon: TreePine, label: "松树", cost: 0 },
-        { id: "treeB", icon: TreeDeciduous, label: "秋季树", cost: 0 },
-        { id: "cherry_tree", icon: Flower2, label: "樱花树", cost: 200 },
-        { id: "willow_tree", icon: TreeDeciduous, label: "垂柳", cost: 180 },
-        { id: "pine_tree", icon: TreePine, label: "云杉", cost: 150 },
-        { id: "bamboo", icon: Sprout, label: "竹子", cost: 100 },
-        { id: "bush", icon: Clover, label: "灌木丛", cost: 50 },
-        { id: "spirit_tree", icon: Star, label: "远古神树", cost: 1000 },
-        { id: "rock", icon: Mountain, label: "岩石", cost: 0 },
-        { id: "spring", icon: Droplets, label: "生命之泉", cost: 1500 },
-      ]
-    },
-    {
-      name: "生物",
-      icon: Rabbit,
-      tools: [
-        { id: "deer", icon: Rabbit, label: "鹿", cost: 300 },
-        { id: "wolf", icon: Dog, label: "狼", cost: 800 },
-        { id: "seagull", icon: Bird, label: "海鸥", cost: 100 },
-        { id: "dolphin", icon: Waves, label: "海豚", cost: 500 },
-        { id: "fish", icon: Fish, label: "荧光鱼群", cost: 150 },
-      ]
-    },
-    {
-      name: "地形",
-      icon: Mountain,
-      tools: [
-        { id: "terrainUp", icon: ArrowUp, label: "隆起地形", cost: 0 },
-        { id: "terrainDown", icon: ArrowDown, label: "降低地形（可挖谷）", cost: 0 },
-        { id: "pond", icon: Waves, label: "水塘 / 湖泊", cost: 100 },
-        { id: "water_flow", icon: Waves, label: "溪流 / 瀑布（拖绘）", cost: 0 },
-        { id: "pave", icon: Hammer, label: "铺设石板路", cost: 0 },
-      ]
-    },
-    {
-      name: "建筑",
-      icon: Home,
-      tools: [
-        { id: "house", icon: Home, label: "温馨小屋", cost: 500 },
-        { id: "windmill", icon: Wind, label: "风车", cost: 1000 },
-        { id: "lighthouse", icon: TowerControl, label: "灯塔", cost: 2000 },
-        { id: "tent", icon: Tent, label: "帐篷", cost: 100 },
-        { id: "campfire", icon: Flame, label: "营火", cost: 50 },
-        { id: "fence", icon: Fence, label: "木栅栏", cost: 20 },
-        { id: "well", icon: Droplet, label: "水井", cost: 150 },
-        { id: "bench", icon: Armchair, label: "长椅", cost: 40 },
-        { id: "sign", icon: Signpost, label: "牌子（可写字）", cost: 0 },
-        { id: "mailbox", icon: Mailbox, label: "信箱（点击查看）", cost: 0 },
-        { id: "streetlamp", icon: Lamp, label: "路灯", cost: 200 },
-        { id: "observatory", icon: Telescope, label: "观星台", cost: 1500 },
-        { id: "ruins_arch", icon: Castle, label: "遗迹石门", cost: 2000 },
-        { id: "waterwheel", icon: LifeBuoy, label: "巨型水车", cost: 1800 },
-      ]
-    },
-    {
-      name: "农业",
-      icon: Wheat,
-      tools: [
-        { id: "hoe", icon: Shovel, label: "开垦农田", cost: 10 },
-        { id: "seed_wheat", icon: Wheat, label: "播种小麦", cost: 5 },
-        { id: "seed_carrot", icon: Carrot, label: "播种胡萝卜", cost: 5 },
-      ]
-    },
-    {
-      name: "海洋",
-      icon: Waves,
-      tools: [
-        { id: "platform", icon: Anchor, label: "海上浮板", cost: 50 },
-        { id: "pier", icon: AlignEndHorizontal, label: "固定码头", cost: 60 },
-        { id: "sub_island", icon: MountainSnow, label: "人造副岛", cost: 3000 },
-        { id: "boat", icon: Ship, label: "小船", cost: 80 },
-        { id: "bridge_pillar", icon: Columns, label: "打桩/地基", cost: 100 },
-        { id: "bridge", icon: Route, label: "架设悬索桥", cost: 150 },
-        { id: "rope", icon: Link, label: "小船系绳", cost: 30 },
-        { id: "birdhouse", icon: Mailbox, label: "海鸥亭", cost: 50 },
-      ]
-    },
-    {
-      name: "天空",
-      icon: Cloud,
-      tools: [
-        { id: "balloon", icon: Cloud, label: "热气球(系绳)", cost: 120 },
-        { id: "balloon_ladder", icon: Cloud, label: "热气球(软梯)", cost: 150 },
-        { id: "balloon_bridge", icon: Cloud, label: "热气球(吊桥)", cost: 200 },
-      ]
-    },
-  ];
-
   const brushMode = useGameStore(s => s.brushMode);
   const brushSize = useGameStore(s => s.brushSize);
   const brushStrength = useGameStore(s => s.brushStrength);
   const brushFalloff = useGameStore(s => s.brushFalloff);
   const brushPaintType = useGameStore(s => s.brushPaintType);
 
-  const activeCatObj = categories.find(c => c.name === activeCategory);
+  const activeCatObj = BUILD_CATEGORIES.find(c => c.name === activeCategory);
 
   const handleFullscreen = () => {
     const el = document.documentElement;
@@ -890,8 +498,7 @@ export default function App() {
               {activeCatObj.tools.map((t) => {
                 const Icon = t.icon;
                 const isActive = selectedTool === t.id;
-                const isSystemTool = t.id === 'save' || t.id === 'load' || t.id === 'clear';
-                const isUnlocked = mode === 'creative' ? true : (t.cost === 0 || isSystemTool || unlockedAssets.includes(t.id));
+                const isUnlocked = mode === 'creative' ? true : (t.cost === 0 || unlockedAssets.includes(t.id));
                 const canAfford = ecoPoints >= t.cost;
 
                 return (
@@ -905,10 +512,7 @@ export default function App() {
                          }
                          return;
                       }
-                      if (t.id === 'save') { saveGame(); alert('岛屿已保存！'); }
-                      else if (t.id === 'load') { useGameStore.getState().loadGame(); alert('岛屿已加载！'); }
-                      else if (t.id === 'clear') { if (confirm('确定清空岛屿？')) clearAll(); }
-                      else setSelectedTool(t.id as ToolType);
+                      setSelectedTool(t.id as ToolType);
                       if (t.id === 'terrainUp') useGameStore.getState().setBrushMode('raise');
                       if (t.id === 'terrainDown') useGameStore.getState().setBrushMode('lower');
                       showTouchTooltip(t.label);
@@ -957,7 +561,7 @@ export default function App() {
 
           {/* 常驻模式：选择 / 橡皮擦（始终显示） */}
           <div id="guide-modes" className="flex gap-2 shrink-0">
-            {modeTools.map((m) => {
+            {MODE_TOOLS.map((m) => {
               const ModeIcon = m.icon;
               const isActive = selectedTool === m.id;
               return (
@@ -982,7 +586,7 @@ export default function App() {
 
           {/* Main Category Dock — 手机端可横向滚动 */}
           <div id="guide-build" className={`flex gap-2 ${isTouch ? 'touch-tools-scroll' : 'gap-3'}`}>
-            {categories.map((c) => {
+            {BUILD_CATEGORIES.map((c) => {
               const CategoryIcon = c.icon;
               const isActive = activeCategory === c.name;
               
@@ -1079,7 +683,7 @@ export default function App() {
             <div className="flex flex-col gap-2">
               <span className="text-xs text-slate-700 font-bold">天气</span>
               <div className={`grid grid-cols-3 gap-2 ${isTouch ? 'gap-3' : ''}`}>
-                {([["sunny","晴天"], ["rainy","雨天"], ["snowy","雪天"], ["cloudy","多云"], ["foggy","浓雾"], ["stormy","雷暴"]] as const).map(([w, label]) => (
+                {WEATHER_OPTIONS.map(([w, label]) => (
                   <button key={w} onClick={() => setWeather(w)} className={`rounded text-xs transition-colors ${isTouch ? 'py-3' : 'py-1.5'} ${weather === w ? 'hand-drawn-btn-active' : 'hand-drawn-btn'}`}>{label}</button>
                 ))}
               </div>
