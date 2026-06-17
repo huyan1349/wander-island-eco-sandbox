@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getTerrainHeight } from '../../utils/terrain';
+import { buildHeightSampler } from '../../utils/terrain';
 
 /**
  * 溪流 / 瀑布几何构建。
@@ -30,10 +30,14 @@ export interface StreamBuild {
 }
 
 const RIBBON_LIFT = 0.07;
-const FALL_DROP = 0.7; // 落差阈值：超过则成瀑布
+const FALL_DROP = 0.5; // 落差阈值：超过则成瀑布（略降，缓崖也能出瀑）
 
 export function buildStream(points: Vec2[], width = 1.4): StreamBuild {
   if (!points || points.length < 2) return { ribbon: null, falls: [], flowDir: { x: 0, z: 1 } };
+
+  // 精确贴地：用高度图双线性采样器（含笔刷形变），取代主岛的最近顶点粗采样，
+  // 否则水带贴地阶梯化、落差检测也不准。
+  const sampleH = buildHeightSampler();
 
   const positions: number[] = [];
   const uvs: number[] = [];
@@ -65,7 +69,7 @@ export function buildStream(points: Vec2[], width = 1.4): StreamBuild {
     // 法向（横向）
     const nx = -tz;
     const nz = tx;
-    const y = getTerrainHeight(p.x, p.z) + RIBBON_LIFT;
+    const y = sampleH(p.x, p.z) + RIBBON_LIFT;
     const hw = width / 2;
     positions.push(p.x + nx * hw, y, p.z + nz * hw);
     positions.push(p.x - nx * hw, y, p.z - nz * hw);
@@ -78,7 +82,7 @@ export function buildStream(points: Vec2[], width = 1.4): StreamBuild {
       indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
 
       // 瀑布检测：当前点到下一点的落差。
-      const yNext = getTerrainHeight(next.x, next.z) + RIBBON_LIFT;
+      const yNext = sampleH(next.x, next.z) + RIBBON_LIFT;
       const drop = y - yNext;
       const horiz = Math.hypot(next.x - p.x, next.z - p.z) || 1;
       if (drop > FALL_DROP && drop / horiz > 0.4) {

@@ -8,6 +8,7 @@ import { createNoise2D } from 'simplex-noise';
 import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
 import { applyTerrainBrush, paintSurface } from '../utils/terrainBrush';
 import { getWaterHeight as getOceanHeight, getWaveAmplitude } from './Water';
+import { DepthWater, WaterfallSheet, FlowRibbon } from '../game/water/DepthWater';
 import { StylizedWater } from '../game/water/StylizedWater';
 import { decodePondState, carvePondAndEncode } from '../game/water/pondFit';
 import { buildStream, decodeStreamState } from '../game/water/streamPath';
@@ -38,6 +39,71 @@ const SUB_ISLAND_SEGMENTS = 32;
 const LEGACY_SUB_ISLAND_SIZE = 20;
 const STRUCTURE_WALK_RADIUS_SQ = 1.8 * 1.8;
 const CROP_GROWTH_DURATION = 40;
+
+export function useHoverInteraction() {
+  const [showHover, setShowHover] = useState(false);
+  const [isHoverLeaving, setIsHoverLeaving] = useState(false);
+  const hoverTimeout = useRef<any>(null);
+
+  const keepHoverAlive = () => {
+      setShowHover(true);
+      setIsHoverLeaving(false);
+      if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+      hoverTimeout.current = setTimeout(() => {
+          setIsHoverLeaving(true);
+          hoverTimeout.current = setTimeout(() => {
+              setShowHover(false);
+              setIsHoverLeaving(false);
+          }, 500);
+      }, 2000);
+  };
+
+  const forceClose = () => {
+      if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+      setShowHover(false);
+      setIsHoverLeaving(false);
+  };
+
+  return { showHover, isHoverLeaving, keepHoverAlive, forceClose };
+}
+
+export function HoverButton({ showHover, isHoverLeaving, keepHoverAlive, onClick, iconSvg, yOffset = 1.4 }: any) {
+   if (!showHover && !isHoverLeaving) return null;
+   return (
+       <Html position={[0, yOffset, 0]} center zIndexRange={[100, 0]}>
+          <div 
+             style={{ padding: '60px', cursor: 'pointer' }}
+             onPointerEnter={() => { keepHoverAlive(); }}
+             onPointerLeave={() => { keepHoverAlive(); }}
+             onClick={onClick}
+          >
+            <div style={{ animation: 'boatHoverFloat 3s ease-in-out infinite' }}>
+               <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '64px',
+                    height: '64px',
+                    background: 'rgba(255, 255, 255, 0.92)',
+                    backdropFilter: 'blur(12px)',
+                    border: '2px solid rgba(255, 255, 255, 0.6)',
+                    borderRadius: '50%',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255,255,255,0.2) inset',
+                    transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    animation: isHoverLeaving ? 'bubblePopOut 0.3s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards' : 'bubblePopIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    color: '#334155'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.15) translateY(-5px)'; e.currentTarget.style.background = 'rgba(255, 255, 255, 1)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255,255,255,0.4) inset'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1) translateY(0px)'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.92)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255,255,255,0.2) inset'; }}
+               >
+                 {iconSvg}
+               </div>
+            </div>
+          </div>
+        </Html>
+   );
+}
 
 function getCropGrowthProgress(asset: Partial<PlacedAsset>, playtime: number) {
   if (typeof asset.growthProgress === 'number' && asset.growthProgress >= 1) return 1;
@@ -103,7 +169,15 @@ function SelectableAssetWrapper({
       onPointerDown={(e) => {
         if (selectedTool !== 'eraser') return;
         e.stopPropagation();
-        setSelectedEntityId(assetId);
+        // 第一次点击先定位（高亮选中）；再次点中同一物体即直接擦除。
+        const store = useGameStore.getState();
+        if (store.selectedEntityId === assetId) {
+          store.removeAsset(assetId);
+          store.setSelectedEntityId(null);
+          AudioSystem.playDig();
+        } else {
+          setSelectedEntityId(assetId);
+        }
       }}
     >
       {children}
@@ -373,14 +447,17 @@ function WaterSurface({
   );
 }
 
-function Spring({ position, rotation, scale = 1 }: { position: any, rotation?: any, scale?: number }) {
+function Spring({ position, rotation, scale = 1, customState }: { position: any, rotation?: any, scale?: number, customState?: string }) {
   const groupRef = usePopIn(scale * 1.2);
+  const fit = decodePondState(customState);
+  const waterLevel = fit ? fit.waterLevel : position.y + 0.1;
+  const radius = fit ? fit.radius : 1.2;
 
   // A handful of mossy rim stones at irregular angles around the pool.
   const stones = useMemo(() => {
     const arr: { a: number; r: number; s: number; c: string }[] = [];
     const palette = ['#8a9aa6', '#76858f', '#9bab9a'];
-    const n = 9;
+    const n = 6;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + (Math.sin(i * 2.3) * 0.25);
       arr.push({ a, r: 1.15 + Math.sin(i * 1.7) * 0.1, s: 0.22 + Math.abs(Math.sin(i * 3.1)) * 0.18, c: palette[i % palette.length] });
@@ -388,31 +465,50 @@ function Spring({ position, rotation, scale = 1 }: { position: any, rotation?: a
     return arr;
   }, []);
 
+  // 相邻水体：和池塘同一套去重——落在邻近泉/塘水域内的苔石/芦苇不再生成，
+  // 多个泉连片时只留整簇外圈，接缝处不再堆乱石。
+  const assets = useGameStore(s => s.assets);
+  const neighbors = useMemo(
+    () =>
+      assets
+        .filter(a => (a.type === 'pond' || a.type === 'spring')
+          && (a.position.x !== position.x || a.position.z !== position.z))
+        .map(a => {
+          const f = decodePondState(a.customState);
+          return { x: a.position.x, z: a.position.z, r: f ? f.radius : 1.6 };
+        }),
+    [assets, position.x, position.z],
+  );
+  const insideNeighbor = (lx: number, lz: number) =>
+    neighbors.some(o => Math.hypot(position.x + lx - o.x, position.z + lz - o.z) < o.r);
+
   return (
     <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0, 'YXZ')} scale={0} ref={groupRef}>
-       {/* Sunken earthen basin so the water reads as set into the ground */}
-       <mesh position={[0, -0.05, 0]} receiveShadow>
-         <cylinderGeometry args={[1.15, 0.95, 0.35, 24]} />
-         <meshStandardMaterial color="#5d4b3a" roughness={1} />
-       </mesh>
-       {/* Real rippling water surface, just below ground level */}
-       <group position={[0, 0.18, 0]}>
-         <StylizedWater radius={1.0} segments={28} shallow="#9fe0f5" deep="#2f6f9e" opacity={0.82} waveAmp={0.7} />
-       </group>
-       {/* Irregular mossy rim stones */}
-       {stones.map((st, i) => (
-         <mesh key={i} position={[Math.cos(st.a) * st.r, 0.12, Math.sin(st.a) * st.r]} rotation={[st.a, st.a * 1.3, 0]} castShadow>
-           <dodecahedronGeometry args={[st.s, 0]} />
-           <meshStandardMaterial color={st.c} roughness={0.95} flatShading />
-         </mesh>
-       ))}
-       {/* A few reeds at the water's edge */}
-       {[[-0.7, 0.5], [0.6, -0.6], [0.85, 0.35]].map(([rx, rz], i) => (
-         <mesh key={`reed${i}`} position={[rx, 0.45, rz]} rotation={[0.12 * (i - 1), 0, 0.1 * (i - 1)]} castShadow>
-           <coneGeometry args={[0.05, 0.9, 5]} />
-           <meshStandardMaterial color="#5a9b4a" roughness={0.8} flatShading />
-         </mesh>
-       ))}
+      {/* 保留拟合后的水位/半径，但回退到稳定的风格化水面，避免标题页因新深度水面黑屏 */}
+      <group position={[0, waterLevel - position.y, 0]}>
+        <StylizedWater radius={radius} segments={28} shallow="#9fe0f5" deep="#2f6f9e" opacity={0.82} waveAmp={0.7} />
+      </group>
+      {/* 苔石与芦苇装饰 */}
+      <group>
+        {stones.map((st, i) => {
+          const lx = Math.cos(st.a) * st.r, lz = Math.sin(st.a) * st.r;
+          if (insideNeighbor(lx, lz)) return null;
+          return (
+            <mesh key={i} position={[lx, 0.12, lz]} rotation={[st.a, st.a * 1.3, 0]} castShadow>
+              <dodecahedronGeometry args={[st.s, 0]} />
+              <meshStandardMaterial color={st.c} roughness={0.95} flatShading />
+            </mesh>
+          );
+        })}
+        {[[-0.7, 0.5], [0.6, -0.6], [0.85, 0.35]].map(([rx, rz], i) =>
+          insideNeighbor(rx, rz) ? null : (
+            <mesh key={`reed${i}`} position={[rx, 0.45, rz]} rotation={[0.12 * (i - 1), 0, 0.1 * (i - 1)]} castShadow>
+              <coneGeometry args={[0.05, 0.9, 5]} />
+              <meshStandardMaterial color="#5a9b4a" roughness={0.8} flatShading />
+            </mesh>
+          ),
+        )}
+      </group>
     </group>
   );
 }
@@ -433,37 +529,50 @@ function Pond({ position, rotation, scale = 1, customState }: { position: any, r
   const pebbles = useMemo(() => {
     const arr: { a: number; s: number; c: string }[] = [];
     const palette = ['#b9a890', '#a89880', '#cdbda6', '#9fae9a'];
-    const n = 18;
+    const n = 10;
     for (let i = 0; i < n; i++) {
       arr.push({ a: (i / n) * Math.PI * 2 + Math.sin(i * 1.9) * 0.18, s: 0.16 + Math.abs(Math.sin(i * 2.7)) * 0.16, c: palette[i % palette.length] });
     }
     return arr;
   }, []);
 
+  // 真实水位（世界 Y）：有拟合用拟合，否则回退到放置点略上方。
+  const waterLevel = fit ? fit.waterLevel : position.y + 0.06;
+
+  // 相邻湖泊：用于去重石头。落在邻湖水域内的石头不再生成，只留连片簇的外圈。
+  const assets = useGameStore(s => s.assets);
+  const neighbors = useMemo(
+    () =>
+      assets
+        .filter(a => (a.type === 'pond' || a.type === 'spring')
+          && (a.position.x !== position.x || a.position.z !== position.z))
+        .map(a => {
+          const f = decodePondState(a.customState);
+          return { x: a.position.x, z: a.position.z, r: f ? f.radius : 1.6 };
+        }),
+    [assets, position.x, position.z],
+  );
+
   return (
     <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0, 'YXZ')} scale={0} ref={groupRef}>
-      {/* Earthen basin wall to bridge the gap between water and floor. Extended deep into the ground to prevent floating. */}
-      <mesh position={[0, waterLocalY - 1.0, 0]} receiveShadow>
-        <cylinderGeometry args={[radius * 1.0, radius * 0.85, 2.0, 32, 1, true]} />
-        <meshStandardMaterial color="#5d4b3a" roughness={1} side={THREE.DoubleSide} />
-      </mesh>
-      
-      {/* Dark basin floor giving the water visual depth */}
-      <mesh position={[0, waterLocalY - 0.24, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[radius * 1.02, 36]} />
-        <meshStandardMaterial color="#21384a" roughness={1} />
-      </mesh>
-      {/* Stylized water surface: depth gradient + shore foam, sits at fitted water level */}
-      <group position={[0, waterLocalY, 0]}>
+      {/* 先恢复到稳定的圆形风格化水面，仍然使用拟合后的半径和水位 */}
+      <group position={[0, waterLevel - position.y, 0]}>
         <StylizedWater radius={radius} segments={44} shallow="#7fd0f2" deep="#1f5f8c" opacity={0.85} waveAmp={1} />
       </group>
-      {/* Pebble shore */}
-      {pebbles.map((p, i) => (
-        <mesh key={i} position={[Math.cos(p.a) * radius * 1.0, waterLocalY - 0.02, Math.sin(p.a) * radius * 1.0]} rotation={[p.a, p.a, 0]} castShadow>
-          <dodecahedronGeometry args={[p.s, 0]} />
-          <meshStandardMaterial color={p.c} roughness={0.95} flatShading />
-        </mesh>
-      ))}
+      {/* 卵石岸：保留新加的邻水去重 */}
+      <group>
+        {pebbles.map((p, i) => {
+          const wx = position.x + Math.cos(p.a) * radius;
+          const wz = position.z + Math.sin(p.a) * radius;
+          if (neighbors.some(o => Math.hypot(wx - o.x, wz - o.z) < o.r)) return null;
+          return (
+            <mesh key={i} position={[Math.cos(p.a) * radius * 1.0, waterLocalY - 0.02, Math.sin(p.a) * radius * 1.0]} rotation={[p.a, p.a, 0]} castShadow>
+              <dodecahedronGeometry args={[p.s, 0]} />
+              <meshStandardMaterial color={p.c} roughness={0.95} flatShading />
+            </mesh>
+          );
+        })}
+      </group>
     </group>
   );
 }
@@ -478,39 +587,18 @@ function Stream({ customState }: { customState?: string }) {
   }, [customState]);
 
   if (!build || !build.ribbon) return null;
-  const flow: [number, number] = [build.flowDir.x * 0.06, build.flowDir.z * 0.06];
 
   return (
     <group>
-      {/* 贴地水带：沿流向滚动 UV → 有流动感；两侧成沫(ribbon foam) */}
-      <StylizedWater
-        geometry={build.ribbon}
-        foamMode="ribbon"
-        lieFlat={false}
-        shallow="#8fd8f5"
-        deep="#2c7fb8"
-        opacity={0.84}
-        waveAmp={0.5}
-        flow={flow}
-        renderOrder={1}
-      />
-      {/* 瀑布：落差处竖直水帘 + 底部水花 */}
+      {/* 贴地流动水带：复用海面波形 + 沿流向滚动水纹 + 两侧岸沫 */}
+      <FlowRibbon geometry={build.ribbon} />
+      {/* 瀑布：落差处真实流动的竖直水帘（复用海面配色，UV 下滚 + 顶/底白沫） */}
       {build.falls.map((f, i) => {
         const h = Math.max(0.3, f.topY - f.bottomY);
         const yaw = Math.atan2(f.dir.x, f.dir.z);
         return (
           <group key={i} position={[f.x, (f.topY + f.bottomY) / 2, f.z]} rotation={[0, yaw, 0]}>
-            <mesh>
-              <planeGeometry args={[f.width, h, 1, 6]} />
-              <meshStandardMaterial color="#bfe6f7" transparent opacity={0.8} roughness={0.2} side={THREE.DoubleSide} depthWrite={false} flatShading />
-            </mesh>
-            {/* 底部水花：几颗白色小球 */}
-            {[-0.3, 0, 0.3].map((dx, k) => (
-              <mesh key={k} position={[dx * f.width, -h / 2 + 0.05, 0]}>
-                <sphereGeometry args={[0.12, 6, 6]} />
-                <meshStandardMaterial color="#eaf8ff" transparent opacity={0.7} flatShading />
-              </mesh>
-            ))}
+            <WaterfallSheet width={f.width} height={h} />
           </group>
         );
       })}
@@ -1199,12 +1287,41 @@ export function House(props: any) {
   const ref = usePopIn(props.scale || 1.2);
   useMarinePhysics(ref, props);
   const timeOfDay = useGameStore(state => state.timeOfDay);
+  const { showHover, isHoverLeaving, keepHoverAlive, forceClose } = useHoverInteraction();
   const isNight = timeOfDay > 18 || timeOfDay < 6;
   const windowColor = isNight ? "#f97316" : "#1e293b";
   const emissiveIntensity = isNight ? 1.5 : 0;
 
   return (
-    <group ref={ref} position={[props.position.x, props.position.y, props.position.z]} rotation={new THREE.Euler(props.rotation?.x || 0, props.rotation?.y || 0, props.rotation?.z || 0, 'YXZ')} scale={0}>
+    <group ref={ref} position={[props.position.x, props.position.y, props.position.z]} rotation={new THREE.Euler(props.rotation?.x || 0, props.rotation?.y || 0, props.rotation?.z || 0, 'YXZ')} scale={0}
+      onClick={(e: any) => {
+        if (useGameStore.getState().selectedTool !== 'none') return;
+        e.stopPropagation();
+        AudioSystem.playClick();
+        useGameStore.getState().setOpenPlayerPanel(true);
+        forceClose();
+      }}
+      onPointerOver={(e: any) => { 
+          if (useGameStore.getState().selectedTool === 'none') {
+              e.stopPropagation();
+              document.body.style.cursor = 'pointer'; 
+              keepHoverAlive();
+          }
+      }}
+      onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+    >
+      {/* Hover UI Button */}
+      <HoverButton 
+          showHover={showHover} isHoverLeaving={isHoverLeaving} keepHoverAlive={keepHoverAlive} yOffset={2.5}
+          iconSvg={
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'seatDropIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+               <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          } 
+          onClick={(e: any) => { e.stopPropagation(); AudioSystem.playClick(); useGameStore.getState().setOpenPlayerPanel(true); forceClose(); }} 
+      />
+
       {/* Main Building */}
       <mesh position={[0, 0.6, 0]} castShadow receiveShadow>
         <boxGeometry args={[1.8, 1.2, 1.4]} />
@@ -1218,7 +1335,7 @@ export function House(props: any) {
       </mesh>
 
       {/* Smoke */}
-      <SmokeParticles position={[0.6, 2.0, -0.3]} />
+      {isNight && <SmokeParticles position={[0.6, 2.0, -0.3]} />}
 
       {/* Roof */}
       <mesh position={[0, 1.45, 0]} rotation={[0, Math.PI / 4, 0]} castShadow receiveShadow>
@@ -1257,10 +1374,12 @@ export function House(props: any) {
 }
 
 export function Windmill(props: any) {
-  const ref = usePopIn(props.scale || 1.5);
+  const ref = usePopIn(props.scale || 1.2);
   useMarinePhysics(ref, props);
   const bladeRef = useRef<THREE.Group>(null);
   const weather = useGameStore(state => state.weather);
+  const setWeather = useGameStore(state => state.setWeather);
+  const { showHover, isHoverLeaving, keepHoverAlive, forceClose } = useHoverInteraction();
   
   const isCoastal = Math.sqrt(props.position.x * props.position.x + props.position.z * props.position.z) > 12;
 
@@ -1269,9 +1388,45 @@ export function Windmill(props: any) {
     const speed = (weather === 'rainy' ? 3.5 : 1.2) * (isCoastal ? 1.5 : 1.0);
     if (bladeRef.current) bladeRef.current.rotation.z -= delta * speed;
   });
+
+  const nextWeather = () => {
+    if (weather === 'sunny') return 'rainy';
+    if (weather === 'rainy') return 'snowy';
+    return 'sunny';
+  };
+
   return (
-    <group ref={ref} position={[props.position.x, props.position.y, props.position.z]} rotation={new THREE.Euler(props.rotation?.x || 0, props.rotation?.y || 0, props.rotation?.z || 0, 'YXZ')} scale={0}>
+    <group ref={ref} position={[props.position.x, props.position.y, props.position.z]} rotation={new THREE.Euler(props.rotation?.x || 0, props.rotation?.y || 0, props.rotation?.z || 0, 'YXZ')} scale={0}
+      onClick={(e: any) => {
+        if (useGameStore.getState().selectedTool !== 'none') return;
+        e.stopPropagation();
+        AudioSystem.playClick();
+        setWeather(nextWeather());
+        forceClose();
+      }}
+      onPointerOver={(e: any) => { 
+          if (useGameStore.getState().selectedTool === 'none') {
+              e.stopPropagation();
+              document.body.style.cursor = 'pointer'; 
+              keepHoverAlive();
+          }
+      }}
+      onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+    >
       
+      {/* Hover UI Button */}
+      <HoverButton 
+          showHover={showHover} isHoverLeaving={isHoverLeaving} keepHoverAlive={keepHoverAlive} yOffset={3.5}
+          iconSvg={
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'wheelSpin 0.8s cubic-bezier(0.22, 1, 0.36, 1)' }}>
+               {weather === 'sunny' ? <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /> :
+                weather === 'rainy' ? <path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25M16 20l-4-4-4 4M12 16v8" /> : 
+                <path d="M12 2v20m5-15l-10 10m10 0L7 7" />}
+            </svg>
+          } 
+          onClick={(e: any) => { e.stopPropagation(); AudioSystem.playClick(); setWeather(nextWeather()); forceClose(); }} 
+      />
+
       {/* Coastal Synergy Indicator */}
       {isCoastal && (
           <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -1282,23 +1437,30 @@ export function Windmill(props: any) {
 
       {/* Base */}
       <mesh position={[0, 1.2, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.8, 1.2, 2.4, 8]} />
-        <meshStandardMaterial color="#e2e8f0" roughness={0.5} />
+        <cylinderGeometry args={[0.7, 1.0, 2.4, 6]} />
+        <meshStandardMaterial color="#fef3c7" roughness={1.0} flatShading />
       </mesh>
-      {/* Top Dome */}
-      <mesh position={[0, 2.4, 0]} castShadow receiveShadow>
-        <sphereGeometry args={[0.8, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color="#334155" roughness={0.6} />
+      {/* Wooden Framework Details */}
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+         <mesh key={i} position={[Math.cos(i * Math.PI / 3) * 0.86, 1.2, Math.sin(i * Math.PI / 3) * 0.86]} rotation={[0, -i * Math.PI / 3, 0.1]} castShadow>
+             <boxGeometry args={[0.08, 2.5, 0.08]} />
+             <meshStandardMaterial color="#78350f" roughness={1.0} flatShading />
+         </mesh>
+      ))}
+      {/* Top Roof */}
+      <mesh position={[0, 2.7, 0]} rotation={[0, Math.PI / 6, 0]} castShadow receiveShadow>
+        <coneGeometry args={[0.9, 0.8, 6]} />
+        <meshStandardMaterial color="#b45309" roughness={1.0} flatShading />
       </mesh>
       {/* Wooden Deck */}
       <mesh position={[0, 1.2, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[1.5, 1.5, 0.1, 8]} />
-        <meshStandardMaterial color="#854d0e" roughness={0.8} />
+        <cylinderGeometry args={[1.3, 1.3, 0.1, 6]} />
+        <meshStandardMaterial color="#5c4033" roughness={1.0} flatShading />
       </mesh>
       {/* Door */}
-      <mesh position={[0, 0.4, 1.05]} castShadow>
+      <mesh position={[0, 0.4, 1.0]} rotation={[0, 0, 0]} castShadow>
         <boxGeometry args={[0.4, 0.8, 0.1]} />
-        <meshStandardMaterial color="#78350f" />
+        <meshStandardMaterial color="#78350f" flatShading />
       </mesh>
       
       {/* Rotor & Blades */}
@@ -1341,38 +1503,96 @@ export function Lighthouse(props: any) {
 
   return (
     <group ref={ref} position={[props.position.x, props.position.y, props.position.z]} rotation={new THREE.Euler(props.rotation?.x || 0, props.rotation?.y || 0, props.rotation?.z || 0, 'YXZ')} scale={0}>
-      {/* Base */}
-      <mesh position={[0, 2.0, 0]} castShadow receiveShadow>
-         <cylinderGeometry args={[0.6, 1.2, 4.0, 16]} />
-         <meshStandardMaterial color="#f8fafc" roughness={0.1} />
+      
+      {/* Stone Foundation */}
+      <mesh position={[0, 0.2, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
+         <cylinderGeometry args={[1.3, 1.4, 0.4, 8]} />
+         <meshStandardMaterial color="#64748b" roughness={1.0} flatShading />
+      </mesh>
+
+      {/* Base Tower (White) */}
+      <mesh position={[0, 2.0, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
+         <cylinderGeometry args={[0.6, 1.2, 4.0, 8]} />
+         <meshStandardMaterial color="#f8fafc" roughness={1.0} flatShading />
       </mesh>
       
       {/* Red Stripes */}
-      <mesh position={[0, 1.0, 0]} castShadow receiveShadow>
-         <cylinderGeometry args={[0.95, 1.1, 0.8, 16]} />
-         <meshStandardMaterial color="#ef4444" roughness={0.3} />
+      <mesh position={[0, 1.0, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
+         <cylinderGeometry args={[0.92, 1.12, 0.8, 8]} />
+         <meshStandardMaterial color="#ef4444" roughness={1.0} flatShading />
       </mesh>
-      <mesh position={[0, 2.8, 0]} castShadow receiveShadow>
-         <cylinderGeometry args={[0.68, 0.8, 0.8, 16]} />
-         <meshStandardMaterial color="#ef4444" roughness={0.3} />
+      <mesh position={[0, 2.8, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
+         <cylinderGeometry args={[0.67, 0.82, 0.8, 8]} />
+         <meshStandardMaterial color="#ef4444" roughness={1.0} flatShading />
       </mesh>
 
-      {/* Gallery Deck */}
-      <mesh position={[0, 4.0, 0]} castShadow receiveShadow>
-         <cylinderGeometry args={[1.0, 1.0, 0.15, 16]} />
-         <meshStandardMaterial color="#334155" />
+      {/* Door */}
+      <mesh position={[0, 0.8, 1.05]} castShadow>
+         <boxGeometry args={[0.4, 0.6, 0.1]} />
+         <meshStandardMaterial color="#78350f" roughness={1.0} flatShading />
       </mesh>
+      {/* Door Awning */}
+      <mesh position={[0, 1.15, 1.1]} rotation={[0.2, 0, 0]} castShadow>
+         <boxGeometry args={[0.5, 0.05, 0.3]} />
+         <meshStandardMaterial color="#334155" roughness={1.0} flatShading />
+      </mesh>
+
+      {/* Spiral Windows */}
+      {[0, 1, 2].map(i => {
+         const angle = (i * Math.PI * 0.8) + Math.PI;
+         const yPos = 1.6 + i * 0.8;
+         const radius = 1.0 - (yPos / 4.0) * 0.4;
+         return (
+             <mesh key={i} position={[Math.sin(angle) * radius, yPos, Math.cos(angle) * radius]} rotation={[0, angle, 0]} castShadow>
+                 <boxGeometry args={[0.2, 0.3, 0.2]} />
+                 <meshStandardMaterial color={isNight ? "#fde047" : "#0f172a"} emissive={isNight ? "#fbbf24" : "#000000"} emissiveIntensity={isNight ? 2 : 0} roughness={0.8} flatShading toneMapped={false} />
+             </mesh>
+         );
+      })}
+
+      {/* Gallery Deck Base */}
+      <mesh position={[0, 4.0, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
+         <cylinderGeometry args={[1.0, 0.7, 0.2, 8]} />
+         <meshStandardMaterial color="#334155" roughness={1.0} flatShading />
+      </mesh>
+      {/* Gallery Deck Railing */}
+      <mesh position={[0, 4.25, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
+         <cylinderGeometry args={[0.95, 0.95, 0.05, 8]} />
+         <meshStandardMaterial color="#1e293b" roughness={1.0} flatShading />
+      </mesh>
+      {/* Railing Posts */}
+      {[...Array(8)].map((_, i) => (
+         <mesh key={i} position={[Math.sin(i * Math.PI / 4) * 0.9, 4.12, Math.cos(i * Math.PI / 4) * 0.9]} castShadow>
+             <boxGeometry args={[0.04, 0.25, 0.04]} />
+             <meshStandardMaterial color="#1e293b" roughness={1.0} flatShading />
+         </mesh>
+      ))}
       
-      {/* Lantern Room */}
-      <mesh position={[0, 4.4, 0]} castShadow>
+      {/* Lantern Room (Glass) */}
+      <mesh position={[0, 4.5, 0]} rotation={[0, Math.PI / 8, 0]} castShadow>
          <cylinderGeometry args={[0.5, 0.5, 0.8, 8]} />
          <meshStandardMaterial color="#fde047" emissive={isNight ? "#fbbf24" : "#000000"} emissiveIntensity={isNight ? 4 : 0} transparent opacity={0.6} toneMapped={false} />
       </mesh>
+      {/* Lantern Pillars */}
+      {[...Array(8)].map((_, i) => (
+         <mesh key={i} position={[Math.sin(i * Math.PI / 4 + Math.PI/8) * 0.52, 4.5, Math.cos(i * Math.PI / 4 + Math.PI/8) * 0.52]} castShadow>
+             <boxGeometry args={[0.08, 0.8, 0.08]} />
+             <meshStandardMaterial color="#334155" roughness={1.0} flatShading />
+         </mesh>
+      ))}
 
       {/* Roof */}
-      <mesh position={[0, 5.0, 0]} castShadow receiveShadow>
+      <mesh position={[0, 5.2, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
          <coneGeometry args={[0.7, 0.6, 8]} />
-         <meshStandardMaterial color="#ef4444" />
+         <meshStandardMaterial color="#ef4444" roughness={1.0} flatShading />
+      </mesh>
+      <mesh position={[0, 5.5, 0]} castShadow>
+         <sphereGeometry args={[0.15, 8, 8]} />
+         <meshStandardMaterial color="#ef4444" roughness={1.0} flatShading />
+      </mesh>
+      <mesh position={[0, 5.8, 0]} castShadow>
+         <cylinderGeometry args={[0.02, 0.02, 0.6]} />
+         <meshStandardMaterial color="#94a3b8" roughness={1.0} flatShading />
       </mesh>
 
       {/* Rotating Beam */}
@@ -1988,35 +2208,28 @@ function DynamicRope({ fromId, toId }: { fromId: string, toId: string }) {
 
     // Compute bouncing positions independently
     const getPos = (asset: any, time: number) => {
-        if (asset.type !== 'boat' && asset.type !== 'platform') {
-            return new THREE.Vector3(asset.position.x, asset.position.y + 0.5, asset.position.z);
-        }
-        const x = asset.position.x;
-        const y = asset.position.z; 
-        const dist = Math.sqrt(x*x + y*y);
-
-        const flowSpeed = weather === 'rainy' ? 3.5 : 2.5;
-        const baseAmp = weather === 'rainy' ? 0.7 : 0.4;
-        const flowTime = time * flowSpeed;
-
-        let islandFade = 1.0;
-        if (dist < 18) {
-             islandFade = Math.max(0, (dist - 12) / 6.0);
-        }
-
-        const wave1 = Math.sin((x + y) * 0.5 + flowTime) * baseAmp * 0.5 * islandFade;
-        const wave2 = Math.cos((x - y) * 0.3 + flowTime * 0.8) * baseAmp * 0.5 * islandFade;
-        
-        let crashWave = 0;
-        if (dist < 30 && dist > 14) {
-            const phase = dist * 0.8 - time * 2.0;
-            crashWave = Math.pow(Math.sin(phase) * 0.5 + 0.5, 3.0) * (baseAmp * 3.0);
-            const fade = Math.min(1.0, (dist - 14) / 4.0) * Math.min(1.0, (30 - dist) / 5.0);
-            crashWave *= fade * islandFade;
+        // Read precise visual mesh published by the boat/platform
+        const gWindow = window as any;
+        if (gWindow.__assetPositions && gWindow.__assetPositions[asset.id]) {
+            const mesh = gWindow.__assetPositions[asset.id] as THREE.Object3D;
+            
+            let localOffset = new THREE.Vector3(0, 0, 0);
+            if (asset.type === 'boat') {
+                // Attach to the bow trims
+                localOffset.set(0, 0.66, 1.85); 
+            } else if (asset.type === 'platform') {
+                // Attach to the front edge of the platform deck
+                localOffset.set(0, 0.1, 1.4);
+            }
+            
+            // localToWorld mutates the vector
+            const worldPos = localOffset.clone();
+            mesh.localToWorld(worldPos);
+            return worldPos;
         }
 
-        const waterZ = wave1 + wave2 + crashWave;
-        return new THREE.Vector3(x, Math.max(asset.position.y, waterZ - 0.4) + (asset.type === 'boat' ? 0.5 : 0.2), y);
+        // Fallback for static assets like pillars
+        return new THREE.Vector3(asset.position.x, asset.position.y + 0.5, asset.position.z);
     }
 
     useFrame((state) => {
@@ -2027,14 +2240,18 @@ function DynamicRope({ fromId, toId }: { fromId: string, toId: string }) {
         
         // Create parabolic rope curve
         const points = [];
-        const segments = 10;
+        const segments = 20; // Increased segments for smoother curve
         for (let i = 0; i <= segments; i++) {
             const t = i / segments;
-            const px = p1.x + (p2.x - p1.x) * t;
-            const pz = p1.z + (p2.z - p1.z) * t;
-            // Parabola eq dipping down in the middle
-            const py = p1.y + (p2.y - p1.y) * t - (t - 0.5) * (t - 0.5) * -4 + 1.0; 
-            points.push(new THREE.Vector3(px, py - 1.0, pz));
+            // Add a subtle wind sway
+            const sway = Math.sin(state.clock.elapsedTime * 2.0 + t * 5.0) * 0.2 * Math.sin(t * Math.PI);
+            const px = p1.x + (p2.x - p1.x) * t + sway;
+            const pz = p1.z + (p2.z - p1.z) * t + sway;
+            // Natural rope sag that becomes taut (less drop) as it stretches
+            const dist = p1.distanceTo(p2);
+            const drop = Math.sin(t * Math.PI) * Math.max(0.05, 1.2 - dist * 0.15);
+            const py = p1.y + (p2.y - p1.y) * t - drop; 
+            points.push(new THREE.Vector3(px, py, pz));
         }
         geom.setFromPoints(points);
     });
@@ -3389,12 +3606,14 @@ function SparkParticles({ position }: { position: [number, number, number] }) {
 
 export function Campfire(props: any) {
   const ref = usePopIn(props.scale || 1);
+  const [isLit, setIsLit] = useState(false);
+  const { showHover, isHoverLeaving, keepHoverAlive, forceClose } = useHoverInteraction();
   const fireGroupRef = useRef<any>(null);
   const fireInnerRef = useRef<any>(null);
   const lightRef = useRef<any>(null);
   
   useFrame(({ clock }) => {
-     if (!useGameStore.getState().isSplashDone) return;
+     if (!useGameStore.getState().isSplashDone || !isLit) return;
      const t = clock.elapsedTime;
      if (fireGroupRef.current) {
          // Add flicker and stylized rotation
@@ -3414,7 +3633,26 @@ export function Campfire(props: any) {
   });
 
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+    <group 
+      position={[props.position.x, props.position.y, props.position.z]} 
+      rotation={[0, props.rotation.y, 0]} 
+      ref={ref}
+      onClick={(e: any) => {
+        if (useGameStore.getState().selectedTool !== 'none') return;
+        e.stopPropagation();
+        AudioSystem.playClick();
+        setIsLit(!isLit);
+        forceClose();
+      }}
+      onPointerOver={(e: any) => { 
+          if (useGameStore.getState().selectedTool === 'none') {
+              e.stopPropagation();
+              document.body.style.cursor = 'pointer'; 
+              keepHoverAlive();
+          }
+      }}
+      onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+    >
       {/* Hand-drawn style Stone Ring */}
       {[...Array(10)].map((_, i) => {
           const angle = (i / 10) * Math.PI * 2;
@@ -3450,31 +3688,58 @@ export function Campfire(props: any) {
       ))}
 
       {/* Stylized Low-Poly Fire */}
-      <group ref={fireGroupRef} position={[0, 0.35, 0]}>
-        {/* Outer Flame */}
-        <mesh castShadow>
-            <coneGeometry args={[0.35, 0.7, 4]} />
-            <meshStandardMaterial color="#ea580c" emissive="#ea580c" emissiveIntensity={0.8} transparent opacity={0.9} flatShading />
-        </mesh>
-        <mesh rotation={[0, Math.PI / 4, 0]}>
-            <coneGeometry args={[0.3, 0.65, 4]} />
-            <meshStandardMaterial color="#f97316" emissive="#f97316" emissiveIntensity={1} flatShading />
-        </mesh>
-        {/* Inner Flame */}
-        <mesh ref={fireInnerRef} position={[0, -0.1, 0]}>
-            <octahedronGeometry args={[0.2, 0]} />
-            <meshStandardMaterial color="#fde047" emissive="#fde047" emissiveIntensity={2} flatShading />
-        </mesh>
-      </group>
+      {isLit && (
+        <group ref={fireGroupRef} position={[0, 0.35, 0]}>
+          {/* Outer Flame */}
+          <mesh castShadow>
+              <coneGeometry args={[0.35, 0.7, 4]} />
+              <meshStandardMaterial color="#ea580c" emissive="#ea580c" emissiveIntensity={0.8} transparent opacity={0.9} flatShading />
+          </mesh>
+          <mesh rotation={[0, Math.PI / 4, 0]}>
+              <coneGeometry args={[0.3, 0.65, 4]} />
+              <meshStandardMaterial color="#f97316" emissive="#f97316" emissiveIntensity={1} flatShading />
+          </mesh>
+          {/* Inner Flame */}
+          <mesh ref={fireInnerRef} position={[0, -0.1, 0]}>
+              <octahedronGeometry args={[0.2, 0]} />
+              <meshStandardMaterial color="#fde047" emissive="#fde047" emissiveIntensity={2} flatShading />
+          </mesh>
+        </group>
+      )}
 
       {/* Fire Particles */}
-      <ParticleBurst position={new THREE.Vector3(0, 0.5, 0)} color="#fcd34d" />
+      {isLit && <ParticleBurst position={new THREE.Vector3(0, 0.5, 0)} color="#fcd34d" />}
 
       {/* Spark Particles */}
-      <SparkParticles position={[0, 0.5, 0]} />
+      {isLit && <SparkParticles position={[0, 0.5, 0]} />}
 
       {/* Light Source */}
-      <pointLight ref={lightRef} color="#fbbf24" distance={8} decay={2} castShadow intensity={2.5} position={[0, 0.8, 0]} />
+      {isLit && <pointLight ref={lightRef} color="#fbbf24" distance={8} decay={2} castShadow intensity={2.5} position={[0, 0.8, 0]} />}
+
+      {/* Hover UI Button */}
+      <HoverButton 
+          showHover={showHover} isHoverLeaving={isHoverLeaving} keepHoverAlive={keepHoverAlive} yOffset={1.4}
+          iconSvg={
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ overflow: 'visible' }}>
+              {isLit ? (
+                <g style={{ animation: 'extinguishShrink 0.5s forwards', transformOrigin: 'center' }}>
+                   <path d="M18 6L6 18M6 6l12 12" />
+                </g>
+              ) : (
+                <g>
+                  {/* Spark */}
+                  <circle cx="12" cy="18" r="2" fill="currentColor" stroke="none" style={{ transformOrigin: 'center', animation: 'sparkShoot 0.5s ease-out forwards' }} />
+                  {/* Flame */}
+                  <path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 2.4 6a4 4 0 01-4 3.9" 
+                        style={{ transformOrigin: '12px 20px', animation: 'flameIgniteReal 0.6s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both' }} />
+                  {/* Logs at bottom */}
+                  <path d="M7 20 L17 17 M7 17 L17 20" strokeWidth="2" style={{ strokeDasharray: 20, strokeDashoffset: 20, animation: 'drawLogs 0.4s forwards' }} />
+                </g>
+              )}
+            </svg>
+          } 
+          onClick={(e: any) => { e.stopPropagation(); AudioSystem.playClick(); setIsLit(!isLit); forceClose(); }} 
+      />
     </group>
   );
 }
@@ -3617,41 +3882,105 @@ export function Sign(props: any) {
 export function Mailbox(props: any) {
   const ref = usePopIn(props.scale || 1);
   const setMailboxOpen = useGameStore(s => s.setMailboxOpen);
+  const setFocusPoint = useGameStore(s => s.setFocusPoint);
+  const unreadCount = useGameStore(s => s.unreadCount);
+  const { showHover, isHoverLeaving, keepHoverAlive, forceClose } = useHoverInteraction();
+  
+  const isHoverActive = showHover || unreadCount > 0;
+
   return (
     <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
-      {/* 柱 */}
-      <mesh position={[0, 0.45, 0]} castShadow>
-        <boxGeometry args={[0.12, 0.9, 0.12]} />
-        <meshStandardMaterial color="#5c3d22" flatShading />
+      {/* Stone Base */}
+      <mesh position={[0, 0.1, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.3, 0.4, 0.2, 8]} />
+        <meshStandardMaterial color="#64748b" roughness={0.9} flatShading />
       </mesh>
-      {/* 箱体（点击打开信箱，仅选择模式） */}
+      {/* Wooden Post */}
+      <mesh position={[0, 0.6, 0]} castShadow>
+        <boxGeometry args={[0.15, 1.0, 0.15]} />
+        <meshStandardMaterial color="#78350f" roughness={0.8} flatShading />
+      </mesh>
+      {/* Hover UI Button */}
+      <group position={[0, 1.2, 0]}>
+        <HoverButton 
+          showHover={isHoverActive} 
+          isHoverLeaving={isHoverLeaving && unreadCount === 0} 
+          keepHoverAlive={keepHoverAlive} 
+          yOffset={1.0}
+          iconSvg={
+            <div style={{ position: 'relative' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ overflow: 'visible' }}>
+                {/* Envelope back body */}
+                <path d="M3 8 h18 v11 a2 2 0 0 1 -2 2 H5 a2 2 0 0 1 -2 -2 Z" />
+                {/* Paper sliding out */}
+                <rect x="6" y="8" width="12" height="10" strokeDasharray="40" strokeDashoffset="40" style={{ animation: 'paperSlideUp 0.6s 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }} fill="#fff" />
+                {/* Envelope flap opening */}
+                <path d="M3 8 L12 14 L21 8" style={{ transformOrigin: 'center 8px', animation: 'envelopeFlapOpen 0.5s 0.1s forwards' }} />
+              </svg>
+              {unreadCount > 0 && (
+                 <div style={{ position: 'absolute', top: '-6px', right: '-8px', background: '#ef4444', color: 'white', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', border: '2px solid white', animation: 'bubblePopIn 0.3s' }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                 </div>
+              )}
+            </div>
+          } 
+          onClick={(e: any) => { e.stopPropagation(); AudioSystem.playClick(); setMailboxOpen(true); setFocusPoint([props.position.x, props.position.y, props.position.z]); forceClose(); }} 
+        />
+      </group>
+      {/* Mailbox Box Group */}
       <group
+        position={[0, 1.2, 0]}
         onClick={(e: any) => {
           if (useGameStore.getState().selectedTool !== 'none') return;
           e.stopPropagation();
           AudioSystem.playClick();
           setMailboxOpen(true);
+          setFocusPoint([props.position.x, props.position.y, props.position.z]);
+          forceClose();
         }}
-        onPointerOver={() => { if (useGameStore.getState().selectedTool === 'none') document.body.style.cursor = 'pointer'; }}
+        onPointerOver={(e: any) => { 
+            if (useGameStore.getState().selectedTool === 'none') {
+                e.stopPropagation();
+                document.body.style.cursor = 'pointer'; 
+                keepHoverAlive();
+            }
+        }}
         onPointerOut={() => { document.body.style.cursor = 'auto'; }}
       >
-        <mesh position={[0, 1.0, 0]} castShadow>
-          <boxGeometry args={[0.5, 0.4, 0.7]} />
-          <meshStandardMaterial color="#15803d" flatShading />
+        {/* Main Box */}
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[0.5, 0.4, 0.6]} />
+          <meshStandardMaterial color="#0f766e" roughness={0.7} flatShading />
         </mesh>
-        {/* 半圆顶 */}
-        <mesh position={[0, 1.2, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[0.25, 0.25, 0.5, 12, 1, false, 0, Math.PI]} />
-          <meshStandardMaterial color="#16a34a" flatShading />
+        {/* Slanted Roof Left */}
+        <mesh position={[-0.15, 0.3, 0]} rotation={[0, 0, 0.5]} castShadow>
+          <boxGeometry args={[0.4, 0.05, 0.7]} />
+          <meshStandardMaterial color="#334155" roughness={0.8} flatShading />
         </mesh>
-        {/* 红色小旗 */}
-        <mesh position={[0.28, 1.15, 0.1]} castShadow>
+        {/* Slanted Roof Right */}
+        <mesh position={[0.15, 0.3, 0]} rotation={[0, 0, -0.5]} castShadow>
+          <boxGeometry args={[0.4, 0.05, 0.7]} />
+          <meshStandardMaterial color="#334155" roughness={0.8} flatShading />
+        </mesh>
+        {/* Letter Slot */}
+        <mesh position={[0, 0.05, 0.31]}>
+          <boxGeometry args={[0.3, 0.04, 0.02]} />
+          <meshStandardMaterial color="#1e293b" />
+        </mesh>
+        {/* Letter inside slot (glows) */}
+        <mesh position={[0, 0.05, 0.32]} rotation={[0.2, 0, 0]}>
+          <boxGeometry args={[0.2, 0.02, 0.05]} />
+          <meshStandardMaterial color="#fcf8ec" emissive="#fcf8ec" emissiveIntensity={0.5} />
+        </mesh>
+        {/* Animated Flag Stick */}
+        <mesh position={[0.28, 0.1, 0.1]} rotation={[0, 0, showHover ? -0.5 : 0.2]} castShadow>
           <boxGeometry args={[0.04, 0.3, 0.04]} />
           <meshStandardMaterial color="#7f1d1d" flatShading />
-        </mesh>
-        <mesh position={[0.36, 1.22, 0.1]} castShadow>
-          <boxGeometry args={[0.16, 0.12, 0.02]} />
-          <meshStandardMaterial color="#dc2626" flatShading />
+          {/* Flag Banner */}
+          <mesh position={[0.08, 0.07, 0]} rotation={[0, 0, 0]} castShadow>
+            <boxGeometry args={[0.16, 0.12, 0.02]} />
+            <meshStandardMaterial color="#dc2626" flatShading />
+          </mesh>
         </mesh>
       </group>
     </group>
@@ -3660,8 +3989,37 @@ export function Mailbox(props: any) {
 
 export function Bench(props: any) {
   const ref = usePopIn(props.scale || 1);
+  const setFocusPoint = useGameStore(s => s.setFocusPoint);
+  const { showHover, isHoverLeaving, keepHoverAlive, forceClose } = useHoverInteraction();
+
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
+    <group 
+      position={[props.position.x, props.position.y, props.position.z]} 
+      rotation={[0, props.rotation.y, 0]} 
+      ref={ref}
+      onClick={(e: any) => {
+        if (useGameStore.getState().selectedTool !== 'none') return;
+        e.stopPropagation();
+        AudioSystem.playClick();
+        setFocusPoint([props.position.x, props.position.y, props.position.z]);
+        forceClose();
+      }}
+      onPointerOver={(e: any) => { 
+          if (useGameStore.getState().selectedTool === 'none') {
+              e.stopPropagation();
+              document.body.style.cursor = 'pointer'; 
+              keepHoverAlive();
+          }
+      }}
+      onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+    >
+      {/* Hover UI Button */}
+      <HoverButton 
+          showHover={showHover} isHoverLeaving={isHoverLeaving} keepHoverAlive={keepHoverAlive} yOffset={1.4}
+          iconSvg={<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'seatDropIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)' }}><path d="M2 12h20"/><path d="M12 2v20"/><path d="M5 12A7 7 0 0 1 19 12"/></svg>} 
+          onClick={(e: any) => { e.stopPropagation(); AudioSystem.playClick(); setFocusPoint([props.position.x, props.position.y, props.position.z]); forceClose(); }} 
+      />
+
       {/* Legs */}
       <mesh position={[-0.8, 0.25, -0.2]} castShadow>
         <boxGeometry args={[0.1, 0.5, 0.1]} />

@@ -139,6 +139,16 @@ export default function App() {
   const [giftClaimId, setGiftClaimId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [envMenuOpen, setEnvMenuOpen] = useState(false);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [hasSeenSailingTutorial, setHasSeenSailingTutorial] = useState(() => {
+    try {
+      return localStorage.getItem('hasSeenSailingTutorial') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+  const [showSailingTutorial, setShowSailingTutorial] = useState(false);
+
   const [appLoaded, setAppLoaded] = useState(() => hasVisitedBefore());
   const lastToolRef = useRef<ToolType>('none');
   const lastCategoryRef = useRef<string | null>(null);
@@ -230,9 +240,13 @@ export default function App() {
              break;
          }
          case 'escape': 
+             if (useGameStore.getState().drivingBoatId) {
+                 useGameStore.getState().setDrivingBoatId(null);
+             }
              setIsImmersive(false);
              setSelectedTool('none');
              setActiveCategory(null);
+             useGameStore.getState().setDrivingBoatId(null);
              break;
          case 'e': 
              setSelectedTool('eraser'); 
@@ -249,6 +263,16 @@ export default function App() {
   const brushStrength = useGameStore(s => s.brushStrength);
   const brushFalloff = useGameStore(s => s.brushFalloff);
   const brushPaintType = useGameStore(s => s.brushPaintType);
+  const drivingBoatId = useGameStore(s => s.drivingBoatId);
+  const setDrivingBoatId = useGameStore(s => s.setDrivingBoatId);
+
+  useEffect(() => {
+    if (drivingBoatId && !hasSeenSailingTutorial) {
+        setShowSailingTutorial(true);
+    } else {
+        setShowSailingTutorial(false);
+    }
+  }, [drivingBoatId, hasSeenSailingTutorial]);
 
   const activeCatObj = BUILD_CATEGORIES.find(c => c.name === activeCategory);
 
@@ -815,6 +839,55 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* --- Driving Overlay UI --- */}
+      {drivingBoatId && screen === 'PLAYING' && !showSailingTutorial && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 flex items-center justify-center z-50">
+           <button 
+             className="group relative bg-[#fcf8ec] hover:bg-[#ff7675] border-[3px] border-slate-800 p-2.5 rounded-full shadow-[4px_4px_0_rgba(30,41,59,1)] hover:shadow-[2px_2px_0_rgba(30,41,59,1)] hover:translate-x-[2px] hover:translate-y-[2px] rotate-[-2deg] hover:rotate-[0deg] transition-all pointer-events-auto cursor-pointer"
+             onClick={() => { setDrivingBoatId(null); AudioSystem.playPop(); }}
+             title="点击退出航行 (Esc)"
+           >
+             {/* Default Sailing Icon */}
+             <svg className="text-slate-800 group-hover:hidden transition-colors" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/><line x1="4.93" y1="19.07" x2="19.07" y2="4.93"/></svg>
+             {/* Hover Exit Icon */}
+             <svg className="text-slate-900 hidden group-hover:block transition-colors" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+           </button>
+        </div>
+      )}
+
+      {/* --- Sailing Tutorial Dialog (First Time Only) --- */}
+      {showSailingTutorial && (
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-auto">
+             <div className="bg-[#fcf8ec] border-[3px] border-slate-800 p-8 shadow-[8px_8px_0_rgba(30,41,59,1)] rotate-[-1deg] flex flex-col items-center max-w-sm">
+                <svg className="mb-4 text-slate-800" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/><line x1="4.93" y1="19.07" x2="19.07" y2="4.93"/></svg>
+                
+                <h2 className="text-2xl font-black text-slate-800 mb-6 font-['ZCOOL_KuaiLe',cursive]" style={{ fontFamily: "'ZCOOL KuaiLe', cursive" }}>航行提示</h2>
+                
+                <div className="flex flex-col gap-4 text-slate-700 font-bold mb-8 text-center text-lg">
+                    <p>使用 <span className="text-blue-600 bg-blue-100 px-2 py-0.5 rounded border border-blue-300 shadow-sm mx-1">W A S D</span> 控制方向</p>
+                    <p>按住 <span className="text-red-600 bg-red-100 px-2 py-0.5 rounded border border-red-300 shadow-sm mx-1">Shift</span> 开启破浪冲刺</p>
+                    <p>按下 <span className="text-slate-600 bg-slate-200 px-2 py-0.5 rounded border border-slate-400 shadow-sm mx-1">Esc</span> 随时退出航行</p>
+                </div>
+                
+                <button 
+                  className="px-8 py-3 bg-[#10b981] hover:bg-[#059669] text-white font-black text-xl border-[3px] border-slate-800 shadow-[4px_4px_0_rgba(30,41,59,1)] hover:shadow-[2px_2px_0_rgba(30,41,59,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all font-['ZCOOL_KuaiLe',cursive]"
+                  style={{ fontFamily: "'ZCOOL KuaiLe', cursive" }}
+                  onClick={() => {
+                      try {
+                          localStorage.setItem('hasSeenSailingTutorial', 'true');
+                      } catch (e) {}
+                      setHasSeenSailingTutorial(true);
+                      setShowSailingTutorial(false);
+                      AudioSystem.playPop();
+                  }}
+                >
+                  我知道了
+                </button>
+             </div>
+          </div>
+      )}
+
       <FlourishHUD />
       {giftClaimId && (
         <GiftModal mode="claim" giftId={giftClaimId} onClose={() => { setGiftClaimId(null); history.replaceState({}, '', location.pathname); }} />

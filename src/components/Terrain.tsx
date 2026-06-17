@@ -6,14 +6,12 @@ import { useGameStore, ToolType } from '../store';
 import { AudioSystem } from '../lib/audio';
 import { emitHermitPlace } from '../lib/socket';
 import { applyTerrainBrush, paintSurface } from '../utils/terrainBrush';
-import { fitPond, encodePondState, carvePondAndEncode, flattenForSpring } from '../game/water/pondFit';
+import { encodePondState } from '../game/water/pondFit';
 import { encodeStreamState } from '../game/water/streamPath';
-import { getTerrainHeight } from '../utils/terrain';
+import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
 
 const noise2D = createNoise2D();
 
-// 「挖低」自动出水的全局水位线：地形被挖到此线以下，松手自动在洼地生成水塘。
-const AUTO_WATER_LINE = -0.2;
 
 // Generate a static heightmap for the island
 const ISAND_SIZE = 40;
@@ -564,13 +562,14 @@ export function Terrain() {
 
   const applyBrush = (point: THREE.Vector3, isDragEvent: boolean, e?: any) => {
     // Continuous brushing allowed for structural tools and plants/rocks
-    if (isDragEvent && !['terrainUp', 'terrainDown', 'eraser', 'pave', 'treeA', 'treeB', 'rock'].includes(selectedTool)) {
+    if (isDragEvent && !['terrainUp', 'terrainDown', 'eraser', 'pave', 'treeA', 'treeB', 'rock', 'pond', 'spring'].includes(selectedTool)) {
         return;
     }
 
     if (isDragEvent) {
+        const isWater = selectedTool === 'pond' || selectedTool === 'spring';
         const isObjectPlacement = ['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'].includes(selectedTool);
-        const minDistance = isObjectPlacement ? 1.5 : 0.2;
+        const minDistance = isWater ? 1.2 : isObjectPlacement ? 1.5 : 0.2;
         
         // Ensure distance before applying brush again
         if (point.distanceTo(lastBrushPoint.current) < minDistance) return;
@@ -596,6 +595,38 @@ export function Terrain() {
               AudioSystem.playPop();
           }
       }
+    }
+
+    // ── 水笔刷（池塘 / 泉）──
+    // 单击或拖动都按间距落一笔：直接在 mesh 上挖一个小碗 + 出水 + 装饰。
+    // 重叠的笔触靠石头去重(insideNeighbor)自动融成连片的湖/河，等于"画水"。
+    if (selectedTool === 'pond' || selectedTool === 'spring') {
+       if (!meshRef.current) return;
+       const isSpring = selectedTool === 'spring';
+       const R = isSpring ? 1.2 : 1.8;  // 单笔碗口（笔刷用，比单点放置小，便于连片）
+       const D = isSpring ? 0.6 : 1.0;  // 向下挖深
+       const geom = meshRef.current.geometry;
+       const posAttr = geom.attributes.position;
+       const centerH = getTerrainHeight(point.x, point.z);
+       applyTerrainBrush(posAttr.array as Float32Array, {
+         mode: 'flatten', targetY: centerH - D, size: R, strength: 1.0,
+         falloff: 'flat_center', isDrag: false, px: point.x, pz: point.z,
+       });
+       posAttr.needsUpdate = true;
+       geom.computeVertexNormals();
+       geom.computeBoundingSphere();
+       useGameStore.getState().setTerrainData(posAttr.array as Float32Array, types, ISAND_SIZE, SEGMENTS);
+       refreshTerrainColors();
+       const placed = {
+         type: selectedTool as any,
+         position: { x: point.x, y: point.y, z: point.z },
+         rotation: { x: 0, y: Math.random() * Math.PI * 2, z: 0 },
+         scale: 1,
+         customState: encodePondState({ waterLevel: centerH - D + 0.4, radius: R }),
+       };
+       addAsset(placed);
+       if (useGameStore.getState().online) emitHermitPlace(placed);
+       return;
     }
 
     if (selectedTool === 'pave') {
@@ -699,17 +730,8 @@ export function Terrain() {
         let placedCustom = String(selectedTool).startsWith('balloon') ? useGameStore.getState().balloonColor : undefined;
 
         // 允许自由放置，不做任何碰撞拦截
+        // （池塘/泉已由上面的「水笔刷」分支处理，不会走到这里）
         let placedY = Math.max(point.y, 0);
-
-        if (selectedTool === 'pond') {
-            // 挖浅碗 + 贴地拟合：水面落在真实凹陷里，任何地形都不穿模。
-            placedCustom = carvePondAndEncode(point.x, point.z);
-            placedY = point.y;
-        } else if (selectedTool === 'spring') {
-            // 生命之泉自动平整地形，避免在斜坡上悬浮或穿模
-            flattenForSpring(point.x, point.z);
-            placedY = getTerrainHeight(point.x, point.z);
-        }
 
         const placed = {
             type: assetType as any,
@@ -759,7 +781,21 @@ export function Terrain() {
 
        // 溪流：松手把折线提交为一个 water_flow 物件。
        if (selectedTool === 'water_flow') {
-          const pts = streamPoints.current;
+          let pts = streamPoints.current;
+          // 点击放置瀑布：没拖出折线时，按落点坡度合成一段「顺坡而下」的短折线，
+          // buildStream 检测到陡降即生成竖直水帘 → 点一下就是一道瀑布。
+          if (pts.length < 2) {
+             const c = pts[0] || { x: lastBrushPoint.current.x, z: lastBrushPoint.current.z };
+             const g = getTerrainGradient(c.x, c.z); // 指向上坡
+             let ux = g.dx, uz = g.dz;
+             const gl = Math.hypot(ux, uz) || 1;
+             ux /= gl; uz /= gl;
+             const span = 2.2;
+             pts = [
+                { x: c.x + ux * span, z: c.z + uz * span }, // 高处
+                { x: c.x - ux * span, z: c.z - uz * span }, // 低处
+             ];
+          }
           if (pts.length >= 2) {
              const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
              const cz = pts.reduce((s, p) => s + p.z, 0) / pts.length;
@@ -786,28 +822,7 @@ export function Terrain() {
           useGameStore.getState().setTerrainData(posAttr.array as Float32Array, types, ISAND_SIZE, SEGMENTS);
        }
 
-       // 「挖低」自动出水：刚挖的洼地中心低于水位线、附近又没有水体 → 自动漫上一汪水塘。
-       const st = useGameStore.getState();
-       if ((selectedTool === 'terrainUp' || selectedTool === 'terrainDown') && st.brushMode === 'lower') {
-          const cx = lastBrushPoint.current.x;
-          const cz = lastBrushPoint.current.z;
-          const floor = getTerrainHeight(cx, cz);
-          if (floor < AUTO_WATER_LINE) {
-             const hasWaterNear = st.assets.some(a =>
-                (a.type === 'pond' || a.type === 'spring') &&
-                Math.hypot(a.position.x - cx, a.position.z - cz) < 4.5);
-             if (!hasWaterNear) {
-                const fit = fitPond(cx, cz, { minR: 1.5, maxR: 7 });
-                st.addAsset({
-                   type: 'pond' as any,
-                   position: { x: cx, y: floor, z: cz },
-                   rotation: { x: 0, y: 0, z: 0 },
-                   scale: 1,
-                   customState: encodePondState(fit),
-                });
-             }
-          }
-       }
+       // 挖到海平面以下时海水自然漫入，不再额外生成水塘/湖泊（已按需求移除自动出水）。
 
        if (e.target && e.pointerId !== undefined) {
            try {

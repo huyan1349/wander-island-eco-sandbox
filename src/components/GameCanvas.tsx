@@ -1,4 +1,4 @@
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Text, Html, PivotControls } from '@react-three/drei';
 import { PomodoroTimer } from './PomodoroTimer';
 import { IslandClock } from './IslandClock';
@@ -95,6 +95,56 @@ function WASDControls({ controlsRef }: { controlsRef: React.RefObject<any> }) {
     }
   });
 
+  return null;
+}
+
+function BoatCameraFollow({ controlsRef }: { controlsRef: React.RefObject<any> }) {
+  const drivingBoatId = useGameStore(state => state.drivingBoatId);
+
+  useFrame((state, delta) => {
+    if (!drivingBoatId) return;
+    const controls = controlsRef.current;
+    if (!controls) return;
+
+    const gWindow = window as any;
+    if (gWindow.__assetPositions && gWindow.__assetPositions[drivingBoatId]) {
+      const mesh = gWindow.__assetPositions[drivingBoatId] as THREE.Object3D;
+      const targetPos = new THREE.Vector3();
+      mesh.getWorldPosition(targetPos);
+      
+      // Smoothly move the target
+      const lerpSpeed = 1 - Math.exp(-delta * 8);
+      
+      // Move camera position by the same amount the target moves to keep relative distance
+      const beforeTarget = controls.target.clone();
+      controls.target.lerp(targetPos, lerpSpeed);
+      const afterTarget = controls.target.clone();
+      
+      state.camera.position.add(afterTarget.sub(beforeTarget));
+    }
+  });
+  return null;
+}
+
+function CameraFocusPan({ controlsRef }: { controlsRef: any }) {
+  const focusPoint = useGameStore(s => s.focusPoint);
+  const { camera } = useThree();
+  const targetVec = useRef(new THREE.Vector3());
+  const camTarget = useRef(new THREE.Vector3());
+  
+  useFrame((state, dt) => {
+    if (!focusPoint || !controlsRef.current) return;
+    targetVec.current.set(focusPoint[0], focusPoint[1], focusPoint[2]);
+    // Target camera slightly back and up from the object
+    camTarget.current.set(focusPoint[0], focusPoint[1] + 5, focusPoint[2] + 8);
+    
+    controlsRef.current.target.lerp(targetVec.current, dt * 4.0);
+    camera.position.lerp(camTarget.current, dt * 4.0);
+    
+    if (controlsRef.current.target.distanceTo(targetVec.current) < 0.1) {
+      useGameStore.getState().setFocusPoint(null);
+    }
+  });
   return null;
 }
 
@@ -200,6 +250,7 @@ export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = 
   const isDrawing = useGameStore(state => state.isDrawing);
   const screen = useGameStore(state => state.screen);
   const assetCount = useGameStore(state => state.assets.length);
+  const drivingBoatId = useGameStore(state => state.drivingBoatId);
   const isTouch = useIsTouchDevice();
   
   const enableOrbitControls = !isDrawing;
@@ -253,8 +304,10 @@ export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = 
              <Vignette eskil={false} offset={0.15} darkness={0.8} />
           </EffectComposer>
         </Suspense>
-        {!isTouch && <WASDControls controlsRef={orbitRef} />}
+        {!isTouch && !drivingBoatId && <WASDControls controlsRef={orbitRef} />}
         {!isTouch && <SmoothZoom controlsRef={orbitRef} minDistance={5} maxDistance={120} />}
+        <CameraFocusPan controlsRef={orbitRef} />
+        <BoatCameraFollow controlsRef={orbitRef} />
         <OrbitControls
           ref={orbitRef}
           enabled={enableOrbitControls}

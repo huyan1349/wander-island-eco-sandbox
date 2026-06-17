@@ -39,7 +39,11 @@ export interface BrushOptions {
   maxY?: number;         // 高度上限
 }
 
-const DEFAULT_MIN_Y = -15.0;
+// 海平面约在 y=-0.4（与 Water.tsx 的海面基准一致）。挖掘最深只允许到海平面
+// 下方约 1.6 个单位——再深地形就会突兀地穿到海底以下、海水也托不住，故在此封顶。
+// 挖到这条线附近时海水自然漫入，不需要另外生成水塘。
+export const SEA_LEVEL = -0.4;
+const DEFAULT_MIN_Y = SEA_LEVEL - 1.6; // = -2.0
 const DEFAULT_MAX_Y = 500.0;
 
 // ── 羽化曲线 ──────────────────────────────────────────

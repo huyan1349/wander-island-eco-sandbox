@@ -62,6 +62,8 @@ function sampleOceanWave(x: number, y: number, time: number, flowSpeed: number, 
 // frame loop so visuals and floating physics fade out together
 let freezeScale = 1;
 
+import { globalBoatState } from './assets/marine';
+
 // Current wave amplitude (weather + panel intensity + freeze ramp)
 export function getWaveAmplitude(weather: string) {
   let mult = 1.8;
@@ -94,7 +96,14 @@ export function Water() {
   // GPU 波浪：原本每帧由 CPU 循环 4.8 万顶点算位移+顶点色，现迁移到顶点着色器并行计算。
   // uniforms 用稳定 ref，useFrame 只更新 3 个标量；GLSL 与 JS sampleOceanWave 逐字一致，
   // 保证用 getWaterHeight 采样的漂浮物与海面完全同步。视觉不变。
-  const waveUniforms = useRef({ uTime: { value: 0 }, uFlowSpeed: { value: 3.0 }, uBaseAmp: { value: 0 } });
+  const waveUniforms = useRef({ 
+    uTime: { value: 0 }, 
+    uFlowSpeed: { value: 3.0 }, 
+    uBaseAmp: { value: 0 },
+    uBoatPos: { value: new THREE.Vector2() },
+    uBoatDir: { value: new THREE.Vector2() },
+    uBoatSpeed: { value: 0 }
+  });
 
   useEffect(() => {
     const mat = oceanMeshRef.current?.material as THREE.MeshPhysicalMaterial | undefined;
@@ -103,10 +112,14 @@ export function Water() {
       shader.uniforms.uTime = waveUniforms.current.uTime;
       shader.uniforms.uFlowSpeed = waveUniforms.current.uFlowSpeed;
       shader.uniforms.uBaseAmp = waveUniforms.current.uBaseAmp;
+      shader.uniforms.uBoatPos = waveUniforms.current.uBoatPos;
+      shader.uniforms.uBoatDir = waveUniforms.current.uBoatDir;
+      shader.uniforms.uBoatSpeed = waveUniforms.current.uBoatSpeed;
 
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', `#include <common>
 uniform float uTime; uniform float uFlowSpeed; uniform float uBaseAmp;
+uniform vec2 uBoatPos; uniform vec2 uBoatDir; uniform float uBoatSpeed;
 varying vec3 vWaveCol;
 varying float vUnder;`)
         .replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -138,6 +151,41 @@ varying float vUnder;`)
     crashWave *= fade * islandFade;
   }
   float h = wave1 + wave2 + wave3 + crashWave;
+
+  if (uBoatSpeed > 0.5) {
+      vec2 localBoatPos = vec2(uBoatPos.x, -uBoatPos.y);
+      vec2 localBoatDir = vec2(uBoatDir.x, -uBoatDir.y);
+      vec2 toVert = vec2(x, y) - localBoatPos;
+      float distToBoat = length(toVert);
+      if (distToBoat > 0.0 && distToBoat < 40.0) {
+          vec2 toVertDir = toVert / distToBoat;
+          float forwardDot = dot(toVertDir, localBoatDir);
+          float pathDist = distToBoat * forwardDot;
+          float crossDist = abs(distToBoat * sqrt(max(0.0, 1.0 - forwardDot * forwardDot)));
+          
+          float bowWave = 0.0;
+          if (pathDist > -3.0 && pathDist < 4.0 && crossDist < 5.0) {
+              float intensity = smoothstep(4.0, 0.0, pathDist) * smoothstep(5.0, 1.0, crossDist);
+              bowWave = sin(crossDist * 2.0 - uTime * 5.0) * intensity * (uBoatSpeed * 0.05);
+          }
+          
+          float wakeWave = 0.0;
+          if (pathDist < 0.0) {
+              float wakeAngle = 0.45;
+              float centerDist = abs(crossDist - abs(pathDist) * wakeAngle);
+              if (centerDist < 4.0) {
+                  float fade = smoothstep(-40.0, 0.0, pathDist) * smoothstep(4.0, 0.0, centerDist);
+                  wakeWave = sin(centerDist * 2.5 - uTime * 6.0 - pathDist * 0.5) * fade * (uBoatSpeed * 0.06);
+              }
+              if (crossDist < 2.5) {
+                  float churnFade = smoothstep(-20.0, 0.0, pathDist) * smoothstep(2.5, 0.0, crossDist);
+                  wakeWave -= churnFade * (uBoatSpeed * 0.04);
+              }
+          }
+          h += bowWave + wakeWave;
+      }
+  }
+
   transformed.z = h;
 
   float crest = uBaseAmp > 0.01 ? clamp((h - uBaseAmp*0.55)/(uBaseAmp*0.6), 0.0, 1.0) : 0.0;
@@ -152,6 +200,30 @@ varying float vUnder;`)
     float band = min(1.0, (dist - 16.0)/1.2) * min(1.0, (21.5 - dist)/2.5);
     foam = crash*band;
   }
+
+  if (uBoatSpeed > 0.5) {
+      vec2 localBoatPos = vec2(uBoatPos.x, -uBoatPos.y);
+      vec2 localBoatDir = vec2(uBoatDir.x, -uBoatDir.y);
+      vec2 toVert = vec2(x, y) - localBoatPos;
+      float distToBoat = length(toVert);
+      if (distToBoat > 0.0 && distToBoat < 40.0) {
+          vec2 toVertDir = toVert / distToBoat;
+          float forwardDot = dot(toVertDir, localBoatDir);
+          float pathDist = distToBoat * forwardDot;
+          float crossDist = abs(distToBoat * sqrt(max(0.0, 1.0 - forwardDot * forwardDot)));
+          
+          if (pathDist < 0.0) {
+              if (crossDist < 2.0) {
+                  foam += smoothstep(-25.0, 0.0, pathDist) * smoothstep(2.0, 0.0, crossDist) * (uBoatSpeed * 0.1);
+              }
+              float centerDist = abs(crossDist - abs(pathDist) * 0.45);
+              if (centerDist < 2.0) {
+                  foam += smoothstep(-35.0, 0.0, pathDist) * smoothstep(2.0, 0.0, centerDist) * (uBoatSpeed * 0.06);
+              }
+          }
+      }
+  }
+
   float kc = uBaseAmp > 0.01 ? clamp(h/(uBaseAmp*1.3)*0.5 + 0.55, 0.0, 1.0) : 0.5;
   float kk = kc*kc;
   float white = min(1.0, crest*0.5 + foam*1.2);
@@ -189,9 +261,14 @@ diffuseColor.a *= vUnder;`);
         let flowSpeed = 3.0;
         if (weather === 'rainy') flowSpeed = 4.5;
         if (weather === 'stormy') flowSpeed = 6.0;
-        waveUniforms.current.uTime.value = state.clock.elapsedTime;
-        waveUniforms.current.uFlowSpeed.value = flowSpeed;
-        waveUniforms.current.uBaseAmp.value = getWaveAmplitude(weather); // 含 freezeScale，冻结时→0 自动变平
+        if (waveUniforms.current) {
+            waveUniforms.current.uTime.value = state.clock.elapsedTime;
+            waveUniforms.current.uFlowSpeed.value = flowSpeed;
+            waveUniforms.current.uBaseAmp.value = getWaveAmplitude(weather); // 含 freezeScale，冻结时→0 自动变平
+            waveUniforms.current.uBoatPos.value.copy(globalBoatState.pos);
+            waveUniforms.current.uBoatDir.value.copy(globalBoatState.dir);
+            waveUniforms.current.uBoatSpeed.value = globalBoatState.speed;
+        }
 
         if (oceanMeshRef.current) {
             const material = oceanMeshRef.current.material as THREE.MeshStandardMaterial;

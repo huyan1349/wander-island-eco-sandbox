@@ -1,5 +1,6 @@
 import { useFrame } from "@react-three/fiber";
-import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { Html } from "@react-three/drei";
+import { createContext, useContext, useMemo, useRef, useState, useEffect, type ReactNode } from "react";
 import * as THREE from "three";
 import { AudioSystem } from "../../lib/audio";
 import { useGameStore, type PlacedAsset } from "../../store";
@@ -56,6 +57,8 @@ function useMarineAssetIndex() {
 export function getWaterHeight(x: number, z: number, time: number, weather: string) {
   return getOceanHeight(x, z, time, weather);
 }
+
+
 
 export function useMarinePhysics(ref: React.RefObject<any>, props: any, baseOffset: number = 0) {
   const weather = useGameStore((state) => state.weather);
@@ -200,6 +203,10 @@ export function Platform(props: any) {
 
     ref.current.position.x = myX + driftX;
     ref.current.position.z = myZ + driftZ;
+
+    const gWindow = window as any;
+    if (!gWindow.__assetPositions) gWindow.__assetPositions = {};
+    gWindow.__assetPositions[props.id] = ref.current;
   });
 
   return (
@@ -494,6 +501,54 @@ export function Pier(props: any) {
   );
 }
 
+function DynamicSail({ position, width, height, color, baseBulge, windFactor, isJib = false, flipX = false }: any) {
+  const uniforms = useMemo(() => ({ uTime: { value: 0 } }), []);
+
+  useFrame((state) => {
+    uniforms.uTime.value = state.clock.elapsedTime;
+  });
+
+  const onBeforeCompile = useMemo(() => (shader: any) => {
+    shader.uniforms.uTime = uniforms.uTime;
+    shader.vertexShader = `
+      uniform float uTime;
+      ${shader.vertexShader}
+    `.replace(
+      `#include <begin_vertex>`,
+      `
+      #include <begin_vertex>
+      float hw = ${width.toFixed(2)} / 2.0;
+      float nx = ${flipX ? '(position.x + hw) / (hw * 2.0)' : '(hw - position.x) / (hw * 2.0)'};
+      
+      float bulge = sin(nx * 3.14159) * ${baseBulge.toFixed(2)};
+      float flutter = sin(position.y * 4.0 + uTime * 6.0) * sin(nx * 10.0 - uTime * 8.0) * nx * ${windFactor.toFixed(2)};
+      
+      transformed.z += bulge + flutter;
+      
+      ${isJib ? `
+      // Taper the jib to a point at the bow (nx=1)
+      if (position.y > 0.0) {
+         transformed.y -= nx * ${height.toFixed(2)} * 0.5;
+      }
+      ` : ''}
+      `
+    );
+  }, [width, height, baseBulge, windFactor, isJib, flipX]);
+
+  return (
+    <mesh position={position} rotation={[0, -Math.PI / 2, 0]} castShadow receiveShadow>
+      <planeGeometry args={[width, height, 16, 16]} />
+      <meshStandardMaterial color={color} roughness={0.9} side={THREE.DoubleSide} onBeforeCompile={onBeforeCompile} customProgramCacheKey={() => "sail_" + width + "_" + isJib + "_" + flipX} />
+    </mesh>
+  );
+}
+
+export const globalBoatState = {
+    pos: new THREE.Vector2(0, 0),
+    dir: new THREE.Vector2(0, 1),
+    speed: 0
+};
+
 export function Boat(props: any) {
   const ref = usePopIn(props.scale || 1);
   const weather = useGameStore((state) => state.weather);
@@ -508,29 +563,163 @@ export function Boat(props: any) {
 
   const isMoored = useMemo(() => assets.some((asset) => asset.type === "rope" && asset.connections?.includes(props.id)), [assets, props.id]);
 
-  useFrame((state) => {
+  const selectedTool = useGameStore((state) => state.selectedTool);
+  const connectingPillarId = useGameStore((state) => state.connectingPillarId);
+  const setConnectingPillarId = useGameStore((state) => state.setConnectingPillarId);
+  const drivingBoatId = useGameStore((state) => state.drivingBoatId);
+  const setDrivingBoatId = useGameStore((state) => state.setDrivingBoatId);
+  const addAsset = useGameStore((state) => state.addAsset);
+  
+  const [showHover, setShowHover] = useState(false);
+  const [isHoverLeaving, setIsHoverLeaving] = useState(false);
+  const hoverTimeout = useRef<any>(null);
+  const keys = useRef({ w: false, a: false, s: false, d: false, arrowup: false, arrowdown: false, arrowleft: false, arrowright: false, shift: false });
+  const velocity = useRef(0);
+
+  const keepHoverAlive = () => {
+      setShowHover(true);
+      setIsHoverLeaving(false);
+      if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+      hoverTimeout.current = setTimeout(() => {
+          setIsHoverLeaving(true);
+          setTimeout(() => {
+              setShowHover(false);
+              setIsHoverLeaving(false);
+          }, 300); // Wait for fade out animation
+      }, 3000);
+  };
+
+  // Set initial rotation so React doesn't overwrite it on re-renders
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.rotation.set(props.rotation?.x || 0, props.rotation?.y || 0, props.rotation?.z || 0, "YXZ");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (drivingBoatId !== props.id) {
+        keys.current = { w: false, a: false, s: false, d: false, arrowup: false, arrowdown: false, arrowleft: false, arrowright: false, shift: false };
+        return;
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if (key === 'w' || key === 'arrowup') keys.current.w = true;
+      if (key === 'a' || key === 'arrowleft') keys.current.a = true;
+      if (key === 's' || key === 'arrowdown') keys.current.s = true;
+      if (key === 'd' || key === 'arrowright') keys.current.d = true;
+      if (key === 'shift') keys.current.shift = true;
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if (key === 'w' || key === 'arrowup') keys.current.w = false;
+      if (key === 'a' || key === 'arrowleft') keys.current.a = false;
+      if (key === 's' || key === 'arrowdown') keys.current.s = false;
+      if (key === 'd' || key === 'arrowright') keys.current.d = false;
+      if (key === 'shift') keys.current.shift = false;
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [drivingBoatId, props.id]);
+  
+  const posRef = useRef({ x: props.position.x, z: props.position.z });
+
+  useFrame((state, delta) => {
     if (!ref.current) return;
     const time = state.clock.elapsedTime;
+
+    const dt = Math.min(delta, 0.1);
 
     let px: number;
     let pz: number;
 
-    if (isMoored) {
-      px = props.position.x;
-      pz = props.position.z;
+    if (drivingBoatId === props.id) {
+      // Manual Driving Logic
+      let speedIncrement = 0;
+      let baseSpeed = keys.current.shift ? 15.0 : 10.0; // Boosted vs Normal speed
+      if (keys.current.w || keys.current.arrowup) speedIncrement = baseSpeed;
+      if (keys.current.s || keys.current.arrowdown) speedIncrement = -baseSpeed * 0.6;
+      
+      // Apply drag / friction
+      velocity.current += (speedIncrement - velocity.current * 1.5) * dt;
+      
+      let rotIncrement = 0;
+      if (keys.current.a || keys.current.arrowleft) rotIncrement = 1.5;
+      if (keys.current.d || keys.current.arrowright) rotIncrement = -1.5;
+      
+      // Turn faster if moving, but can turn slowly when stopped
+      ref.current.rotation.y += rotIncrement * dt * (Math.abs(velocity.current) > 0.1 ? 1 : 0.5);
+      
+      // Calculate intended next position
+      let nextX = posRef.current.x + Math.sin(ref.current.rotation.y) * velocity.current * dt;
+      let nextZ = posRef.current.z + Math.cos(ref.current.rotation.y) * velocity.current * dt;
+      
+      // Smart collision with terrain (allows backing out into deeper water)
+      const oldTerrainH = getTerrainHeight(posRef.current.x, posRef.current.z);
+      const newTerrainH = getTerrainHeight(nextX, nextZ);
+      
+      if (newTerrainH > -0.2 && newTerrainH >= oldTerrainH) {
+          // If trying to move further onto land, stop movement but allow turning
+          velocity.current *= 0.5; // Lose speed quickly
+      } else {
+          // Allow movement if it's in water OR moving towards deeper water
+          posRef.current.x = nextX;
+          posRef.current.z = nextZ;
+      }
+      
+      px = posRef.current.x;
+      pz = posRef.current.z;
+
+      globalBoatState.pos.set(px, pz);
+      globalBoatState.dir.set(Math.sin(ref.current.rotation.y), Math.cos(ref.current.rotation.y));
+      globalBoatState.speed += (Math.abs(velocity.current) - globalBoatState.speed) * dt * 5.0;
+
+    } else if (isMoored) {
+      if (globalBoatState.speed > 0) globalBoatState.speed *= (1.0 - dt * 2.0);
+      posRef.current.x += (props.position.x - posRef.current.x) * 2 * dt;
+      posRef.current.z += (props.position.z - posRef.current.z) * 2 * dt;
+      px = posRef.current.x;
+      pz = posRef.current.z;
     } else {
       const angle = time * sailParams.speed * (weather === "rainy" ? 1.4 : 1.0) + sailParams.offset;
-      px = props.position.x + Math.cos(angle) * sailParams.radiusX;
-      pz = props.position.z + Math.sin(angle) * sailParams.radiusZ;
-      ref.current.position.x = px;
-      ref.current.position.z = pz;
+      const targetX = props.position.x + Math.cos(angle) * sailParams.radiusX;
+      const targetZ = props.position.z + Math.sin(angle) * sailParams.radiusZ;
 
-      const nextAngle = angle + 0.01;
-      const nextPx = props.position.x + Math.cos(nextAngle) * sailParams.radiusX;
-      const nextPz = props.position.z + Math.sin(nextAngle) * sailParams.radiusZ;
-      const moveAngle = Math.atan2(nextPx - px, nextPz - pz);
-      ref.current.rotation.y += (moveAngle - ref.current.rotation.y) * 0.05;
+      const dx = targetX - posRef.current.x;
+      const dz = targetZ - posRef.current.z;
+      const dist = Math.hypot(dx, dz) || 1;
+      const speed = 4.0 * dt * (weather === "rainy" ? 1.4 : 1.0);
+      
+      posRef.current.x += (dx / dist) * Math.min(speed, dist);
+      posRef.current.z += (dz / dist) * Math.min(speed, dist);
+
+      const terrainH = getTerrainHeight(posRef.current.x, posRef.current.z);
+      if (terrainH > -0.2) {
+          const toCenterX = props.position.x - posRef.current.x;
+          const toCenterZ = props.position.z - posRef.current.z;
+          const cDist = Math.hypot(toCenterX, toCenterZ) || 1;
+          posRef.current.x += (toCenterX / cDist) * 5.0 * dt;
+          posRef.current.z += (toCenterZ / cDist) * 5.0 * dt;
+      }
+      
+      px = posRef.current.x;
+      pz = posRef.current.z;
+
+      if (dist > 0.1) {
+        const moveAngle = Math.atan2(dx, dz);
+        let diff = moveAngle - ref.current.rotation.y;
+        diff = (diff + Math.PI) % (Math.PI * 2);
+        if (diff < 0) diff += Math.PI * 2;
+        diff -= Math.PI;
+        ref.current.rotation.y += diff * 2.0 * dt;
+      }
     }
+
+    ref.current.position.x = px;
+    ref.current.position.z = pz;
 
     const hC = getWaterHeight(px, pz, time, weather);
     ref.current.position.y = hC + 0.1;
@@ -542,23 +731,254 @@ export function Boat(props: any) {
     const targetRotZ = -Math.atan2(hX - hC, d) * 0.7 + Math.sin(time * 1.4 + px) * 0.04;
     ref.current.rotation.x += (targetRotX - ref.current.rotation.x) * 0.15;
     ref.current.rotation.z += (targetRotZ - ref.current.rotation.z) * 0.15;
+
+    const gWindow = window as any;
+    if (!gWindow.__assetPositions) gWindow.__assetPositions = {};
+    gWindow.__assetPositions[props.id] = ref.current;
+
+    // --- Update Global Boat State for Water Shader ---
+    if (drivingBoatId === props.id) {
+        globalBoatState.pos.set(px, pz);
+        globalBoatState.dir.set(-Math.sin(ref.current.rotation.y), -Math.cos(ref.current.rotation.y));
+        globalBoatState.speed += (Math.abs(velocity.current) - globalBoatState.speed) * dt * 5.0; // Smooth speed sync
+    } else {
+        // If not driving this boat, slowly decay the global speed effect so wake dissipates gracefully
+        globalBoatState.speed *= (1.0 - dt * 2.0);
+    }
   });
 
   return (
-    <group ref={ref} position={[props.position.x, props.position.y, props.position.z]} rotation={new THREE.Euler(props.rotation?.x || 0, props.rotation?.y || 0, props.rotation?.z || 0, "YXZ")} scale={0}>
-      <mesh position={[0, 0.2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[1.5, 0.5, 3]} />
-        <meshStandardMaterial color="#f97316" />
+    <>
+    <group 
+      ref={ref as any} 
+      position={[props.position.x, props.position.y, props.position.z]} 
+      scale={0}
+      onPointerOver={(e) => {
+          e.stopPropagation();
+          keepHoverAlive();
+      }}
+      onPointerOut={() => {
+          // Do nothing immediately. Let the 3-second timer cleanly handle the disappearance
+          // to make the hitbox incredibly lenient while the boat is bobbing.
+      }}
+      onPointerDown={(e) => {
+        if (selectedTool === "rope") {
+            e.stopPropagation();
+            if (connectingPillarId && connectingPillarId !== props.id) {
+                addAsset({
+                    type: "rope",
+                    position: { x: 0, y: 0, z: 0 },
+                    rotation: { x: 0, y: 0, z: 0 },
+                    connections: [connectingPillarId, props.id],
+                });
+                setConnectingPillarId(null);
+                // AudioSystem.playSound("pop");
+            } else {
+                setConnectingPillarId(props.id);
+                // AudioSystem.playSound("select");
+            }
+        }
+      }}
+    >
+      {/* Hand-drawn Driving Hover Button */}
+      {showHover && drivingBoatId !== props.id && selectedTool === 'none' && (
+        <Html position={[0, 4.0, 0]} center zIndexRange={[100, 0]}>
+          <div 
+             style={{ padding: '60px', cursor: 'pointer' }}
+             onPointerEnter={() => { keepHoverAlive(); }}
+             onPointerLeave={() => { keepHoverAlive(); /* Timer still takes over */ }}
+             onClick={(e) => { 
+                e.stopPropagation(); 
+                if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+                setShowHover(false); 
+                setIsHoverLeaving(false);
+                setDrivingBoatId(props.id);
+                AudioSystem.playConfirm();
+             }}
+          >
+            <div style={{ animation: 'boatHoverFloat 3s ease-in-out infinite' }}>
+               <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '64px',
+                    height: '64px',
+                    background: 'rgba(255, 255, 255, 0.92)',
+                    backdropFilter: 'blur(12px)',
+                    border: '2px solid rgba(255, 255, 255, 0.6)',
+                    borderRadius: '50%',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255,255,255,0.2) inset',
+                    transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    animation: isHoverLeaving ? 'bubblePopOut 0.3s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards' : 'bubblePopIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    color: '#334155'
+                  }}
+                  onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.15) translateY(-5px)';
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 1)';
+                      e.currentTarget.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255,255,255,0.4) inset';
+                  }}
+                  onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1) translateY(0px)';
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.92)';
+                      e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255,255,255,0.2) inset';
+                  }}
+               >
+                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'wheelSpin 0.8s cubic-bezier(0.22, 1, 0.36, 1)' }}>
+                   <circle cx="12" cy="12" r="10" />
+                   <circle cx="12" cy="12" r="3" />
+                   <line x1="12" y1="2" x2="12" y2="22" />
+                   <line x1="2" y1="12" x2="22" y2="12" />
+                   <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                   <line x1="4.93" y1="19.07" x2="19.07" y2="4.93" />
+                 </svg>
+               </div>
+            </div>
+          </div>
+        </Html>
+      )}
+
+      {/* Hollow Hull Group */}
+      <group position={[0, 0, 0]}>
+        {/* Bottom */}
+        <mesh position={[0, 0.05, 0.1]} castShadow receiveShadow>
+          <boxGeometry args={[1.1, 0.1, 3.0]} />
+          <meshStandardMaterial color="#92400e" roughness={0.8} />
+        </mesh>
+        {/* Left Side */}
+        <mesh position={[-0.55, 0.35, 0]} rotation={[0, 0, 0.15]} castShadow receiveShadow>
+          <boxGeometry args={[0.1, 0.6, 3.0]} />
+          <meshStandardMaterial color="#854d0e" roughness={0.8} />
+        </mesh>
+        {/* Right Side */}
+        <mesh position={[0.55, 0.35, 0]} rotation={[0, 0, -0.15]} castShadow receiveShadow>
+          <boxGeometry args={[0.1, 0.6, 3.0]} />
+          <meshStandardMaterial color="#854d0e" roughness={0.8} />
+        </mesh>
+        {/* Stern (Back) */}
+        <mesh position={[0, 0.35, -1.45]} rotation={[-0.15, 0, 0]} castShadow receiveShadow>
+          <boxGeometry args={[1.2, 0.6, 0.1]} />
+          <meshStandardMaterial color="#854d0e" roughness={0.8} />
+        </mesh>
+        {/* Bow (Front Left) */}
+        <mesh position={[-0.32, 0.35, 1.85]} rotation={[0, 0.6, 0.15]} castShadow receiveShadow>
+          <boxGeometry args={[0.1, 0.6, 1.0]} />
+          <meshStandardMaterial color="#854d0e" roughness={0.8} />
+        </mesh>
+        {/* Bow (Front Right) */}
+        <mesh position={[0.32, 0.35, 1.85]} rotation={[0, -0.6, -0.15]} castShadow receiveShadow>
+          <boxGeometry args={[0.1, 0.6, 1.0]} />
+          <meshStandardMaterial color="#854d0e" roughness={0.8} />
+        </mesh>
+
+        {/* --- Micro-details & Refinements --- */}
+        {/* Gunwales (Top edge trims) */}
+        <mesh position={[-0.58, 0.66, 0]} rotation={[0, 0, 0.15]} castShadow receiveShadow>
+          <boxGeometry args={[0.08, 0.05, 3.05]} />
+          <meshStandardMaterial color="#78350f" roughness={0.8} />
+        </mesh>
+        <mesh position={[0.58, 0.66, 0]} rotation={[0, 0, -0.15]} castShadow receiveShadow>
+          <boxGeometry args={[0.08, 0.05, 3.05]} />
+          <meshStandardMaterial color="#78350f" roughness={0.8} />
+        </mesh>
+        <mesh position={[-0.35, 0.66, 1.86]} rotation={[0, 0.6, 0.15]} castShadow receiveShadow>
+          <boxGeometry args={[0.08, 0.05, 1.05]} />
+          <meshStandardMaterial color="#78350f" roughness={0.8} />
+        </mesh>
+        <mesh position={[0.35, 0.66, 1.86]} rotation={[0, -0.6, -0.15]} castShadow receiveShadow>
+          <boxGeometry args={[0.08, 0.05, 1.05]} />
+          <meshStandardMaterial color="#78350f" roughness={0.8} />
+        </mesh>
+        <mesh position={[0, 0.66, -1.48]} rotation={[-0.15, 0, 0]} castShadow receiveShadow>
+          <boxGeometry args={[1.3, 0.05, 0.08]} />
+          <meshStandardMaterial color="#78350f" roughness={0.8} />
+        </mesh>
+
+        {/* Wooden Benches */}
+        <mesh position={[0, 0.4, 0.6]} castShadow receiveShadow>
+          <boxGeometry args={[1.0, 0.08, 0.4]} />
+          <meshStandardMaterial color="#a16207" roughness={0.9} />
+        </mesh>
+        <mesh position={[0, 0.4, -0.8]} castShadow receiveShadow>
+          <boxGeometry args={[1.0, 0.08, 0.4]} />
+          <meshStandardMaterial color="#a16207" roughness={0.9} />
+        </mesh>
+
+        {/* Cargo Barrel */}
+        <group position={[0.3, 0.25, -0.8]} rotation={[0, Math.PI / 4, 0]}>
+          <mesh castShadow receiveShadow>
+            <cylinderGeometry args={[0.2, 0.2, 0.4, 8]} />
+            <meshStandardMaterial color="#713f12" roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 0.12, 0]}>
+            <cylinderGeometry args={[0.21, 0.21, 0.03, 8]} />
+            <meshStandardMaterial color="#334155" />
+          </mesh>
+          <mesh position={[0, -0.12, 0]}>
+            <cylinderGeometry args={[0.21, 0.21, 0.03, 8]} />
+            <meshStandardMaterial color="#334155" />
+          </mesh>
+        </group>
+        
+        {/* Rudder */}
+        <group position={[0, 0.2, -1.55]} rotation={[0.2, 0, 0]}>
+          <mesh position={[0, -0.2, 0]} castShadow receiveShadow>
+            <boxGeometry args={[0.06, 0.5, 0.3]} />
+            <meshStandardMaterial color="#78350f" roughness={0.8} />
+          </mesh>
+          <mesh position={[0, 0.1, 0.4]} rotation={[-0.2, 0, 0]} castShadow>
+            <cylinderGeometry args={[0.03, 0.03, 0.8]} />
+            <meshStandardMaterial color="#451a03" roughness={0.9} />
+          </mesh>
+        </group>
+      </group>
+
+      {/* Mast */}
+      <mesh position={[0, 1.8, 0.8]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.06, 0.08, 3.6]} />
+        <meshStandardMaterial color="#451a03" roughness={0.9} />
       </mesh>
-      <mesh position={[0, 1.5, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.08, 0.08, 2.5]} />
-        <meshStandardMaterial color="#ca8a04" />
+      
+      {/* Boom (Horizontal pole) */}
+      <mesh position={[0, 1.2, -0.2]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.04, 0.04, 2.0]} />
+        <meshStandardMaterial color="#451a03" roughness={0.9} />
       </mesh>
-      <mesh position={[0, 1.5, 0.3]} castShadow receiveShadow>
-        <boxGeometry args={[1.4, 2, 0.05]} />
-        <meshStandardMaterial color="#f8fafc" />
+
+
+
+      {/* Hanging Lantern */}
+      <group position={[0, 0.95, -1.0]}>
+        <mesh position={[0, 0, 0]}>
+          <cylinderGeometry args={[0.06, 0.08, 0.15, 6]} />
+          <meshStandardMaterial color="#fcd34d" emissive="#f59e0b" emissiveIntensity={1.5} />
+        </mesh>
+        <mesh position={[0, 0.1, 0]} castShadow>
+          <coneGeometry args={[0.1, 0.1, 6]} />
+          <meshStandardMaterial color="#1e293b" />
+        </mesh>
+        <mesh position={[0, -0.09, 0]} castShadow>
+          <cylinderGeometry args={[0.08, 0.06, 0.05, 6]} />
+          <meshStandardMaterial color="#1e293b" />
+        </mesh>
+        <pointLight color="#fef08a" intensity={2} distance={3} decay={2} />
+      </group>
+
+      {/* Main Sail Group (pivot at mast) */}
+      <group position={[0, 2.2, 0.8]} rotation={[0, 0.15, 0]}>
+        <DynamicSail position={[0, 0, -0.9]} width={1.8} height={2.0} color="#fefce8" baseBulge={0.6} windFactor={0.15} flipX={false} />
+      </group>
+
+      {/* Jib (Front Sail) */}
+      <DynamicSail position={[0, 1.4, 1.4]} width={1.2} height={1.6} color="#fefce8" baseBulge={0.4} windFactor={0.15} isJib={true} flipX={true} />
+
+      {/* Flag */}
+      <mesh position={[0, 3.5, 0.9]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <coneGeometry args={[0.12, 0.5, 3]} />
+        <meshStandardMaterial color="#ef4444" roughness={0.6} />
       </mesh>
     </group>
+    </>
   );
 }
 

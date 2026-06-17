@@ -250,8 +250,12 @@ interface GameState {
 
   selectedEntityId: string | null;
   setSelectedEntityId: (id: string | null) => void;
+  drivingBoatId: string | null;
+  setDrivingBoatId: (id: string | null) => void;
   editingSignId: string | null;
   setEditingSignId: (id: string | null) => void;
+  focusPoint: [number, number, number] | null;
+  setFocusPoint: (point: [number, number, number] | null) => void;
   online: boolean; // 是否在归隐之岛(联机公共服务器)
   setOnline: (v: boolean) => void;
   mailboxOpen: boolean; // 点击岛上信箱物件打开
@@ -509,8 +513,12 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   selectedEntityId: null,
   setSelectedEntityId: (id) => set({ selectedEntityId: id }),
+  drivingBoatId: null,
+  setDrivingBoatId: (id) => set({ drivingBoatId: id }),
   editingSignId: null,
   setEditingSignId: (id) => set({ editingSignId: id }),
+  focusPoint: null,
+  setFocusPoint: (p) => set({ focusPoint: p }),
   online: false,
   setOnline: (v) => set({ online: v }),
   mailboxOpen: false,

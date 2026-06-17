@@ -452,3 +452,65 @@
 .animate-drag-mouse-smooth {
   animation: drag-mouse-smooth 3s ease-in-out infinite;
 }
+
+@keyframes boatHoverFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes bubblePopIn {
+  0% { transform: scale(0.4) translateY(20px); opacity: 0; filter: blur(4px); }
+  100% { transform: scale(1) translateY(0px); opacity: 1; filter: blur(0px); }
+}
+@keyframes bubblePopOut {
+  0% { transform: scale(1) translateY(0px); opacity: 1; }
+  100% { transform: scale(0.4) translateY(20px); opacity: 0; filter: blur(4px); }
+}
+@keyframes wheelSpin {
+  0% { transform: rotate(-120deg) scale(0.5); opacity: 0; }
+  100% { transform: rotate(0deg) scale(1); opacity: 1; }
+}
+
+@keyframes envelopeSlideIn {
+  0% { transform: translateY(15px) scale(0.8) rotate(10deg); opacity: 0; }
+  100% { transform: translateY(0px) scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes seatDropIn {
+  0% { transform: translateY(-15px) scale(0.9); opacity: 0; }
+  60% { transform: translateY(3px) scale(1.05); }
+  100% { transform: translateY(0px) scale(1); opacity: 1; }
+}
+@keyframes flameIgnite {
+  0% { transform: scale(0.3) translateY(15px); opacity: 0; }
+  60% { transform: scale(1.15) translateY(-2px); }
+  100% { transform: scale(1) translateY(0px); opacity: 1; }
+}
+
+@keyframes envelopeFlapOpen {
+  0% { transform: rotateX(0deg); }
+  100% { transform: rotateX(180deg); }
+}
+@keyframes paperSlideUp {
+  0% { transform: translateY(0); opacity: 0; stroke-dashoffset: 40; }
+  50% { opacity: 1; }
+  100% { transform: translateY(-8px); opacity: 1; stroke-dashoffset: 0; }
+}
+@keyframes sparkShoot {
+  0% { transform: translateY(0px) scale(0); opacity: 0; }
+  30% { transform: translateY(-10px) scale(1.5); opacity: 1; }
+  70% { transform: translateY(-15px) scale(0.5); opacity: 0; }
+  100% { transform: translateY(-20px) scale(0); opacity: 0; }
+}
+@keyframes flameIgniteReal {
+  0% { transform: scale(0.2) translateY(10px); opacity: 0; }
+  40% { transform: scale(1.2) translateY(-2px); opacity: 1; }
+  100% { transform: scale(1) translateY(0px); opacity: 1; }
+}
+@keyframes drawLogs {
+  0% { stroke-dashoffset: 20; opacity: 0; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+@keyframes extinguishShrink {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(0.8); opacity: 0.5; }
+}
