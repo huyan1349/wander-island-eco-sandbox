@@ -549,6 +549,231 @@ export const globalBoatState = {
     speed: 0
 };
 
+// --- Boat wake: stylized low-poly foam ribbon trailing the driven boat ---
+// Decoupled from the coarse ocean mesh so the wake stays crisp regardless of
+// water tessellation. Points are dropped along the boat's stern path, ride the
+// live wave surface, spread (Kelvin V) and fade with age. Flat toon foam matches
+// the low-poly + Edges art style.
+const WAKE_MAX_POINTS = 70;
+const WAKE_POINT_STEP = 0.55;   // min world distance between dropped points
+const WAKE_LIFETIME = 2.6;      // seconds a foam point lives
+const WAKE_SPEED_MIN = 1.2;     // boat speed below which no foam is emitted
+const SPRAY_MAX = 120;          // splash particle pool size
+const SPRAY_LIFE = 0.7;         // seconds a spray droplet lives
+
+// Daylight factor matching the ocean shader: 0 at night, 1 at midday, with
+// smooth dawn/dusk ramps. Foam reflects light, so at night it dims to a cool
+// moonlit grey instead of glowing pure white.
+function daylightFactor(tod: number) {
+  return Math.max(0, Math.min(1, (tod - 5.5) / 1.5)) *
+         Math.max(0, Math.min(1, (18.5 - tod) / 1.5));
+}
+
+type WakePoint = { x: number; z: number; px: number; pz: number; halfW: number; born: number };
+type Spray = { x: number; y: number; z: number; vx: number; vy: number; vz: number; born: number };
+
+export function BoatWake() {
+  const weather = useGameStore((s) => s.weather);
+  const geomRef = useRef<THREE.BufferGeometry>(null);
+  const sprayGeomRef = useRef<THREE.BufferGeometry>(null);
+  const points = useRef<WakePoint[]>([]);
+  const lastDrop = useRef<{ x: number; z: number } | null>(null);
+  const sprays = useRef<Spray[]>([]);
+
+  const MAXV = WAKE_MAX_POINTS * 2;
+  const positions = useMemo(() => new Float32Array(MAXV * 3), [MAXV]);
+  const uvs = useMemo(() => new Float32Array(MAXV * 2), [MAXV]);
+  const alphas = useMemo(() => new Float32Array(MAXV), [MAXV]);
+  const indices = useMemo(() => {
+    const idx: number[] = [];
+    for (let i = 0; i < WAKE_MAX_POINTS - 1; i++) {
+      const a = i * 2, b = i * 2 + 1, c = i * 2 + 2, d = i * 2 + 3;
+      idx.push(a, c, b, b, c, d);
+    }
+    return new Uint16Array(idx);
+  }, []);
+
+  const sprayPos = useMemo(() => new Float32Array(SPRAY_MAX * 3), []);
+  const sprayAlpha = useMemo(() => new Float32Array(SPRAY_MAX), []);
+
+  const material = useMemo(() => new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    uniforms: { uTime: { value: 0 }, uDaylight: { value: 1 } },
+    vertexShader: `
+      attribute float aAlpha;
+      varying float vAlpha;
+      varying vec2 vUv;
+      void main() {
+        vAlpha = aAlpha;
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `
+      uniform float uTime;
+      uniform float uDaylight;
+      varying float vAlpha;
+      varying vec2 vUv;
+      void main() {
+        float across = abs(vUv.x * 2.0 - 1.0);           // 0 center .. 1 edges
+        float edge = smoothstep(0.45, 1.0, across);       // diverging wake walls
+        float stripes = sin(vUv.y * 38.0 - uTime * 6.0) * 0.5 + 0.5; // churn moving aft
+        float churn = (1.0 - across) * stripes * 0.9;     // turbulent centerline
+        float foam = max(edge, churn);
+        foam = smoothstep(0.22, 0.5, foam);               // toon hard edge
+        float a = foam * vAlpha;
+        if (a < 0.02) discard;
+        vec3 col = mix(vec3(0.20, 0.25, 0.34), vec3(1.0), uDaylight); // moonlit at night
+        gl_FragColor = vec4(col, a);
+      }`,
+  }), []);
+
+  const sprayMaterial = useMemo(() => new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    uniforms: { uDaylight: { value: 1 } },
+    vertexShader: `
+      attribute float aAlpha;
+      varying float vAlpha;
+      void main() {
+        vAlpha = aAlpha;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = (14.0 + 26.0 * aAlpha) * (8.0 / -mv.z); // bigger when fresh / near
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform float uDaylight;
+      varying float vAlpha;
+      void main() {
+        float d = length(gl_PointCoord - 0.5);
+        if (d > 0.5) discard;                              // round droplet
+        float a = smoothstep(0.5, 0.18, d) * vAlpha;
+        vec3 col = mix(vec3(0.22, 0.27, 0.36), vec3(1.0), uDaylight);
+        gl_FragColor = vec4(col, a);
+      }`,
+  }), []);
+
+  useEffect(() => {
+    const g = geomRef.current;
+    if (g) {
+      g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+      g.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
+      g.setIndex(new THREE.BufferAttribute(indices, 1));
+    }
+    const sg = sprayGeomRef.current;
+    if (sg) {
+      sg.setAttribute('position', new THREE.BufferAttribute(sprayPos, 3));
+      sg.setAttribute('aAlpha', new THREE.BufferAttribute(sprayAlpha, 1));
+    }
+    return () => { material.dispose(); sprayMaterial.dispose(); };
+  }, [positions, uvs, alphas, indices, sprayPos, sprayAlpha, material, sprayMaterial]);
+
+  useFrame((state, delta) => {
+    const t = state.clock.elapsedTime;
+    const dt = Math.min(delta, 0.05);
+    const daylight = daylightFactor(useGameStore.getState().timeOfDay);
+    material.uniforms.uTime.value = t;
+    material.uniforms.uDaylight.value = daylight;
+    sprayMaterial.uniforms.uDaylight.value = daylight;
+    const g = geomRef.current;
+    if (!g) return;
+    const pts = points.current;
+    const { pos, dir, speed } = globalBoatState;
+
+    // Emit a foam point at the stern when moving fast enough and far enough.
+    if (speed > WAKE_SPEED_MIN) {
+      const sx = pos.x - dir.x * 1.0;   // stern offset (dir is unit travel vector)
+      const sz = pos.y - dir.y * 1.0;
+      const moved = lastDrop.current
+        ? Math.hypot(sx - lastDrop.current.x, sz - lastDrop.current.z)
+        : Infinity;
+      if (moved > WAKE_POINT_STEP) {
+        const halfW = 0.6 + Math.min(speed, 16.0) * 0.11;
+        pts.push({ x: sx, z: sz, px: dir.y, pz: -dir.x, halfW, born: t });
+        lastDrop.current = { x: sx, z: sz };
+        if (pts.length > WAKE_MAX_POINTS) pts.shift();
+      }
+    }
+    // Cull expired points from the tail.
+    while (pts.length && t - pts[0].born > WAKE_LIFETIME) pts.shift();
+
+    const n = pts.length;
+    for (let i = 0; i < n; i++) {
+      const p = pts[i];
+      const age = (t - p.born) / WAKE_LIFETIME;          // 0 fresh .. 1 gone
+      const spread = 1.0 + age * 1.8;                     // Kelvin-style widening
+      const hw = p.halfW * spread;
+      const y = getOceanHeight(p.x, p.z, t, weather) + 0.06;
+      const lx = p.x + p.px * hw, lz = p.z + p.pz * hw;
+      const rx = p.x - p.px * hw, rz = p.z - p.pz * hw;
+      const fade = (1.0 - age) * (1.0 - age);             // ease-out fade
+      const vi = i * 2;
+      positions[vi * 3 + 0] = lx; positions[vi * 3 + 1] = y; positions[vi * 3 + 2] = lz;
+      positions[vi * 3 + 3] = rx; positions[vi * 3 + 4] = y; positions[vi * 3 + 5] = rz;
+      uvs[vi * 2 + 0] = 0.0; uvs[vi * 2 + 1] = age;
+      uvs[vi * 2 + 2] = 1.0; uvs[vi * 2 + 3] = age;
+      alphas[vi] = fade; alphas[vi + 1] = fade;
+    }
+    g.setDrawRange(0, Math.max(0, (n - 1) * 6));
+    (g.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+    (g.attributes.uv as THREE.BufferAttribute).needsUpdate = true;
+    (g.attributes.aAlpha as THREE.BufferAttribute).needsUpdate = true;
+
+    // --- Spray droplets: splash kicked sideways from the bow at speed ---
+    const sp = sprays.current;
+    if (speed > WAKE_SPEED_MIN * 1.3 && sp.length < SPRAY_MAX) {
+      const count = speed > 9 ? 4 : speed > 5 ? 3 : 2;
+      const bx = pos.x + dir.x * 1.1;   // bow
+      const bz = pos.y + dir.y * 1.1;
+      const by = getOceanHeight(bx, bz, t, weather);
+      const px = dir.y, pz = -dir.x;    // perpendicular (sideways)
+      for (let k = 0; k < count && sp.length < SPRAY_MAX; k++) {
+        const side = Math.random() < 0.5 ? 1 : -1;
+        const out = 1.6 + Math.random() * 2.2;
+        sp.push({
+          x: bx, y: by + 0.1, z: bz,
+          vx: px * side * out + dir.x * speed * 0.15 + (Math.random() - 0.5),
+          vy: 2.6 + Math.random() * 2.4,
+          vz: pz * side * out + dir.y * speed * 0.15 + (Math.random() - 0.5),
+          born: t,
+        });
+      }
+    }
+    let sn = 0;
+    for (let i = 0; i < sp.length; i++) {
+      const s = sp[i];
+      const age = (t - s.born) / SPRAY_LIFE;
+      if (age >= 1) continue;            // expired; compacted below
+      s.vy -= 9.0 * dt;                  // gravity
+      s.x += s.vx * dt; s.y += s.vy * dt; s.z += s.vz * dt;
+      if (s.y < getOceanHeight(s.x, s.z, t, weather)) continue; // splashed back down
+      sprayPos[sn * 3 + 0] = s.x; sprayPos[sn * 3 + 1] = s.y; sprayPos[sn * 3 + 2] = s.z;
+      sprayAlpha[sn] = (1.0 - age);
+      sp[sn] = s;                        // compact in place
+      sn++;
+    }
+    sp.length = sn;
+    const sg = sprayGeomRef.current;
+    if (sg) {
+      sg.setDrawRange(0, sn);
+      (sg.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+      (sg.attributes.aAlpha as THREE.BufferAttribute).needsUpdate = true;
+    }
+  });
+
+  return (
+    <group>
+      <mesh material={material} renderOrder={3} frustumCulled={false}>
+        <bufferGeometry ref={geomRef} />
+      </mesh>
+      <points material={sprayMaterial} renderOrder={4} frustumCulled={false}>
+        <bufferGeometry ref={sprayGeomRef} />
+      </points>
+    </group>
+  );
+}
+
 export function Boat(props: any) {
   const ref = usePopIn(props.scale || 1);
   const weather = useGameStore((state) => state.weather);

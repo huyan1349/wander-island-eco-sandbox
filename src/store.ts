@@ -6,7 +6,7 @@ import type { BrushMode, BrushFalloff, SurfaceType } from './utils/terrainBrush'
 import { FlourishCardId, FLOURISH_CARDS, STARTING_DECK, HAND_SIZE, SEASON_BASE_ECO, evaluateSymbiosis, shuffle } from './game/flourish';
 import { getTerrainHeight } from './utils/terrain';
 
-export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'water_flow' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox';
+export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'water_flow' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox' | 'lantern_girl';
 export type WeatherType = 'sunny' | 'cloudy' | 'rainy' | 'foggy' | 'snowy' | 'stormy';
 
 // 辞向玩家播报天气时的诗意文案（每种天气随机取一句）
@@ -31,7 +31,7 @@ export interface Vector3Data {
 
 export interface PlacedAsset {
   id: string;
-  type: 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'water_flow' | 'streetlamp' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'sub_island' | 'birdhouse' | 'hoe' | 'farmland' | 'crop_wheat' | 'crop_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox';
+  type: 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'water_flow' | 'streetlamp' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'sub_island' | 'birdhouse' | 'hoe' | 'farmland' | 'crop_wheat' | 'crop_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox' | 'lantern_girl';
   position: Vector3Data;
   rotation: Vector3Data;
   scale?: number;
@@ -497,7 +497,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     'treeA', 'treeB', 'rock', 'terrainUp', 'terrainDown', 'eraser',
     'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'water_flow', 'streetlamp', 'house', 'windmill',
     'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
-    'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'
+    'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'lantern_girl'
   ],
   unlockAsset: (assetId, cost) => {
       const state = get();
@@ -921,7 +921,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'terrainUp', 'terrainDown', 'eraser',
             'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'water_flow', 'streetlamp', 'house', 'windmill',
             'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
-            'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'
+            'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'lantern_girl'
           ])),
           stats: data.stats || { playtime: 0, itemsPlaced: data.assets?.length || 0 },
           terrainData: {
@@ -950,7 +950,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'terrainUp', 'terrainDown', 'eraser',
           'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'water_flow', 'streetlamp', 'house', 'windmill',
           'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
-          'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'
+          'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'lantern_girl'
       ],
       terrainData: { ...get().terrainData, positions: null, types: null }
   }),

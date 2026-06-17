@@ -62,6 +62,30 @@ export interface ToolCategory {
   tools: ToolDefinition[];
 }
 
+// 提灯少女专属图标：手绘风的提灯小人，不复用路灯图标。
+export const LanternGirlIcon = ((props: any) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={props.size ?? 24}
+    height={props.size ?? 24}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={props.strokeWidth ?? 2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={props.className}
+  >
+    <circle cx="9" cy="4.5" r="2" />
+    <path d="M9 6.5v5.5" />
+    <path d="M6.5 8.5h5" />
+    <path d="M6.8 19l2.2-7 2.2 7" />
+    <path d="M14 8.5h2.6" />
+    <path d="M15.3 8.5v2.4" />
+    <rect x="13.6" y="11" width="3.4" height="4.2" rx="0.6" />
+    <path d="M15.3 15.2v3.4" />
+  </svg>
+)) as unknown as LucideIcon;
+
 export const MODE_TOOLS: Array<{ id: "none" | "eraser"; icon: LucideIcon; label: string }> = [
   { id: "none", icon: MousePointer2, label: "选择 / 观察" },
   { id: "eraser", icon: Eraser, label: "橡皮擦" },
@@ -121,6 +145,7 @@ export const BUILD_CATEGORIES: ToolCategory[] = [
       { id: "sign", icon: Signpost, label: "牌子（可写字）", cost: 0 },
       { id: "mailbox", icon: Mailbox, label: "信箱（点击查看）", cost: 0 },
       { id: "streetlamp", icon: Lamp, label: "路灯", cost: 200 },
+      { id: "lantern_girl", icon: LanternGirlIcon, label: "???", cost: 0 },
       { id: "observatory", icon: Telescope, label: "观星台", cost: 1500 },
       { id: "ruins_arch", icon: Castle, label: "遗迹石门", cost: 2000 },
       { id: "waterwheel", icon: LifeBuoy, label: "巨型水车", cost: 1800 },

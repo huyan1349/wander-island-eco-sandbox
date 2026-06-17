@@ -5,6 +5,7 @@ import { IslandClock } from './IslandClock';
 import { Suspense, useRef, useEffect, useState } from 'react';
 import { Terrain } from './Terrain';
 import { Water } from './Water';
+import { BoatWake } from './assets/marine';
 import { SkySystem, WeatherSystem, FirefliesSystem } from './SkySystem';
 import { Assets } from './Assets';
 import * as THREE from 'three';
@@ -277,6 +278,7 @@ export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = 
           
           <Terrain />
           <Water />
+          <BoatWake />
           <Assets />
 
           {assetCount === 0 && (

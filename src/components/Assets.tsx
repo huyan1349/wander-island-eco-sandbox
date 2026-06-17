@@ -2,7 +2,7 @@ import { useGameStore, PlacedAsset } from '../store';
 import { useRef, useMemo, useState, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { AudioSystem } from '../lib/audio';
-import { SpotLight, Html } from '@react-three/drei';
+import { SpotLight, Html, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
@@ -639,6 +639,127 @@ function Streetlamp(props: any) {
       {isNight && (
         <pointLight position={[0, 3.1, 0]} intensity={8.0} distance={25} decay={2} color="#fef08a" />
       )}
+    </group>
+  );
+}
+
+// Soft radial glow sprite texture, shared across all lanterns.
+let _lanternGlowTex: THREE.CanvasTexture | null = null;
+function getLanternGlowTexture() {
+  if (_lanternGlowTex) return _lanternGlowTex;
+  const s = 128;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = s;
+  const ctx = cv.getContext('2d')!;
+  const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  g.addColorStop(0, 'rgba(255,255,255,0.95)');
+  g.addColorStop(0.35, 'rgba(160,200,255,0.45)');
+  g.addColorStop(1, 'rgba(120,160,220,0.0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, s, s);
+  _lanternGlowTex = new THREE.CanvasTexture(cv);
+  return _lanternGlowTex;
+}
+
+// 提灯少女雕塑 — 灯默认常亮。沿用《未尽之路》的做法：按三角面坐标把模型
+// 拆成「灯罩发光区」(自发光材质 + toneMapped:false，配合 Bloom 发光) 与灰色实体，
+// 灯心放一盏 pointLight，再叠加 additive 辉光 sprite 作体积光晕。
+const LANTERN_SCALE = 3.5;
+function LanternGirl(props: any) {
+  const { position, rotation, scale = 1 } = props;
+  const groupRef = usePopIn(scale);
+  const { scene: lanternGirlScene } = useGLTF('/models/lantern-girl.glb');
+  const glowTex = useMemo(() => getLanternGlowTexture(), []);
+
+  const { bodyGroup, lanternCenter } = useMemo(() => {
+    const result = { bodyGroup: new THREE.Group(), lanternCenter: [0, 0, 0] as [number, number, number] };
+    let centerSet = false;
+    const c = lanternGirlScene.clone(true);
+    c.updateMatrixWorld(true);
+
+    c.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const geo = mesh.geometry;
+      geo.computeVertexNormals();
+      const posAttr = geo.attributes.position;
+      const idx = geo.index;
+      const bodyIndices: number[] = [];
+      const lanternGlowIndices: number[] = [];
+
+      if (idx) {
+        for (let i = 0; i < idx.count; i += 3) {
+          const a = idx.getX(i), b = idx.getX(i + 1), cc = idx.getX(i + 2);
+          const ax = posAttr.getX(a), ay = posAttr.getY(a), az = posAttr.getZ(a);
+          const bx = posAttr.getX(b), by = posAttr.getY(b), bz = posAttr.getZ(b);
+          const cx = posAttr.getX(cc), cy = posAttr.getY(cc), cz = posAttr.getZ(cc);
+
+          const isLanternArea = (ax > 0.25 && az > 0.4) && (bx > 0.25 && bz > 0.4) && (cx > 0.25 && cz > 0.4);
+          if (!isLanternArea) { bodyIndices.push(a, b, cc); continue; }
+
+          const allY = [ay, by, cy];
+          const isBottomFace = allY.every(y => y > 0.28 && y < 0.43);
+          const isTopCap = allY.every(y => y > 0.58);
+          const isPole = allY.every(y => y < 0);
+          const isConnection = allY.every(y => y >= 0 && y <= 0.28);
+          if (isBottomFace || isTopCap || isPole || isConnection) bodyIndices.push(a, b, cc);
+          else lanternGlowIndices.push(a, b, cc);
+        }
+      }
+
+      if (bodyIndices.length > 0) {
+        const bodyGeo = geo.clone();
+        bodyGeo.setIndex(bodyIndices);
+        bodyGeo.computeVertexNormals();
+        const bodyMesh = new THREE.Mesh(bodyGeo, new THREE.MeshStandardMaterial({
+          color: '#8a9099', roughness: 0.95, metalness: 0, flatShading: true,
+        }));
+        bodyMesh.castShadow = true;
+        bodyMesh.receiveShadow = true;
+        result.bodyGroup.add(bodyMesh);
+      }
+
+      if (lanternGlowIndices.length > 0) {
+        const glowGeo = geo.clone();
+        glowGeo.setIndex(lanternGlowIndices);
+        glowGeo.computeVertexNormals();
+        const glowMesh = new THREE.Mesh(glowGeo, new THREE.MeshStandardMaterial({
+          color: '#aaccff', emissive: '#88bbff', emissiveIntensity: 7.5, toneMapped: false,
+        }));
+        glowMesh.castShadow = false;
+        glowMesh.receiveShadow = false;
+        result.bodyGroup.add(glowMesh);
+        if (!centerSet) {
+          glowGeo.computeBoundingBox();
+          const center = new THREE.Vector3();
+          glowGeo.boundingBox!.getCenter(center);
+          result.lanternCenter = [center.x, center.y, center.z];
+          centerSet = true;
+        }
+      }
+    });
+    return result;
+  }, [lanternGirlScene]);
+
+  const S = LANTERN_SCALE;
+  const lx = lanternCenter[0] * S;
+  const ly = lanternCenter[1] * S + 0.953 * S;
+  const lz = lanternCenter[2] * S;
+
+  return (
+    <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(rotation?.x || 0, rotation?.y || 0, rotation?.z || 0, 'YXZ')} scale={0} ref={groupRef}>
+      <group position={[0, 0.953 * S, 0]} scale={S}>
+        <primitive object={bodyGroup} />
+      </group>
+      {/* 体积光晕：两层 additive sprite */}
+      <sprite position={[lx, ly, lz]} scale={[3.2, 3.2, 1]} renderOrder={3}>
+        <spriteMaterial map={glowTex} color="#aaccff" transparent opacity={0.55} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </sprite>
+      <sprite position={[lx, ly, lz]} scale={[7.5, 7.5, 1]} renderOrder={2}>
+        <spriteMaterial map={glowTex} color="#6699cc" transparent opacity={0.22} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </sprite>
+      {/* 灯心实光 — 默认常亮 */}
+      <pointLight position={[lx, ly, lz]} color="#88bbff" intensity={20} distance={18} decay={1.4} castShadow />
     </group>
   );
 }
@@ -1497,137 +1618,178 @@ export function Lighthouse(props: any) {
 
   useFrame((state, delta) => {
     if (beamRef.current) {
-        beamRef.current.rotation.y -= delta * 2.0;
+        beamRef.current.rotation.y -= delta * 1.5;
     }
   });
 
   return (
     <group ref={ref} position={[props.position.x, props.position.y, props.position.z]} rotation={new THREE.Euler(props.rotation?.x || 0, props.rotation?.y || 0, props.rotation?.z || 0, 'YXZ')} scale={0}>
       
-      {/* Stone Foundation */}
-      <mesh position={[0, 0.2, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
-         <cylinderGeometry args={[1.3, 1.4, 0.4, 8]} />
-         <meshStandardMaterial color="#64748b" roughness={1.0} flatShading />
+      {/* --- TERRAIN / FOUNDATION --- */}
+      {/* Rocky Outcropping Base */}
+      <mesh position={[0, 0.1, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
+         <cylinderGeometry args={[1.8, 2.0, 0.3, 7]} />
+         <meshStandardMaterial color="#475569" roughness={1.0} flatShading />
       </mesh>
-
-      {/* Base Tower (White) */}
-      <mesh position={[0, 2.0, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
-         <cylinderGeometry args={[0.6, 1.2, 4.0, 8]} />
-         <meshStandardMaterial color="#f8fafc" roughness={1.0} flatShading />
-      </mesh>
-      
-      {/* Red Stripes */}
-      <mesh position={[0, 1.0, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
-         <cylinderGeometry args={[0.92, 1.12, 0.8, 8]} />
-         <meshStandardMaterial color="#ef4444" roughness={1.0} flatShading />
-      </mesh>
-      <mesh position={[0, 2.8, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
-         <cylinderGeometry args={[0.67, 0.82, 0.8, 8]} />
-         <meshStandardMaterial color="#ef4444" roughness={1.0} flatShading />
-      </mesh>
-
-      {/* Door */}
-      <mesh position={[0, 0.8, 1.05]} castShadow>
-         <boxGeometry args={[0.4, 0.6, 0.1]} />
-         <meshStandardMaterial color="#78350f" roughness={1.0} flatShading />
-      </mesh>
-      {/* Door Awning */}
-      <mesh position={[0, 1.15, 1.1]} rotation={[0.2, 0, 0]} castShadow>
-         <boxGeometry args={[0.5, 0.05, 0.3]} />
-         <meshStandardMaterial color="#334155" roughness={1.0} flatShading />
-      </mesh>
-
-      {/* Spiral Windows */}
-      {[0, 1, 2].map(i => {
-         const angle = (i * Math.PI * 0.8) + Math.PI;
-         const yPos = 1.6 + i * 0.8;
-         const radius = 1.0 - (yPos / 4.0) * 0.4;
-         return (
-             <mesh key={i} position={[Math.sin(angle) * radius, yPos, Math.cos(angle) * radius]} rotation={[0, angle, 0]} castShadow>
-                 <boxGeometry args={[0.2, 0.3, 0.2]} />
-                 <meshStandardMaterial color={isNight ? "#fde047" : "#0f172a"} emissive={isNight ? "#fbbf24" : "#000000"} emissiveIntensity={isNight ? 2 : 0} roughness={0.8} flatShading toneMapped={false} />
-             </mesh>
-         );
-      })}
-
-      {/* Gallery Deck Base */}
-      <mesh position={[0, 4.0, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
-         <cylinderGeometry args={[1.0, 0.7, 0.2, 8]} />
-         <meshStandardMaterial color="#334155" roughness={1.0} flatShading />
-      </mesh>
-      {/* Gallery Deck Railing */}
-      <mesh position={[0, 4.25, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
-         <cylinderGeometry args={[0.95, 0.95, 0.05, 8]} />
-         <meshStandardMaterial color="#1e293b" roughness={1.0} flatShading />
-      </mesh>
-      {/* Railing Posts */}
-      {[...Array(8)].map((_, i) => (
-         <mesh key={i} position={[Math.sin(i * Math.PI / 4) * 0.9, 4.12, Math.cos(i * Math.PI / 4) * 0.9]} castShadow>
-             <boxGeometry args={[0.04, 0.25, 0.04]} />
-             <meshStandardMaterial color="#1e293b" roughness={1.0} flatShading />
-         </mesh>
-      ))}
-      
-      {/* Lantern Room (Glass) */}
-      <mesh position={[0, 4.5, 0]} rotation={[0, Math.PI / 8, 0]} castShadow>
-         <cylinderGeometry args={[0.5, 0.5, 0.8, 8]} />
-         <meshStandardMaterial color="#fde047" emissive={isNight ? "#fbbf24" : "#000000"} emissiveIntensity={isNight ? 4 : 0} transparent opacity={0.6} toneMapped={false} />
-      </mesh>
-      {/* Lantern Pillars */}
-      {[...Array(8)].map((_, i) => (
-         <mesh key={i} position={[Math.sin(i * Math.PI / 4 + Math.PI/8) * 0.52, 4.5, Math.cos(i * Math.PI / 4 + Math.PI/8) * 0.52]} castShadow>
-             <boxGeometry args={[0.08, 0.8, 0.08]} />
-             <meshStandardMaterial color="#334155" roughness={1.0} flatShading />
-         </mesh>
-      ))}
-
-      {/* Roof */}
-      <mesh position={[0, 5.2, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
-         <coneGeometry args={[0.7, 0.6, 8]} />
-         <meshStandardMaterial color="#ef4444" roughness={1.0} flatShading />
-      </mesh>
-      <mesh position={[0, 5.5, 0]} castShadow>
-         <sphereGeometry args={[0.15, 8, 8]} />
-         <meshStandardMaterial color="#ef4444" roughness={1.0} flatShading />
-      </mesh>
-      <mesh position={[0, 5.8, 0]} castShadow>
-         <cylinderGeometry args={[0.02, 0.02, 0.6]} />
+      {/* Stone Pedestal */}
+      <mesh position={[0, 0.3, 0]} rotation={[0, 0, 0]} castShadow receiveShadow>
+         <cylinderGeometry args={[1.3, 1.6, 0.3, 8]} />
          <meshStandardMaterial color="#94a3b8" roughness={1.0} flatShading />
       </mesh>
 
-      {/* Rotating Beam */}
-      {isNight && (
-        <group position={[0, 4.4, 0]} ref={beamRef}>
-          <pointLight ref={lightRef} color="#fbbf24" intensity={8} distance={30} />
+      {/* --- KEEPER'S COTTAGE (Attached) --- */}
+      <group position={[0.9, 0.5, 0.5]} rotation={[0, Math.PI / 6, 0]}>
+         {/* Cottage Body */}
+         <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
+            <boxGeometry args={[1.2, 0.8, 1.0]} />
+            <meshStandardMaterial color="#f8fafc" roughness={1.0} flatShading />
+         </mesh>
+         {/* Cottage Roof */}
+         <mesh position={[0, 0.95, 0]} rotation={[0, 0, 0]} castShadow receiveShadow>
+            <coneGeometry args={[0.9, 0.5, 4]} />
+            <meshStandardMaterial color="#b91c1c" roughness={1.0} flatShading />
+         </mesh>
+         {/* Cottage Door */}
+         <mesh position={[0, 0.3, 0.51]} castShadow>
+            <boxGeometry args={[0.3, 0.6, 0.05]} />
+            <meshStandardMaterial color="#78350f" roughness={1.0} flatShading />
+         </mesh>
+         {/* Cottage Window */}
+         <mesh position={[0.61, 0.4, 0]} rotation={[0, Math.PI / 2, 0]} castShadow>
+            <boxGeometry args={[0.3, 0.3, 0.05]} />
+            <meshStandardMaterial color={isNight ? "#fde047" : "#0f172a"} emissive={isNight ? "#fbbf24" : "#000000"} emissiveIntensity={isNight ? 2 : 0} roughness={0.8} flatShading toneMapped={false} />
+         </mesh>
+         {/* Cottage Chimney */}
+         <mesh position={[0.3, 1.0, -0.2]} castShadow receiveShadow>
+            <boxGeometry args={[0.2, 0.6, 0.2]} />
+            <meshStandardMaterial color="#64748b" roughness={1.0} flatShading />
+         </mesh>
+         {isNight && <SmokeParticles position={[0.3, 1.4, -0.2]} />}
+      </group>
 
-          <SpotLight 
-              position={[0, 0, 0]}
-              color="#fef08a" 
-              distance={40} 
-              angle={0.4} 
-              attenuation={20} 
-              anglePower={5} 
-              intensity={5} 
-              opacity={0.6}
-              volumetric
-              target={target1}
-          />
-          <SpotLight 
-              position={[0, 0, 0]}
-              color="#fef08a" 
-              distance={40} 
-              angle={0.4} 
-              attenuation={20} 
-              anglePower={5} 
-              intensity={5} 
-              opacity={0.6}
-              volumetric
-              target={target2}
-          />
-          <primitive object={target1} />
-          <primitive object={target2} />
-        </group>
-      )}
+      {/* --- MAIN LIGHTHOUSE TOWER --- */}
+      <group position={[-0.2, 0, -0.2]}>
+          {/* Base Tower (White) */}
+          <mesh position={[0, 2.0, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
+             <cylinderGeometry args={[0.5, 1.1, 4.0, 8]} />
+             <meshStandardMaterial color="#f1f5f9" roughness={1.0} flatShading />
+          </mesh>
+          
+          {/* Red Stripes */}
+          <mesh position={[0, 1.2, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
+             <cylinderGeometry args={[0.82, 0.97, 0.8, 8]} />
+             <meshStandardMaterial color="#dc2626" roughness={1.0} flatShading />
+          </mesh>
+          <mesh position={[0, 2.8, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
+             <cylinderGeometry args={[0.58, 0.73, 0.8, 8]} />
+             <meshStandardMaterial color="#dc2626" roughness={1.0} flatShading />
+          </mesh>
+
+          {/* Tower Base Door */}
+          <mesh position={[0, 0.7, 1.05]} rotation={[0, -Math.PI / 8, 0]} castShadow>
+             <boxGeometry args={[0.3, 0.5, 0.1]} />
+             <meshStandardMaterial color="#451a03" roughness={1.0} flatShading />
+          </mesh>
+          {/* Wooden Awning */}
+          <mesh position={[0, 1.0, 1.05]} rotation={[0.2, -Math.PI / 8, 0]} castShadow>
+             <boxGeometry args={[0.4, 0.05, 0.3]} />
+             <meshStandardMaterial color="#334155" roughness={1.0} flatShading />
+          </mesh>
+
+          {/* Spiral Windows */}
+          {[0, 1, 2, 3].map(i => {
+             const angle = (i * Math.PI * 0.6) + Math.PI;
+             const yPos = 1.0 + i * 0.7;
+             const radius = 1.1 - (yPos / 4.0) * 0.6 + 0.02;
+             return (
+                 <mesh key={i} position={[Math.sin(angle) * radius, yPos, Math.cos(angle) * radius]} rotation={[0, angle, 0]} castShadow>
+                     <boxGeometry args={[0.15, 0.25, 0.1]} />
+                     <meshStandardMaterial color={isNight ? "#fde047" : "#0f172a"} emissive={isNight ? "#fbbf24" : "#000000"} emissiveIntensity={isNight ? 2 : 0} roughness={0.8} flatShading toneMapped={false} />
+                 </mesh>
+             );
+          })}
+
+          {/* --- GALLERY DECK (Balcony) --- */}
+          {/* Support Brackets */}
+          {[...Array(8)].map((_, i) => (
+             <mesh key={`bracket-${i}`} position={[Math.sin(i * Math.PI / 4) * 0.5, 3.8, Math.cos(i * Math.PI / 4) * 0.5]} rotation={[-0.5, i * Math.PI / 4, 0]} castShadow>
+                 <boxGeometry args={[0.08, 0.4, 0.08]} />
+                 <meshStandardMaterial color="#cbd5e1" roughness={1.0} flatShading />
+             </mesh>
+          ))}
+          {/* Deck Floor */}
+          <mesh position={[0, 4.0, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
+             <cylinderGeometry args={[0.9, 0.6, 0.2, 8]} />
+             <meshStandardMaterial color="#334155" roughness={1.0} flatShading />
+          </mesh>
+          {/* Deck Railing Top */}
+          <mesh position={[0, 4.3, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
+             <cylinderGeometry args={[0.85, 0.85, 0.05, 8]} />
+             <meshStandardMaterial color="#0f172a" roughness={1.0} flatShading />
+          </mesh>
+          {/* Deck Railing Posts */}
+          {[...Array(16)].map((_, i) => (
+             <mesh key={`post-${i}`} position={[Math.sin(i * Math.PI / 8) * 0.82, 4.15, Math.cos(i * Math.PI / 8) * 0.82]} castShadow>
+                 <boxGeometry args={[0.03, 0.3, 0.03]} />
+                 <meshStandardMaterial color="#0f172a" roughness={1.0} flatShading />
+             </mesh>
+          ))}
+          
+          {/* --- LANTERN ROOM --- */}
+          {/* Glass Enclosure */}
+          <mesh position={[0, 4.5, 0]} rotation={[0, Math.PI / 8, 0]} castShadow>
+             <cylinderGeometry args={[0.45, 0.45, 0.8, 8]} />
+             <meshStandardMaterial color="#fef08a" emissive={isNight ? "#fbbf24" : "#000000"} emissiveIntensity={isNight ? 5 : 0} transparent opacity={isNight ? 0.8 : 0.4} toneMapped={false} />
+          </mesh>
+          {/* Internal Glowing Lens (Fresnel) */}
+          <group position={[0, 4.5, 0]} ref={beamRef}>
+             <mesh castShadow>
+                 <cylinderGeometry args={[0.2, 0.2, 0.5, 6]} />
+                 <meshStandardMaterial color="#ffffff" emissive="#fbbf24" emissiveIntensity={isNight ? 8 : 0} toneMapped={false} flatShading />
+             </mesh>
+             
+             {/* The Spotlight Beams */}
+             {isNight && (
+                <>
+                  <pointLight ref={lightRef} color="#fbbf24" intensity={8} distance={40} />
+                  <SpotLight position={[0, 0, 0]} color="#fef08a" distance={50} angle={0.4} attenuation={20} anglePower={6} intensity={8} opacity={0.7} volumetric target={target1} />
+                  <SpotLight position={[0, 0, 0]} color="#fef08a" distance={50} angle={0.4} attenuation={20} anglePower={6} intensity={8} opacity={0.7} volumetric target={target2} />
+                  <primitive object={target1} />
+                  <primitive object={target2} />
+                </>
+             )}
+          </group>
+          {/* Window Frames / Pillars */}
+          {[...Array(8)].map((_, i) => (
+             <mesh key={`lantern-post-${i}`} position={[Math.sin(i * Math.PI / 4 + Math.PI/8) * 0.47, 4.5, Math.cos(i * Math.PI / 4 + Math.PI/8) * 0.47]} castShadow>
+                 <boxGeometry args={[0.06, 0.8, 0.06]} />
+                 <meshStandardMaterial color="#1e293b" roughness={1.0} flatShading />
+             </mesh>
+          ))}
+
+          {/* --- ROOF --- */}
+          {/* Roof Base Dome/Cone */}
+          <mesh position={[0, 5.2, 0]} rotation={[0, Math.PI / 8, 0]} castShadow receiveShadow>
+             <coneGeometry args={[0.6, 0.6, 8]} />
+             <meshStandardMaterial color="#dc2626" roughness={1.0} flatShading />
+          </mesh>
+          {/* Roof Sphere Finial */}
+          <mesh position={[0, 5.5, 0]} castShadow>
+             <sphereGeometry args={[0.12, 8, 8]} />
+             <meshStandardMaterial color="#fcd34d" roughness={0.4} metalness={0.6} flatShading />
+          </mesh>
+          {/* Lightning Rod / Weather Vane */}
+          <mesh position={[0, 5.8, 0]} castShadow>
+             <cylinderGeometry args={[0.015, 0.015, 0.6]} />
+             <meshStandardMaterial color="#94a3b8" roughness={0.5} flatShading />
+          </mesh>
+          {/* Weather Vane Arrow */}
+          <mesh position={[0, 5.9, 0]} castShadow>
+             <boxGeometry args={[0.3, 0.02, 0.02]} />
+             <meshStandardMaterial color="#94a3b8" roughness={0.5} flatShading />
+          </mesh>
+      </group>
+
     </group>
   );
 }
@@ -2649,7 +2811,7 @@ export function SubIsland(props: any) {
       return;
     }
 
-    const landPlaceableTools = ['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'deer', 'wolf', 'spring', 'pond', 'streetlamp', 'house', 'windmill', 'lighthouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
+    const landPlaceableTools = ['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'deer', 'wolf', 'spring', 'pond', 'streetlamp', 'lantern_girl', 'house', 'windmill', 'lighthouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
     if (!isDragEvent && landPlaceableTools.includes(selectedTool)) {
       // Ponds may sit in dug-out valleys below sea level; everything else
       // must rest on land.
@@ -2657,7 +2819,7 @@ export function SubIsland(props: any) {
 
       let rx = 0;
       let rz = 0;
-      const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island', 'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'pond', 'spring'];
+      const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'lantern_girl', 'sub_island', 'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'balloon', 'balloon_ladder', 'balloon_bridge', 'bridge_pillar', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'pond', 'spring'];
       if (event && event.face && event.face.normal && !verticalTools.includes(selectedTool)) {
         const normal = event.face.normal.clone();
         const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
@@ -4400,6 +4562,7 @@ export function Assets() {
           case 'pond': content = <Pond {...asset} />; break;
           case 'water_flow': content = <Stream {...asset} />; break;
           case 'streetlamp': content = <Streetlamp {...asset} />; break;
+          case 'lantern_girl': content = <LanternGirl {...asset} />; break;
           case 'house': content = <House {...asset} />; break;
           case 'windmill': content = <Windmill {...asset} />; break;
           case 'lighthouse': content = <Lighthouse {...asset} />; break;
@@ -4445,3 +4608,5 @@ export function Assets() {
     </MarineAssetIndexProvider>
   );
 }
+
+useGLTF.preload("/models/lantern-girl.glb");

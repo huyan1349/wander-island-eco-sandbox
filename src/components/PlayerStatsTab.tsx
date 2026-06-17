@@ -6,8 +6,8 @@ import { api } from '../lib/api';
 import { AudioSystem } from '../lib/audio';
 import { ACHIEVEMENTS, getUnlocked, buildSnapshot } from '../lib/achievements';
 import {
-  User, Camera, Edit2, Check, Star, Leaf, Clock, Layers,
-  TreePine, Home, Rabbit, Trophy, ChevronRight, Award, Lock,
+  User, Camera, Edit2, Check, Star, Clock, Layers,
+  Trophy, ChevronRight, Award, Lock, IdCard, Compass,
 } from 'lucide-react';
 
 function getRankTitle(level: number): string {
@@ -17,6 +17,61 @@ function getRankTitle(level: number): string {
   if (level >= 5) return '资深漫游者';
   if (level >= 3) return '漫游者';
   return '初临漫游者';
+}
+
+function getAwakeningTier(awakening: number): string {
+  if (awakening >= 90) return '和声';
+  if (awakening >= 70) return '清醒';
+  if (awakening >= 45) return '苏醒';
+  if (awakening >= 20) return '微醒';
+  return '沉睡';
+}
+
+function getIslandBreath(grassHealth: number, lifeCount: number): string {
+  if (grassHealth >= 80 && lifeCount > 0) return '丰茂';
+  if (grassHealth >= 60) return '稳定';
+  if (grassHealth >= 35) return '复苏中';
+  return '低语';
+}
+
+function getSeasonLabel(season: string): string {
+  const labels: Record<string, string> = {
+    spring: '春',
+    summer: '夏',
+    autumn: '秋',
+    winter: '冬',
+  };
+  return labels[season] || season;
+}
+
+function getWeatherLabel(weather: string): string {
+  const labels: Record<string, string> = {
+    sunny: '晴',
+    cloudy: '云',
+    rainy: '雨',
+    foggy: '雾',
+    snowy: '雪',
+    stormy: '风暴',
+  };
+  return labels[weather] || weather;
+}
+
+function readResidentCardFallback(authUser: ReturnType<typeof useGameStore.getState>['authUser'], playerName: string, islandName: string) {
+  try {
+    const raw = localStorage.getItem('resident_card');
+    if (raw) return JSON.parse(raw);
+  } catch {
+    /* ignore local card read */
+  }
+  const memberNo = authUser?.residentNo ?? authUser?.memberNo ?? 1;
+  return {
+    name: authUser?.username || playerName,
+    islandName,
+    memberNo,
+    residentNo: memberNo,
+    joinDate: '',
+    uid: `WI-${String(memberNo).padStart(6, '0')}`,
+  };
 }
 
 type Tab = 'stats' | 'card' | 'ecology' | 'unlocks' | 'social' | 'system';
@@ -30,6 +85,7 @@ export const PlayerStatsTab: React.FC<PlayerStatsTabProps> = ({ handleAvatarUplo
   const {
     playerName, setPlayerName, playerLevel, playerXP, playerAvatar,
     islandName, stats, ecoPoints, deerCount, wolfCount, awakening,
+    grassHealth, weather, season,
   } = useGameStore();
   const authUser = useGameStore(state => state.authUser);
   const setAuthUser = useGameStore(state => state.setAuthUser);
@@ -63,120 +119,202 @@ export const PlayerStatsTab: React.FC<PlayerStatsTabProps> = ({ handleAvatarUplo
   const nextAch = ACHIEVEMENTS.find(a => !unlockedAch.has(a.id));
   const rank = getRankTitle(playerLevel);
   const avatarSrc = authUser ? authUser.avatar : playerAvatar;
+  const residentCard = readResidentCardFallback(authUser, playerName, islandName);
+  const residentNo = String(residentCard.residentNo ?? residentCard.memberNo ?? authUser?.residentNo ?? authUser?.memberNo ?? 1).padStart(5, '0');
+  const aw = Math.round(awakening);
+  const awakeningTier = getAwakeningTier(aw);
+  const lifeCount = deerCount + wolfCount;
+  const islandBreath = getIslandBreath(grassHealth, lifeCount);
+  const journeyFields = [
+    { label: '旅程时长', value: `${Math.floor(stats.playtime / 60)}m` },
+    { label: '已放置', value: stats.itemsPlaced },
+    { label: '成就', value: `${achDone}/${ACHIEVEMENTS.length}` },
+    { label: '生态点', value: ecoPoints },
+  ];
+  const islandFields = [
+    { label: '岛屿气息', value: islandBreath },
+    { label: '季节天气', value: `${getSeasonLabel(season)} · ${getWeatherLabel(weather)}` },
+    { label: '生灵踪迹', value: lifeCount },
+    { label: '树木记录', value: snap.treeCount },
+  ];
+  const journeyNote = stats.playtime >= 3600
+    ? '这份护照已经记录下一段很长的停留。岛上留下的不是数值，而是你反复回来过的证据。'
+    : stats.itemsPlaced >= 100
+      ? '岛上已经有了足够多的痕迹。下一步不必急着扩张，适合开始整理属于你的记忆。'
+      : stats.itemsPlaced > 0
+        ? '旅程已经开始。你放下的物件会慢慢变成这座岛的个人历史。'
+        : '这份护照刚刚签发。岛还很安静，等待第一件真正属于你的东西。';
 
   return (
-    <div className="flex-1 p-10 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto custom-scrollbar">
-
-      {/* Hero header：头像 + 可改名 + 段位 + 经验条 */}
-      <div className="flex items-center gap-6 mb-8 border-b-2 border-slate-800 pb-8">
-        <div className="relative shrink-0 group">
-          <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-800 shadow-[4px_4px_0_rgba(15,23,42,0.2)] bg-gradient-to-br from-emerald-400/30 to-cyan-400/30 flex items-center justify-center">
-            {avatarSrc ? <img src={avatarSrc} alt="" className="w-full h-full object-cover" /> : <User size={40} className="text-slate-500" />}
+    <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#f7f2e6] text-slate-900 animate-in fade-in slide-in-from-bottom-4">
+      <div className="min-h-full px-10 py-9">
+        <div className="mb-7 flex items-center justify-between border-b border-slate-900/70 pb-5">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.42em] text-slate-500">Wander Island Archive</p>
+            <h2 className="mt-2 text-3xl font-black tracking-[0.12em] text-slate-900">潮语者护照</h2>
           </div>
+          <div className="hidden rounded-full border border-slate-900/30 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.28em] text-slate-600 sm:block">
+            No. {residentNo}
+          </div>
+        </div>
+
+        {/* Identity dossier */}
+        <section className="relative mb-7 overflow-hidden rounded-[6px] border border-slate-900/80 bg-[#fbf7eb] shadow-[0_12px_0_rgba(15,23,42,0.12)]">
+          <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: 'linear-gradient(90deg, #0f172a 1px, transparent 1px), linear-gradient(#0f172a 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
+          <div className="relative grid gap-7 p-7 lg:grid-cols-[170px_1fr]">
+            <div className="relative shrink-0 group">
+              <div className="aspect-[4/5] w-[150px] overflow-hidden rounded-[4px] border border-slate-900 bg-[#e8efe8] p-2 shadow-[5px_5px_0_rgba(15,23,42,0.18)]">
+                <div className="h-full w-full overflow-hidden rounded-[3px] bg-[#dfe9e1] flex items-center justify-center">
+                  {avatarSrc ? <img src={avatarSrc} alt="" className="h-full w-full object-cover grayscale-[15%] saturate-[0.8]" /> : <User size={44} className="text-slate-500" />}
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.26em] text-slate-500">
+                <IdCard size={13} />
+                Resident File
+              </div>
           {authUser && (
-            <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" title="更换头像">
+                <label className="absolute inset-0 flex h-[188px] w-[150px] cursor-pointer items-center justify-center rounded-[4px] bg-slate-950/45 opacity-0 transition-opacity group-hover:opacity-100" title="更换头像">
               <Camera size={20} className="text-white" />
               <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
             </label>
           )}
-          <div className="absolute -bottom-1 -right-1 bg-slate-900 text-emerald-400 text-xs font-black px-2 py-0.5 rounded-lg border border-slate-700 shadow">LV.{playerLevel}</div>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1.5">
-            {isEditing ? (
-              <div className="flex items-center gap-2">
-                <input autoFocus value={tempName} onChange={e => setTempName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveName()} className="hand-drawn-panel px-3 py-1 text-2xl font-bold text-slate-800 focus:outline-none max-w-[260px]" style={{ borderWidth: '2px' }} />
-                <button onClick={handleSaveName} className="hand-drawn-btn p-2 text-emerald-600"><Check size={16} /></button>
-              </div>
-            ) : (
-              <>
-                <h2 className="text-3xl hand-drawn-title text-slate-800 truncate">{authUser ? authUser.username : playerName}</h2>
-                <button onClick={() => { AudioSystem.playClick(); setTempName(authUser ? authUser.username : playerName); setIsEditing(true); }} className="hand-drawn-btn p-1.5 shrink-0" title="修改名字"><Edit2 size={13} /></button>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-2 mb-3 flex-wrap">
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-100 ring-1 ring-amber-300 px-2.5 py-1 rounded-full"><Star size={12} /> {rank}</span>
-            <span className="text-xs text-slate-500 truncate">🏝️ {islandName}</span>
-            {authUser && <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">在线</span>}
-          </div>
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-[10px] font-mono text-slate-500 tracking-[0.2em] uppercase">经验 · 距下一级还差 {xpForNextLevel - currentLevelXP}</span>
-              <span className="text-[10px] font-bold text-slate-600">{currentLevelXP} / {xpForNextLevel}</span>
             </div>
-            <div className="w-full h-3 bg-black/10 rounded-full overflow-hidden shadow-inner ring-1 ring-slate-300/60">
-              <div className="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-700 rounded-full" style={{ width: `${xpPercentage}%` }} />
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* 岛屿苏醒度 —— 主线脊柱 */}
-      {(() => {
-        const aw = Math.round(awakening);
-        const tier = aw >= 90 ? '和声' : aw >= 70 ? '清醒' : aw >= 45 ? '苏醒' : aw >= 20 ? '微醒' : '沉睡';
-        return (
-          <div className="hand-drawn-panel p-5 mb-8 bg-gradient-to-br from-amber-100/40 to-transparent" style={{ borderWidth: '2px' }}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700"><Star size={14} /> 岛屿苏醒度 · {tier}</span>
-              <span className="text-sm font-black text-amber-700">{aw} / 100</span>
-            </div>
-            <div className="w-full h-3.5 bg-black/10 rounded-full overflow-hidden shadow-inner ring-1 ring-amber-300/50">
-              <div className="h-full bg-gradient-to-r from-amber-400 via-amber-300 to-emerald-300 transition-all duration-700 rounded-full" style={{ width: `${aw}%` }} />
-            </div>
-            <p className="text-[10px] text-slate-400 mt-1.5">持续照料这座岛，让它一点点醒来 · 苏醒越深，辞的话越完整、回声越清晰</p>
-          </div>
-        );
-      })()}
-
-      {/* 数据网格 */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        {[
-          { icon: <Leaf size={20} className="text-emerald-500" />, label: '生态点', value: ecoPoints, accent: 'from-emerald-500/10' },
-          { icon: <Clock size={20} className="text-blue-500" />, label: '游戏时长', value: `${Math.floor(stats.playtime / 60)}m` },
-          { icon: <Layers size={20} className="text-amber-500" />, label: '已放置', value: stats.itemsPlaced },
-          { icon: <TreePine size={20} className="text-green-600" />, label: '树木', value: snap.treeCount },
-          { icon: <Home size={20} className="text-orange-500" />, label: '建筑', value: snap.buildingCount },
-          { icon: <Rabbit size={20} className="text-rose-500" />, label: '生灵', value: deerCount + wolfCount },
-        ].map((s, i) => (
-          <div key={i} className={`hand-drawn-panel p-5 flex items-center gap-4 ${s.accent ? `bg-gradient-to-br ${s.accent} to-transparent` : ''}`} style={{ borderWidth: '2px' }}>
-            <div className="w-11 h-11 rounded-2xl bg-white/60 ring-1 ring-slate-200 flex items-center justify-center shrink-0">{s.icon}</div>
             <div className="min-w-0">
-              <p className="text-[10px] font-mono text-slate-500 tracking-[0.2em] uppercase truncate">{s.label}</p>
-              <p className="text-2xl font-light text-slate-800 tracking-wider">{s.value}</p>
+              <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="mb-2 text-[10px] font-black uppercase tracking-[0.34em] text-slate-500">Name of Tide Speaker</p>
+                  <div className="flex items-center gap-3">
+                    {isEditing ? (
+                      <div className="flex items-center gap-2">
+                        <input autoFocus value={tempName} onChange={e => setTempName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveName()} className="max-w-[320px] rounded-[4px] border border-slate-900 bg-white/70 px-3 py-2 text-2xl font-black tracking-[0.08em] text-slate-900 outline-none" />
+                        <button onClick={handleSaveName} className="rounded-[4px] border border-slate-900 px-2 py-2 text-slate-800 hover:bg-slate-900 hover:text-white" title="保存名字"><Check size={16} /></button>
+                      </div>
+                    ) : (
+                      <>
+                        <h3 className="truncate text-4xl font-black tracking-[0.14em] text-slate-950">{authUser ? authUser.username : playerName}</h3>
+                        <button onClick={() => { AudioSystem.playClick(); setTempName(authUser ? authUser.username : playerName); setIsEditing(true); }} className="rounded-[4px] border border-transparent p-2 text-slate-500 hover:border-slate-900 hover:text-slate-900" title="修改名字"><Edit2 size={15} /></button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="rounded-[4px] border border-amber-800/50 bg-amber-100/40 px-4 py-3 text-right">
+                  <p className="text-[9px] font-black uppercase tracking-[0.28em] text-amber-900/70">Current Rank</p>
+                  <p className="mt-1 text-sm font-black tracking-[0.1em] text-amber-950">{rank}</p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 text-sm md:grid-cols-3">
+                <div className="border-t border-slate-900/30 pt-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-500">Island</p>
+                  <p className="mt-1 truncate font-black text-slate-900">{residentCard.islandName || islandName || '未命名之岛'}</p>
+                </div>
+                <div className="border-t border-slate-900/30 pt-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-500">Level</p>
+                  <p className="mt-1 font-black text-slate-900">LV.{playerLevel}</p>
+                </div>
+                <div className="border-t border-slate-900/30 pt-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-500">Issued</p>
+                  <p className="mt-1 font-black text-slate-900">{residentCard.joinDate || '已登记'}</p>
+                </div>
+              </div>
+
+              <div className="mt-7">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <span className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">Experience</span>
+                  <span className="text-xs font-black text-slate-600">{currentLevelXP} / {xpForNextLevel}</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-slate-900/12">
+                  <div className="h-full rounded-full bg-slate-900 transition-all duration-700" style={{ width: `${xpPercentage}%` }} />
+                </div>
+                <p className="mt-2 text-xs font-semibold text-slate-500">距下一级还差 {xpForNextLevel - currentLevelXP} 点经验</p>
+              </div>
             </div>
           </div>
-        ))}
-      </div>
+        </section>
+
+        {/* Island status */}
+        <section className="mb-7 grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-[6px] border border-slate-900/70 bg-[#fbf7eb] p-6">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Star size={14} /> Island Waking</p>
+                <h3 className="mt-2 text-2xl font-black tracking-[0.08em] text-slate-900">岛屿苏醒度 · {awakeningTier}</h3>
+              </div>
+              <span className="font-mono text-xl font-black text-slate-900">{aw}/100</span>
+            </div>
+            <div className="h-2.5 overflow-hidden rounded-full bg-slate-900/12">
+              <div className="h-full rounded-full bg-[#274238] transition-all duration-700" style={{ width: `${aw}%` }} />
+            </div>
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-600">这不是生态评分，而是岛与你之间的关系记录。它醒得越深，回声和辞的表达就越接近完整。</p>
+          </div>
+          <div className="rounded-[6px] border border-slate-900/70 bg-[#f3f0e6] p-6">
+            <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Compass size={14} /> Current Note</p>
+            <p className="mt-3 text-lg font-black text-slate-900">当前旅程记录</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">{journeyNote}</p>
+          </div>
+        </section>
+
+        {/* Journey fields */}
+        <section className="mb-7 grid gap-5 lg:grid-cols-2">
+          <div className="rounded-[6px] border border-slate-900/70 bg-[#fbf7eb] p-6">
+            <div className="mb-5 flex items-center justify-between">
+              <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Clock size={14} /> Journey Record</p>
+              <span className="text-xs font-black text-slate-500">旅程摘要</span>
+            </div>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+              {journeyFields.map(field => (
+                <div key={field.label} className="border-t border-slate-900/20 pt-3">
+                  <p className="text-xs font-bold text-slate-500">{field.label}</p>
+                  <p className="mt-1 text-2xl font-black tracking-[0.08em] text-slate-900">{field.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-[6px] border border-slate-900/70 bg-[#fbf7eb] p-6">
+            <div className="mb-5 flex items-center justify-between">
+              <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Layers size={14} /> Island Notes</p>
+              <span className="text-xs font-black text-slate-500">轻量记录</span>
+            </div>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+              {islandFields.map(field => (
+                <div key={field.label} className="border-t border-slate-900/20 pt-3">
+                  <p className="text-xs font-bold text-slate-500">{field.label}</p>
+                  <p className="mt-1 text-2xl font-black tracking-[0.08em] text-slate-900">{field.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
       {/* 成就陈列 */}
-      <div className="hand-drawn-panel p-6" style={{ borderWidth: '2px' }}>
+        <section className="rounded-[6px] border border-slate-900/70 bg-[#fbf7eb] p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Trophy size={18} className="text-amber-500" />
-            <span className="font-bold text-slate-800 tracking-wide">成就</span>
-            <span className="text-sm font-bold text-amber-600">{achDone}/{ACHIEVEMENTS.length}</span>
+              <Trophy size={18} className="text-slate-700" />
+              <span className="font-black tracking-wide text-slate-900">成就记录</span>
+              <span className="text-sm font-black text-slate-500">{achDone}/{ACHIEVEMENTS.length}</span>
           </div>
-          <button onClick={() => { AudioSystem.playClick(); setActiveTab('card'); }} className="hand-drawn-btn px-3 py-1.5 text-xs font-bold flex items-center gap-1">居民证 <ChevronRight size={13} /></button>
+            <button onClick={() => { AudioSystem.playClick(); setActiveTab('card'); }} className="flex items-center gap-1 rounded-[4px] border border-slate-900/60 px-3 py-1.5 text-xs font-black text-slate-700 hover:bg-slate-900 hover:text-white">居民证 <ChevronRight size={13} /></button>
         </div>
-        <div className="w-full h-2 bg-black/10 rounded-full overflow-hidden shadow-inner mb-4">
-          <div className="h-full bg-gradient-to-r from-amber-400 to-yellow-500 transition-all duration-700" style={{ width: `${(achDone / ACHIEVEMENTS.length) * 100}%` }} />
+          <div className="mb-4 h-2 overflow-hidden rounded-full bg-slate-900/12">
+            <div className="h-full rounded-full bg-slate-800 transition-all duration-700" style={{ width: `${(achDone / ACHIEVEMENTS.length) * 100}%` }} />
         </div>
         <div className="flex flex-wrap gap-2 mb-4">
           {ACHIEVEMENTS.map(a => {
             const done = unlockedAch.has(a.id);
             return (
-              <div key={a.id} title={`${a.title} · ${a.desc}`} className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-transform hover:scale-110 ${done ? 'bg-gradient-to-tr from-amber-300 to-yellow-500 border-slate-800 shadow-[2px_2px_0_rgba(15,23,42,0.25)]' : 'bg-slate-200 border-slate-300'}`}>
-                {done ? <Award size={18} className="text-slate-900" /> : <Lock size={15} className="text-slate-400" />}
+                <div key={a.id} title={`${a.title} · ${a.desc}`} className={`flex h-9 w-9 items-center justify-center rounded-full border transition-transform hover:scale-105 ${done ? 'border-slate-800 bg-slate-900 text-[#f7f2e6]' : 'border-slate-300 bg-slate-100 text-slate-400'}`}>
+                  {done ? <Award size={16} /> : <Lock size={13} />}
               </div>
             );
           })}
         </div>
-        <div className="text-sm text-slate-600 bg-amber-50/60 rounded-xl px-4 py-2.5 ring-1 ring-amber-100">
-          {nextAch ? <><span className="font-bold text-amber-700">下一目标：</span>{nextAch.title} — {nextAch.desc}</> : <span className="font-bold text-emerald-600">🎉 已集齐全部成就，了不起的漫游者！</span>}
+          <div className="rounded-[4px] border border-slate-900/15 bg-[#f3f0e6] px-4 py-3 text-sm text-slate-600">
+            {nextAch ? <><span className="font-black text-slate-900">下一段旅程：</span>{nextAch.title} · {nextAch.desc}</> : <span className="font-black text-slate-900">全部成就已完成，这份护照已经写满了。</span>}
+          </div>
+        </section>
         </div>
-      </div>
     </div>
   );
 };
