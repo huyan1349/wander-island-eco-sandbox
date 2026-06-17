@@ -12,6 +12,7 @@ import {
   onUserOnline,
 } from "../lib/socket";
 import { applyIslandSnapshot, showTitleBackdrop } from "../utils/islandIO";
+import { TRACKS } from "../components/ui/musicData";
 
 export function useRestoreTitleBackground() {
   useEffect(() => {
@@ -167,6 +168,9 @@ export function useAudioBootstrap(appLoaded: boolean) {
 
     const initAudio = async () => {
       AudioSystem.init();
+      // 兜底设置播放列表：不再依赖 LoadingScreen 的异步加载流程跑完，
+      // 否则进游戏时列表可能为空，自动切歌直接卡住。
+      AudioSystem.setPlaylist(TRACKS.map((t) => t.url));
       await AudioSystem.loadBGM("/Tides_of_Mahogany.mp3");
       AudioSystem.playBGM();
     };

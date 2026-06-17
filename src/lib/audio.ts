@@ -21,6 +21,10 @@ export class AudioSystem {
     private static bgmCache = new Map<string, HTMLAudioElement>(); // Preloaded audio elements
     private static isBgmPlaying = false;
     private static currentBgmUrl: string | null = null;
+    // 当前 bgmEl 对应的「规范 URL」（即 loadBGM 收到的相对路径）。
+    // 用它当 currentBgmUrl，避免 bgmEl.src 被浏览器解析成绝对地址后
+    // 与播放列表/卡片里的相对路径对不上，导致自动切歌与卡片同步双双失效。
+    private static loadedBgmUrl: string | null = null;
     private static bgmVolumeTarget = 0.5;
     private static bgmSwitchToken = 0;
     private static bgmFadeRAF: number | null = null;
@@ -66,7 +70,7 @@ export class AudioSystem {
                 p.then(() => {
                     this.isBgmPlaying = true;
                     this.bgmAutoplayBlocked = false;
-                    this.currentBgmUrl = this.bgmEl!.src;
+                    this.currentBgmUrl = this.loadedBgmUrl ?? this.bgmEl!.src;
                     this.fadeBGMIN();
                     this.emitBGMChange();
                     this.startBGMWatch();
@@ -83,8 +87,10 @@ export class AudioSystem {
                 p.then(() => {
                     this.isBgmPlaying = true;
                     this.bgmAutoplayBlocked = false;
-                    this.currentBgmUrl = this.bgmEl!.src;
+                    this.currentBgmUrl = this.loadedBgmUrl ?? this.bgmEl!.src;
                     this.fadeBGMIN();
+                    this.emitBGMChange();
+                    this.startBGMWatch();
                 }).catch(() => {
                     this.bgmAutoplayBlocked = true;
                 });
@@ -110,6 +116,7 @@ export class AudioSystem {
         // Check cache first
         if (this.bgmCache.has(url)) {
             this.bgmEl = this.bgmCache.get(url)!;
+            this.loadedBgmUrl = url;
             return;
         }
 
@@ -127,6 +134,7 @@ export class AudioSystem {
         // Cache it
         this.bgmCache.set(url, audio);
         this.bgmEl = audio;
+        this.loadedBgmUrl = url;
     }
 
     /** Preload a BGM track without setting it as current */
@@ -174,8 +182,10 @@ export class AudioSystem {
                 playPromise.then(() => {
                     this.isBgmPlaying = true;
                     this.bgmAutoplayBlocked = false;
-                    this.currentBgmUrl = this.bgmEl!.src;
+                    this.currentBgmUrl = this.loadedBgmUrl ?? this.bgmEl!.src;
                     this.fadeBGMIN();
+                    this.emitBGMChange();
+                    this.startBGMWatch();
                     resolve(true);
                 }).catch(() => {
                     this.bgmAutoplayBlocked = true;
@@ -183,8 +193,10 @@ export class AudioSystem {
                 });
             } else {
                 this.isBgmPlaying = true;
-                this.currentBgmUrl = this.bgmEl.src;
+                this.currentBgmUrl = this.loadedBgmUrl ?? this.bgmEl.src;
                 this.fadeBGMIN();
+                this.emitBGMChange();
+                this.startBGMWatch();
                 resolve(true);
             }
         });
@@ -368,8 +380,10 @@ export class AudioSystem {
 
     /** Play the next track in the playlist */
     static playNext() {
-        if (!this.bgmPlaylist.length || !this.currentBgmUrl) return;
-        const idx = this.bgmPlaylist.indexOf(this.currentBgmUrl);
+        if (!this.bgmPlaylist.length) return;
+        // currentBgmUrl 不在列表里（idx = -1）时，(-1+1)%len = 0 自然回到首曲，
+        // 不再因找不到当前曲目而卡住。
+        const idx = this.currentBgmUrl ? this.bgmPlaylist.indexOf(this.currentBgmUrl) : -1;
         let nextIdx: number;
         if (this.bgmShuffle) {
             nextIdx = Math.floor(Math.random() * this.bgmPlaylist.length);
