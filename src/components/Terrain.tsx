@@ -9,6 +9,7 @@ import { applyTerrainBrush, paintSurface } from '../utils/terrainBrush';
 import { encodePondState } from '../game/water/pondFit';
 import { encodeStreamState } from '../game/water/streamPath';
 import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
+import { getFloatingPlatformSnap } from '../utils/platformPlacement';
 
 const noise2D = createNoise2D();
 
@@ -688,11 +689,11 @@ export function Terrain() {
     }
 
     // Add object tool (only on single clicks)
-    const placeableTools = ['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'streetlamp', 'house', 'windmill', 'lighthouse', 'platform', 'pier', 'boat', 'bridge_pillar', 'sub_island', 'birdhouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'tent', 'campfire', 'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
+    const placeableTools = ['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'streetlamp', 'lantern_girl', 'house', 'windmill', 'lighthouse', 'platform', 'pier', 'boat', 'bridge_pillar', 'sub_island', 'birdhouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'tent', 'campfire', 'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
     if (!isDragEvent && placeableTools.includes(selectedTool)) {
         
         let rx = 0, rz = 0;
-        const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'sub_island', 'bridge_pillar', 'balloon', 'balloon_ladder', 'balloon_bridge', 'tent', 'campfire', 'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush'];
+        const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'lantern_girl', 'sub_island', 'bridge_pillar', 'balloon', 'balloon_ladder', 'balloon_bridge', 'tent', 'campfire', 'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush'];
         if (e && e.face && e.face.normal && !verticalTools.includes(selectedTool)) {
             const normal = e.face.normal.clone();
             const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
@@ -711,8 +712,14 @@ export function Terrain() {
             targetScale = 1.0;
             targetRotY = 0;
             // Snap logic on terrain for platform? Better to keep it consistent
+            const rawPoint = { x: point.x, y: point.y, z: point.z };
             point.x = Math.round(point.x / 3) * 3;
             point.z = Math.round(point.z / 3) * 3;
+            if (selectedTool === 'platform') {
+                const snap = getFloatingPlatformSnap(rawPoint, useGameStore.getState().assets);
+                point.x = snap.position.x;
+                point.z = snap.position.z;
+            }
         }
 
         // 生生不息模式：打牌即放置，放下后走共生连锁结算

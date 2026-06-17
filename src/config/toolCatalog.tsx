@@ -145,7 +145,7 @@ export const BUILD_CATEGORIES: ToolCategory[] = [
       { id: "sign", icon: Signpost, label: "牌子（可写字）", cost: 0 },
       { id: "mailbox", icon: Mailbox, label: "信箱（点击查看）", cost: 0 },
       { id: "streetlamp", icon: Lamp, label: "路灯", cost: 200 },
-      { id: "lantern_girl", icon: LanternGirlIcon, label: "???", cost: 0 },
+      { id: "lantern_girl", icon: LanternGirlIcon, label: "提灯石像", cost: 0 },
       { id: "observatory", icon: Telescope, label: "观星台", cost: 1500 },
       { id: "ruins_arch", icon: Castle, label: "遗迹石门", cost: 2000 },
       { id: "waterwheel", icon: LifeBuoy, label: "巨型水车", cost: 1800 },

@@ -661,105 +661,83 @@ function getLanternGlowTexture() {
   return _lanternGlowTex;
 }
 
-// 提灯少女雕塑 — 灯默认常亮。沿用《未尽之路》的做法：按三角面坐标把模型
-// 拆成「灯罩发光区」(自发光材质 + toneMapped:false，配合 Bloom 发光) 与灰色实体，
-// 灯心放一盏 pointLight，再叠加 additive 辉光 sprite 作体积光晕。
-const LANTERN_SCALE = 3.5;
+// 小岛版提灯少女：原 glb 保留在资源目录，但建造物改为更清晰的程序化摆件。
+const LANTERN_SCALE = 1.15;
 function LanternGirl(props: any) {
   const { position, rotation, scale = 1 } = props;
   const groupRef = usePopIn(scale);
-  const { scene: lanternGirlScene } = useGLTF('/models/lantern-girl.glb');
   const glowTex = useMemo(() => getLanternGlowTexture(), []);
-
-  const { bodyGroup, lanternCenter } = useMemo(() => {
-    const result = { bodyGroup: new THREE.Group(), lanternCenter: [0, 0, 0] as [number, number, number] };
-    let centerSet = false;
-    const c = lanternGirlScene.clone(true);
-    c.updateMatrixWorld(true);
-
-    c.traverse((obj) => {
-      const mesh = obj as THREE.Mesh;
-      if (!mesh.isMesh) return;
-      const geo = mesh.geometry;
-      geo.computeVertexNormals();
-      const posAttr = geo.attributes.position;
-      const idx = geo.index;
-      const bodyIndices: number[] = [];
-      const lanternGlowIndices: number[] = [];
-
-      if (idx) {
-        for (let i = 0; i < idx.count; i += 3) {
-          const a = idx.getX(i), b = idx.getX(i + 1), cc = idx.getX(i + 2);
-          const ax = posAttr.getX(a), ay = posAttr.getY(a), az = posAttr.getZ(a);
-          const bx = posAttr.getX(b), by = posAttr.getY(b), bz = posAttr.getZ(b);
-          const cx = posAttr.getX(cc), cy = posAttr.getY(cc), cz = posAttr.getZ(cc);
-
-          const isLanternArea = (ax > 0.25 && az > 0.4) && (bx > 0.25 && bz > 0.4) && (cx > 0.25 && cz > 0.4);
-          if (!isLanternArea) { bodyIndices.push(a, b, cc); continue; }
-
-          const allY = [ay, by, cy];
-          const isBottomFace = allY.every(y => y > 0.28 && y < 0.43);
-          const isTopCap = allY.every(y => y > 0.58);
-          const isPole = allY.every(y => y < 0);
-          const isConnection = allY.every(y => y >= 0 && y <= 0.28);
-          if (isBottomFace || isTopCap || isPole || isConnection) bodyIndices.push(a, b, cc);
-          else lanternGlowIndices.push(a, b, cc);
-        }
-      }
-
-      if (bodyIndices.length > 0) {
-        const bodyGeo = geo.clone();
-        bodyGeo.setIndex(bodyIndices);
-        bodyGeo.computeVertexNormals();
-        const bodyMesh = new THREE.Mesh(bodyGeo, new THREE.MeshStandardMaterial({
-          color: '#8a9099', roughness: 0.95, metalness: 0, flatShading: true,
-        }));
-        bodyMesh.castShadow = true;
-        bodyMesh.receiveShadow = true;
-        result.bodyGroup.add(bodyMesh);
-      }
-
-      if (lanternGlowIndices.length > 0) {
-        const glowGeo = geo.clone();
-        glowGeo.setIndex(lanternGlowIndices);
-        glowGeo.computeVertexNormals();
-        const glowMesh = new THREE.Mesh(glowGeo, new THREE.MeshStandardMaterial({
-          color: '#aaccff', emissive: '#88bbff', emissiveIntensity: 7.5, toneMapped: false,
-        }));
-        glowMesh.castShadow = false;
-        glowMesh.receiveShadow = false;
-        result.bodyGroup.add(glowMesh);
-        if (!centerSet) {
-          glowGeo.computeBoundingBox();
-          const center = new THREE.Vector3();
-          glowGeo.boundingBox!.getCenter(center);
-          result.lanternCenter = [center.x, center.y, center.z];
-          centerSet = true;
-        }
-      }
-    });
-    return result;
-  }, [lanternGirlScene]);
-
   const S = LANTERN_SCALE;
-  const lx = lanternCenter[0] * S;
-  const ly = lanternCenter[1] * S + 0.953 * S;
-  const lz = lanternCenter[2] * S;
+  const lanternPos: [number, number, number] = [0.52 * S, 1.18 * S, 0.18 * S];
+  const faceLightTarget: [number, number, number] = [0.03 * S, 1.58 * S, 0.02 * S];
 
   return (
     <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(rotation?.x || 0, rotation?.y || 0, rotation?.z || 0, 'YXZ')} scale={0} ref={groupRef}>
-      <group position={[0, 0.953 * S, 0]} scale={S}>
-        <primitive object={bodyGroup} />
+      <group scale={S}>
+        <mesh position={[0, 0.08, 0]} receiveShadow>
+          <cylinderGeometry args={[0.42, 0.56, 0.12, 18]} />
+          <meshStandardMaterial color="#d7e0e8" roughness={0.86} metalness={0.03} flatShading />
+        </mesh>
+        <mesh position={[0, 0.52, 0]} rotation={[0.03, 0, -0.04]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.2, 0.34, 0.82, 10]} />
+          <meshStandardMaterial color="#a7b4c1" roughness={0.94} metalness={0.02} flatShading />
+        </mesh>
+        <mesh position={[0, 1.03, -0.01]} rotation={[0, 0, -0.07]} castShadow receiveShadow>
+          <sphereGeometry args={[0.25, 12, 9]} />
+          <meshStandardMaterial color="#7d8b9b" roughness={0.94} metalness={0.02} flatShading />
+        </mesh>
+        <mesh position={[0.02, 1.02, 0.2]} rotation={[0, 0, -0.04]}>
+          <sphereGeometry args={[0.155, 10, 6]} />
+          <meshStandardMaterial color="#dfeaf4" emissive="#8bbcff" emissiveIntensity={0.25} roughness={0.7} flatShading />
+        </mesh>
+        <mesh position={[0.02, 1.065, 0.235]} rotation={[0, 0, -0.04]}>
+          <boxGeometry args={[0.18, 0.018, 0.018]} />
+          <meshBasicMaterial color="#526273" />
+        </mesh>
+        <mesh position={[-0.12, 0.78, 0.02]} rotation={[0.08, 0, 0.3]} castShadow receiveShadow>
+          <capsuleGeometry args={[0.045, 0.35, 3, 8]} />
+          <meshStandardMaterial color="#9aa9b8" roughness={0.92} flatShading />
+        </mesh>
+        <mesh position={[0.24, 0.8, 0.02]} rotation={[0.08, 0, -0.5]} castShadow receiveShadow>
+          <capsuleGeometry args={[0.045, 0.42, 3, 8]} />
+          <meshStandardMaterial color="#9aa9b8" roughness={0.92} flatShading />
+        </mesh>
+        <mesh position={[0.4, 1.1, 0.12]} rotation={[0, 0, 0.06]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.01, 0.01, 0.36, 6]} />
+          <meshStandardMaterial color="#566170" roughness={0.8} flatShading />
+        </mesh>
+        <mesh position={lanternPos} castShadow>
+          <cylinderGeometry args={[0.1, 0.12, 0.26, 8]} />
+          <meshStandardMaterial color="#9fc7ff" emissive="#78aaff" emissiveIntensity={3.6} toneMapped={false} roughness={0.38} />
+        </mesh>
+        <mesh position={[lanternPos[0], lanternPos[1] + 0.16, lanternPos[2]]} castShadow receiveShadow>
+          <coneGeometry args={[0.12, 0.1, 8]} />
+          <meshStandardMaterial color="#5f6b79" roughness={0.75} flatShading />
+        </mesh>
+        <mesh position={[lanternPos[0], lanternPos[1] - 0.15, lanternPos[2]]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.09, 0.12, 0.045, 8]} />
+          <meshStandardMaterial color="#5f6b79" roughness={0.75} flatShading />
+        </mesh>
       </group>
       {/* 体积光晕：两层 additive sprite */}
-      <sprite position={[lx, ly, lz]} scale={[3.2, 3.2, 1]} renderOrder={3}>
-        <spriteMaterial map={glowTex} color="#aaccff" transparent opacity={0.55} depthWrite={false} blending={THREE.AdditiveBlending} />
+      <sprite position={lanternPos} scale={[1.2, 1.2, 1]} renderOrder={3}>
+        <spriteMaterial map={glowTex} color="#aaccff" transparent opacity={0.48} depthWrite={false} blending={THREE.AdditiveBlending} />
       </sprite>
-      <sprite position={[lx, ly, lz]} scale={[7.5, 7.5, 1]} renderOrder={2}>
-        <spriteMaterial map={glowTex} color="#6699cc" transparent opacity={0.22} depthWrite={false} blending={THREE.AdditiveBlending} />
+      <sprite position={lanternPos} scale={[2.8, 2.8, 1]} renderOrder={2}>
+        <spriteMaterial map={glowTex} color="#6699cc" transparent opacity={0.18} depthWrite={false} blending={THREE.AdditiveBlending} />
       </sprite>
-      {/* 灯心实光 — 默认常亮 */}
-      <pointLight position={[lx, ly, lz]} color="#88bbff" intensity={20} distance={18} decay={1.4} castShadow />
+      {/* 灯心实光：冷光从手里的灯笼扩散，并给脸部一个柔和补光方向 */}
+      <pointLight position={lanternPos} color="#88bbff" intensity={3.8} distance={4.5} decay={2} castShadow />
+      <spotLight
+        position={lanternPos}
+        target-position={faceLightTarget}
+        color="#c7ddff"
+        intensity={1.9}
+        distance={3.2}
+        angle={0.65}
+        penumbra={0.78}
+        decay={2}
+      />
     </group>
   );
 }
@@ -4231,6 +4209,12 @@ export function SpiritTree(props: any) {
   const leavesRef = useRef<any>(null);
   const particleMeshRef = useRef<THREE.InstancedMesh>(null);
   const grassHealth = useGameStore(state => state.grassHealth);
+  const { showHover, isHoverLeaving, keepHoverAlive, forceClose } = useHoverInteraction();
+  const pray = () => {
+    // 神树不摇动，祈愿的回应交给：辞语 + 苏醒度 + 叙事碎片揭示
+    useGameStore.getState().pray();
+    forceClose();
+  };
   const particleCount = 20;
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
@@ -4291,7 +4275,38 @@ export function SpiritTree(props: any) {
   });
 
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
+    <group
+      position={[props.position.x, props.position.y, props.position.z]}
+      rotation={[0, props.rotation.y, 0]}
+      scale={0}
+      ref={ref}
+      onPointerOver={(e: any) => {
+        if (useGameStore.getState().selectedTool === 'none') { e.stopPropagation(); document.body.style.cursor = 'pointer'; keepHoverAlive(); }
+      }}
+      onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+    >
+      {/* 祈愿按钮 —— 悬停浮现的高级气泡 */}
+      <HoverButton
+        showHover={showHover} isHoverLeaving={isHoverLeaving} keepHoverAlive={keepHoverAlive} yOffset={6.0}
+        iconSvg={
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {/* 双手合十：左手 */}
+            <path d="M12 3.8C9.5 6.2 7.5 9.6 8 14.4c.2 2 1.6 3.4 4 3.4" style={{ animation: 'seatDropIn 0.6s 0.1s both cubic-bezier(0.34,1.56,0.64,1)' }} />
+            {/* 右手（镜像） */}
+            <path d="M12 3.8C14.5 6.2 16.5 9.6 16 14.4c-.2 2-1.6 3.4-4 3.4" style={{ animation: 'seatDropIn 0.6s 0.22s both cubic-bezier(0.34,1.56,0.64,1)' }} />
+            {/* 两掌相贴的中缝 */}
+            <path d="M12 4.8v13" />
+            {/* 拇指交叠 */}
+            <path d="M8.7 12.4c2.2.5 4.4.5 6.6 0" />
+            {/* 手腕收拢 */}
+            <path d="M9.2 17.6c.6 1.7 1.7 2.8 2.8 2.8s2.2-1.1 2.8-2.8" />
+            {/* 祈愿光点 */}
+            <path d="M12 2.1v.7M9.7 3.1l.3.6M14.3 3.1l-.3.6" style={{ animation: 'sparkPop 0.5s 0.3s both', transformOrigin: 'center' }} />
+          </svg>
+        }
+        onClick={(e: any) => { e.stopPropagation(); AudioSystem.playClick(); pray(); }}
+      />
+
       {/* Massive Trunk */}
       <mesh position={[0, 1.5, 0]} castShadow>
         <cylinderGeometry args={[0.5, 0.8, 3, 7]} />
@@ -4317,7 +4332,7 @@ export function SpiritTree(props: any) {
           );
         })}
       </group>
-      
+
       {/* Ecology-responsive Floating Particles */}
       <instancedMesh ref={particleMeshRef} args={[undefined, undefined, particleCount]}>
         <dodecahedronGeometry args={[0.3, 0]} />
@@ -4608,5 +4623,3 @@ export function Assets() {
     </MarineAssetIndexProvider>
   );
 }
-
-useGLTF.preload("/models/lantern-girl.glb");

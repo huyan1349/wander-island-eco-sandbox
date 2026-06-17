@@ -450,7 +450,13 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
   };
 
   return (
-    <div className={embedded ? "flex flex-col h-full" : "hand-drawn-panel w-[700px] max-h-[85vh] p-0 flex flex-col animate-slide-up ring-1 overflow-hidden"}>
+    <div className={embedded ? "flex flex-col h-full" : "hand-drawn-panel w-[700px] h-[550px] max-h-[85vh] p-0 flex flex-col animate-slide-up ring-1 relative"}>
+      {!embedded && (
+        <button onClick={() => { AudioSystem.playClose(); onClose(); }} className="hand-drawn-close-btn" title="关闭">
+           <X size={24} strokeWidth={3} />
+        </button>
+      )}
+      <div className="flex w-full h-full flex-col overflow-hidden" style={{ borderRadius: 'inherit' }}>
       {/* Header */}
       {!embedded && (
       <div className="flex justify-between items-center border-b-2 border-slate-800 p-8 pb-6">
@@ -465,13 +471,10 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
           >
             <Pen size={14} /> 写信
           </button>
-          <button onClick={onClose} className="hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200">
-            <X size={24} strokeWidth={3} className="text-slate-800" />
-          </button>
         </div>
       </div>
       )}
-<div className={embedded ? "flex-1 overflow-y-auto custom-scrollbar p-6" : "flex-1 overflow-y-auto p-8 custom-scrollbar"}>
+      <div className={embedded ? "flex-1 overflow-y-auto custom-scrollbar p-6" : "flex-1 overflow-y-auto p-8 custom-scrollbar"}>
         {/* Compose Mode */}
         {isWriting ? (
           <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4">
@@ -744,6 +747,7 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
             )}
           </div>
         )}
+      </div>
       </div>
     </div>
   );
