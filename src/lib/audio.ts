@@ -28,6 +28,7 @@ export class AudioSystem {
     private static bgmPlaylist: string[] = []; // ordered playlist URLs
     private static bgmShuffle = false;
     private static bgmAutoNextTriggered = false; // prevent double trigger
+    private static bgmWatchTimer: ReturnType<typeof setInterval> | null = null;
 
     // 交互音效去重：记录最近一次"点击类"音效时间，全局监听据此避免与组件内调用重复发声
     static lastPlayAt = 0;
@@ -216,6 +217,7 @@ export class AudioSystem {
     }
 
     static stopBGM() {
+        this.stopBGMWatch();
         if (!this.bgmEl || !this.isBgmPlaying) return;
         
         this.fadeBGMOUT().then(() => {
@@ -227,6 +229,7 @@ export class AudioSystem {
     }
 
     static stopAllNow() {
+        this.stopBGMWatch();
         if (this.bgmFadeRAF) {
             cancelAnimationFrame(this.bgmFadeRAF);
             this.bgmFadeRAF = null;
@@ -280,6 +283,7 @@ export class AudioSystem {
                 this.currentBgmUrl = url;
                 this.fadeBGMIN();
                 this.emitBGMChange();
+                this.startBGMWatch();
             }).catch(() => {
                 this.bgmAutoplayBlocked = true;
             });
@@ -288,6 +292,7 @@ export class AudioSystem {
             this.currentBgmUrl = url;
             this.fadeBGMIN();
             this.emitBGMChange();
+            this.startBGMWatch();
         }
     }
 
@@ -312,6 +317,28 @@ export class AudioSystem {
     static setPlaylist(urls: string[], shuffle = false) {
         this.bgmPlaylist = [...urls];
         this.bgmShuffle = shuffle;
+    }
+
+    /** Start internal watcher that auto-advances when song ends */
+    private static startBGMWatch() {
+        this.stopBGMWatch();
+        this.bgmAutoNextTriggered = false;
+        this.bgmWatchTimer = setInterval(() => {
+            if (!this.bgmEl || !this.isBgmPlaying) return;
+            if (this.bgmEl.ended || (this.bgmEl.duration > 0 && this.bgmEl.currentTime >= this.bgmEl.duration - 0.2)) {
+                if (!this.bgmAutoNextTriggered) {
+                    this.bgmAutoNextTriggered = true;
+                    this.playNext();
+                }
+            }
+        }, 500);
+    }
+
+    private static stopBGMWatch() {
+        if (this.bgmWatchTimer) {
+            clearInterval(this.bgmWatchTimer);
+            this.bgmWatchTimer = null;
+        }
     }
 
     /** Emit a global event so UI components can sync */
