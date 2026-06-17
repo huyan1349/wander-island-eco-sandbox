@@ -17,7 +17,8 @@ import {
   Maximize2,
   Undo2,
   Redo2,
-  TreePalm
+  TreePalm,
+  Sun
 } from "lucide-react";
 
 import { PlayerPanel } from "./components/PlayerPanel";
@@ -44,7 +45,6 @@ import {
   useAuthBootstrap,
   useAutosave,
   useCloudIslandSync,
-  useDemoTitleIsland,
   useEcologyAudioSync,
   useEcologyLoop,
   useGiftClaimQuery,
@@ -149,6 +149,21 @@ export default function App() {
   const touchTooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    const resetToPreload = () => {
+      setAppLoaded(false);
+      setIsImmersive(false);
+      setIsFloating(false);
+      setTimer3D(false);
+      setAutoRotateOn(true);
+      setGiftClaimId(null);
+      setActiveCategory(null);
+      setEnvMenuOpen(false);
+    };
+    window.addEventListener('wander:reset-app', resetToPreload);
+    return () => window.removeEventListener('wander:reset-app', resetToPreload);
+  }, []);
+
+  useEffect(() => {
     const hasCoarse = window.matchMedia('(pointer: coarse)').matches;
     const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     setIsTouch(hasCoarse || hasTouch);
@@ -173,7 +188,6 @@ export default function App() {
   useUnreadCountPolling(authUser, screen, setUnreadCount);
   useCloudIslandSync(authUser, islandId);
   useAudioBootstrap(appLoaded);
-  useDemoTitleIsland(appLoaded);
   useScreenBgm(screen);
   useAutoFullscreen(screen);
   useUndoRedoHotkeys(screen);
@@ -662,9 +676,9 @@ export default function App() {
             <div className="w-full h-px bg-slate-200" />
 
             {/* Time */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                 <span className="text-xs text-slate-700 font-bold">时间</span>
+            <div id="guide-sundial" className="relative h-12 flex flex-col justify-end bg-[#f1f5f9] border-t border-slate-200">
+                <div className="absolute top-1 left-2 flex items-center gap-1.5 opacity-80 pointer-events-none">
+                 <Sun size={12} className="text-amber-500" />
                  <span className="font-mono text-xs font-bold text-slate-800">{Math.floor(timeOfDay).toString().padStart(2, '0')}:00</span>
               </div>
               <input

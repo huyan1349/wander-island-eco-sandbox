@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { AudioSystem } from '../lib/audio';
-import { loadPresetIsland } from '../utils/islandIO';
+import { loadPresetIsland, ensureHomeSlot } from '../utils/islandIO';
 import { Plus, Trash2, ArrowLeft, TreePine, Mountain, Waves, Bird, Fish, Cloud, Sun, Globe, Check } from 'lucide-react';
 
 export const SaveSelectScreen: React.FC = () => {
@@ -23,17 +23,17 @@ export const SaveSelectScreen: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const indexStr = localStorage.getItem('eco_saves_index');
-        if (indexStr) {
-            setSaves(JSON.parse(indexStr));
-        }
-        // Load server island mapping
-        const mapStr = localStorage.getItem('wander_server_island_map');
-        if (mapStr) {
-            try {
-                setServerIslandMap(JSON.parse(mapStr));
-            } catch {}
-        }
+        (async () => {
+            // 零存档时把预置岛落地为「<玩家>的岛屿」，保证存档列表至少有一座可玩的默认岛
+            await ensureHomeSlot();
+            const indexStr = localStorage.getItem('eco_saves_index');
+            if (indexStr) setSaves(JSON.parse(indexStr));
+            // Load server island mapping
+            const mapStr = localStorage.getItem('wander_server_island_map');
+            if (mapStr) {
+                try { setServerIslandMap(JSON.parse(mapStr)); } catch {}
+            }
+        })();
     }, []);
 
     const handleCreateNew = () => {
@@ -62,15 +62,23 @@ export const SaveSelectScreen: React.FC = () => {
         setHermitLoading(false);
     };
 
-    const handleDelete = (id: string, e: React.MouseEvent) => {
+    const handleDelete = async (id: string, e: React.MouseEvent) => {
         AudioSystem.playConfirm();
         e.stopPropagation();
-        if (confirm("Are you sure you want to delete this island? This cannot be undone.")) {
-            const newSaves = saves.filter(s => s.id !== id);
-            setSaves(newSaves);
-            localStorage.setItem('eco_saves_index', JSON.stringify(newSaves));
-            localStorage.removeItem(`eco_save_${id}`);
+        if (!confirm("确定删除这座岛？此操作不可撤销。")) return;
+        // 已部署的岛要同时删服务器副本，否则登录后会被同步回来（删不掉的根因）
+        const serverId = serverIslandMap[id];
+        if (serverId) {
+            try { await api.deleteIsland(serverId); } catch {}
+            const nextMap = { ...serverIslandMap };
+            delete nextMap[id];
+            setServerIslandMap(nextMap);
+            localStorage.setItem('wander_server_island_map', JSON.stringify(nextMap));
         }
+        const newSaves = saves.filter(s => s.id !== id);
+        setSaves(newSaves);
+        localStorage.setItem('eco_saves_index', JSON.stringify(newSaves));
+        localStorage.removeItem(`eco_save_${id}`);
     };
 
     const handleDeploy = async (saveId: string, saveName: string, e: React.MouseEvent) => {

@@ -28,6 +28,66 @@ export async function loadPresetIsland(url: string) {
   applyIslandSnapshot(await res.json());
 }
 
+// 标题开屏背景：永远展示预置岛 preset-demo（瞬时快照，不建存档、不动玩家存档、不设 islandId）。
+// 与玩家自己的存档/登录完全解耦——「开始旅程」进游戏时才加载玩家真正的岛。
+export async function showTitleBackdrop(): Promise<void> {
+  if (useGameStore.getState().screen !== 'TITLE') return;
+  try {
+    const res = await fetch('/preset-demo.json?v=2');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (useGameStore.getState().screen !== 'TITLE') return; // await 后再判，避免覆盖玩家已发生的导航
+    applyIslandSnapshot(data);
+  } catch {
+    /* 背景加载失败无所谓 */
+  }
+}
+
+// 默认岛槽位 id（固定，避免重复落地）
+const HOME_ISLAND_ID = 'home';
+let seedPromise: Promise<void> | null = null;
+
+// 把预置岛(preset-demo)落地为唯一一个真实存档槽，名「<玩家>的岛屿」。仅在零存档时调用。
+async function seedPresetHome(): Promise<void> {
+  const store = useGameStore.getState();
+  const res = await fetch('/preset-demo.json?v=2');
+  if (!res.ok) throw new Error('preset-demo fetch failed');
+  const d = await res.json();
+  const name = `${store.authUser?.username || store.playerName || '漫游者'}的岛屿`;
+  const slot = { id: HOME_ISLAND_ID, name, lastPlayed: Date.now(), ecoPoints: d.ecoPoints ?? 200, playtime: d.stats?.playtime ?? 0 };
+  localStorage.setItem('eco_saves_index', JSON.stringify([slot]));
+  localStorage.setItem(`eco_save_${HOME_ISLAND_ID}`, JSON.stringify({
+    timeOfDay: d.timeOfDay ?? 6,
+    weather: d.weather ?? 'sunny',
+    assets: d.assets ?? [],
+    grassHealth: d.grassHealth ?? 100,
+    deerCount: d.deerCount ?? 0,
+    wolfCount: d.wolfCount ?? 0,
+    playerName: store.playerName,
+    playerAvatar: store.playerAvatar,
+    playerXP: d.playerXP ?? 0,
+    playerLevel: d.playerLevel ?? 1,
+    ecoPoints: d.ecoPoints ?? 200,
+    awakening: d.awakening ?? 0,
+    unlockedAssets: d.unlockedAssets,
+    stats: d.stats ?? { playtime: 0, itemsPlaced: d.assets?.length || 0 },
+    terrainPositions: d.terrainPositions ?? null,
+    terrainTypes: d.terrainTypes ?? null,
+  }));
+}
+
+// 确保存档列表里至少有「默认岛」：零存档时把预置岛(preset-demo)落地为一个真实存档槽
+// （名「<玩家>的岛屿」）。只落地、不加载、不切屏——供存档界面进入前调用。并发共用一次落地。
+export async function ensureHomeSlot(): Promise<void> {
+  if (useGameStore.getState().getSavedSlots().length > 0) return;
+  if (!seedPromise) {
+    seedPromise = seedPresetHome()
+      .catch((e) => { console.error('默认岛落地失败', e); })
+      .finally(() => { seedPromise = null; });
+  }
+  await seedPromise;
+}
+
 // 把当前小岛序列化成游戏可读取的数据对象（与存档格式一致）
 export function serializeIsland() {
   const s = useGameStore.getState();

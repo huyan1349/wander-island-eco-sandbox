@@ -199,6 +199,28 @@ export class AudioSystem {
         });
     }
 
+    static stopAllNow() {
+        if (this.bgmFadeRAF) {
+            cancelAnimationFrame(this.bgmFadeRAF);
+            this.bgmFadeRAF = null;
+        }
+        this.bgmSwitchToken++;
+        this.bgmCache.forEach((audio) => {
+            audio.pause();
+            audio.currentTime = 0;
+            audio.src = '';
+            audio.load();
+        });
+        this.bgmCache.clear();
+        this.bgmEl = null;
+        this.isBgmPlaying = false;
+        this.currentBgmUrl = null;
+        this.bgmAutoplayBlocked = false;
+        if (this.rainGain) this.rainGain.gain.value = 0;
+        if (this.windGain) this.windGain.gain.value = 0;
+        if (this.waterGain) this.waterGain.gain.value = 0;
+    }
+
     static async switchBGM(url: string) {
         if (this.currentBgmUrl === url && this.isBgmPlaying) return;
 

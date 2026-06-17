@@ -20,6 +20,7 @@ export const LoginScreen: React.FC = () => {
   const [nameStatus, setNameStatus] = useState<NameStatus>('idle');
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [privacyWarning, setPrivacyWarning] = useState(false);
 
   // 注册模式下实时校验用户名是否可用（防抖）
   useEffect(() => {
@@ -42,6 +43,14 @@ export const LoginScreen: React.FC = () => {
     e.preventDefault();
     AudioSystem.playConfirm();
     setError('');
+
+    // 注册时未同意隐私政策 → 提醒
+    if (mode === 'register' && !privacyAgreed) {
+      setPrivacyWarning(true);
+      AudioSystem.playClose();
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -168,20 +177,27 @@ export const LoginScreen: React.FC = () => {
 
             {/* Privacy Agreement (register only) */}
             {mode === 'register' && (
-              <label className="flex items-start gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={privacyAgreed}
-                  onChange={(e) => { setPrivacyAgreed(e.target.checked); AudioSystem.playToggle(); }}
-                  className="mt-0.5 w-4 h-4 accent-amber-700 shrink-0"
-                />
-                <span className="text-[11px] text-slate-500 leading-relaxed">
-                  我已阅读并同意
-                  <button type="button" onClick={() => { setShowPrivacy(true); AudioSystem.playClick(); }} className="text-amber-700 font-bold underline underline-offset-2 hover:text-amber-600 mx-0.5">
-                    《流浪岛隐私政策》
-                  </button>
-                </span>
-              </label>
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={privacyAgreed}
+                    onChange={(e) => { setPrivacyAgreed(e.target.checked); setPrivacyWarning(false); AudioSystem.playToggle(); }}
+                    className="mt-0.5 w-4 h-4 accent-amber-700 shrink-0"
+                  />
+                  <span className="text-[11px] text-slate-500 leading-relaxed">
+                    我已阅读并同意
+                    <button type="button" onClick={() => { setShowPrivacy(true); AudioSystem.playClick(); }} className="text-amber-700 font-bold underline underline-offset-2 hover:text-amber-600 mx-0.5">
+                      《流浪岛隐私政策》
+                    </button>
+                  </span>
+                </label>
+                {privacyWarning && !privacyAgreed && (
+                  <p className="text-[11px] text-red-500 font-bold pl-7 animate-in fade-in slide-in-from-top-1">
+                    请先阅读并同意《流浪岛隐私政策》后再注册
+                  </p>
+                )}
+              </div>
             )}
 
             {/* Submit */}

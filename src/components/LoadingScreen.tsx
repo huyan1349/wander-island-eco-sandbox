@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AudioSystem } from '../lib/audio';
-import { Maximize2 } from 'lucide-react';
+import { Maximize2, Headphones, Chrome } from 'lucide-react';
 import { TRACKS, renderTrackTexture } from './ui/musicData';
 
 interface LoadingScreenProps {
   onReady: () => void;
 }
 
-type Phase = 'install' | 'verify' | 'ready';
+type Phase = 'intro' | 'install' | 'verify' | 'ready';
 
 interface InstallItem {
   id: string;
@@ -123,9 +123,14 @@ function MusicCardPanel() {
 
   return (
     <div className="relative flex flex-col items-center justify-center h-full w-full select-none overflow-hidden">
-      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 55%, rgba(125,211,252,0.08), transparent 55%)' }} />
-      <p className="hand-drawn-title text-2xl text-white mb-1 -rotate-1 relative z-10">音乐长廊</p>
-      <p className="text-white/30 text-[9px] font-mono tracking-[0.3em] uppercase mb-8 relative z-10">{n} TRACKS · 点击卡片查看</p>
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 55%, rgba(253,230,138,0.15), transparent 55%)' }} />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-[80px] flex flex-col items-center">
+        <p className="hand-drawn-title text-2xl text-slate-200 mb-1 -rotate-1 relative z-10 drop-shadow-md">音乐长廊</p>
+        <div className="w-12 h-1 bg-gradient-to-r from-transparent via-slate-300/50 to-transparent absolute bottom-0 left-1/2 -translate-x-1/2 -rotate-1"></div>
+        <p className="text-[9px] tracking-[0.3em] font-mono text-slate-300/80 font-bold mt-2 uppercase">
+          {TRACKS.length} TRACKS <span className="mx-1.5 opacity-50">•</span> 点击卡片查看
+        </p>
+      </div>
 
       <div
         className="relative flex items-end justify-center"
@@ -185,27 +190,34 @@ function MusicCardPanel() {
       </div>
 
       {selected !== null && (
-        <div
-          className="absolute inset-0 z-[220] flex flex-col items-center justify-center gap-3"
-          onClick={(e) => { e.stopPropagation(); closeDetail(); }}
-          style={{
-            background: `rgba(2,6,23,${detailOpen ? 0.72 : 0})`,
-            backdropFilter: `blur(${detailOpen ? 8 : 0}px)`,
-            WebkitBackdropFilter: `blur(${detailOpen ? 8 : 0}px)`,
-            transition: 'background 0.3s ease, backdrop-filter 0.3s ease',
-          }}
-        >
+        <>
+          {/* Full-screen backdrop to prevent hard split lines */}
           <div
+            className="fixed inset-0 z-[210]"
+            onClick={(e) => { e.stopPropagation(); closeDetail(); }}
             style={{
-              perspective: 1200,
-              transform: detailOpen
-                ? 'translate(0px, 0px) scale(1)'
-                : `translate(${(selected - mid) * SPREAD_X}px, ${30 + Math.abs(selected - mid) * SPREAD_Y}px) rotate(${(selected - mid) * SPREAD_ROT}deg) scale(0.6)`,
-              opacity: detailOpen ? 1 : 0,
-              transition: 'transform 0.5s cubic-bezier(0.22,1,0.36,1), opacity 0.45s cubic-bezier(0.22,1,0.36,1)',
+              background: `rgba(252,250,245,${detailOpen ? 0.75 : 0})`,
+              backdropFilter: `blur(${detailOpen ? 12 : 0}px)`,
+              WebkitBackdropFilter: `blur(${detailOpen ? 12 : 0}px)`,
+              transition: 'background 0.3s ease, backdrop-filter 0.3s ease',
             }}
-            onClick={(e) => e.stopPropagation()}
+          />
+          {/* Left-aligned card container */}
+          <div
+            className="absolute inset-0 z-[220] flex flex-col items-center justify-center gap-3 pointer-events-none"
           >
+            <div
+              className="pointer-events-auto"
+              style={{
+                perspective: 1200,
+                transform: detailOpen
+                  ? 'translate(0px, 0px) scale(1)'
+                  : `translate(${(selected - mid) * SPREAD_X}px, ${30 + Math.abs(selected - mid) * SPREAD_Y}px) rotate(${(selected - mid) * SPREAD_ROT}deg) scale(0.6)`,
+                opacity: detailOpen ? 1 : 0,
+                transition: 'transform 0.5s cubic-bezier(0.22,1,0.36,1), opacity 0.45s cubic-bezier(0.22,1,0.36,1)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
             <div
               onClick={() => { playClick(); setFlipped((f) => !f); }}
               className="relative w-60 h-[360px] cursor-pointer"
@@ -247,13 +259,14 @@ function MusicCardPanel() {
               </div>
             </div>
           </div>
-          <p className="text-white/55 text-[10px] font-mono tracking-[0.25em] pointer-events-none" style={{ opacity: detailOpen ? 1 : 0, transition: 'opacity 0.3s' }}>
+          <p className="text-slate-600 text-[10px] font-mono tracking-[0.25em] pointer-events-none" style={{ opacity: detailOpen ? 1 : 0, transition: 'opacity 0.3s' }}>
             {flipped ? '点击卡片 · 翻回正面' : '点击卡片 · 查看背面'}
           </p>
-          <p className="text-white/25 text-[9px] font-mono tracking-[0.2em] pointer-events-none" style={{ opacity: detailOpen ? 1 : 0, transition: 'opacity 0.3s 0.1s' }}>
+          <p className="text-slate-400 text-[9px] font-mono tracking-[0.2em] pointer-events-none" style={{ opacity: detailOpen ? 1 : 0, transition: 'opacity 0.3s 0.1s' }}>
             点击空白处收起
           </p>
         </div>
+        </>
       )}
     </div>
   );
@@ -261,7 +274,7 @@ function MusicCardPanel() {
 
 // ─── Main Loading Screen ───
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
-  const [phase, setPhase] = useState<Phase>('install');
+  const [phase, setPhase] = useState<Phase>('intro');
   const [items, setItems] = useState<InstallItem[]>([
     { id: 'engine', label: 'AUDIO ENGINE', sublabel: 'Web Audio API', status: 'pending', progress: 0 },
     ...BGM_TRACKS.map((t, i) => ({ id: `bgm${i}`, label: `BGM — ${t.name}`, sublabel: t.sub, status: 'pending' as const, progress: 0 })),
@@ -312,6 +325,16 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
   })();
 
   useEffect(() => {
+    if (phase === 'intro') {
+      const timer = setTimeout(() => {
+        setPhase('install');
+      }, 6200);
+      return () => clearTimeout(timer);
+    }
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== 'install') return;
     const runInstall = async () => {
       updateItem('engine', { status: 'installing', progress: 10 });
       try { AudioSystem.init(); } catch {}
@@ -425,7 +448,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
     };
 
     runInstall();
-  }, [updateItem, items.length]);
+  }, [phase, updateItem, items.length]);
 
   const requestFullscreen = () => {
     const el = document.documentElement;
@@ -460,13 +483,27 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
 
   return (
     <div
-      className={`absolute inset-0 z-[200] bg-[#08090c] flex select-none
+      className={`absolute inset-0 z-[200] bg-slate-950/40 backdrop-blur-md flex select-none
         transition-opacity duration-800 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}
     >
-      {/* Ambient glow */}
-      <div className="absolute inset-0 pointer-events-none" style={{
-        background: 'radial-gradient(ellipse 60% 50% at 50% 45%, rgba(30,40,60,0.25) 0%, transparent 70%)',
-      }} />
+      {phase === 'intro' ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-14 pointer-events-none" style={{ animation: 'introFadeOut 1.2s cubic-bezier(0.4, 0, 0.2, 1) 5.2s forwards' }}>
+          <div className="flex flex-col items-center gap-6 text-white" style={{ animation: 'introFadeIn 1.5s cubic-bezier(0.4, 0, 0.2, 1) 0.5s both' }}>
+            <Headphones size={32} strokeWidth={1.5} className="opacity-90 drop-shadow-md" />
+            <p className="text-[14px] tracking-[0.3em] font-medium drop-shadow-md">推荐佩戴耳机以获得沉浸体验</p>
+          </div>
+          <div className="w-12 h-[2px] bg-white/40 rounded-full" style={{ animation: 'introFadeIn 1.5s cubic-bezier(0.4, 0, 0.2, 1) 1.5s both' }} />
+          <div className="flex flex-col items-center gap-6 text-white" style={{ animation: 'introFadeIn 1.5s cubic-bezier(0.4, 0, 0.2, 1) 2.5s both' }}>
+            <Chrome size={32} strokeWidth={1.5} className="opacity-90 drop-shadow-md" />
+            <p className="text-[14px] tracking-[0.3em] font-medium drop-shadow-md">建议使用 Chrome 浏览器游玩</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Ambient glow */}
+          <div className="absolute inset-0 pointer-events-none" style={{
+            background: 'radial-gradient(ellipse 60% 50% at 50% 45%, rgba(253,230,138,0.2) 0%, transparent 70%)',
+          }} />
 
       {/* ─── LEFT PANEL: Music Cards (Desktop only) ─── */}
       {!isTouch && (
@@ -478,12 +515,12 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
       {/* ─── MOBILE WARNING BANNER ─── */}
       {isTouch && (
         <div className="absolute top-0 left-0 right-0 z-50" style={{ animation: 'fadeIn 0.5s ease' }}>
-          <div className="mx-4 mt-4 px-4 py-3.5 rounded-xl border border-amber-500/40 bg-amber-950/40 backdrop-blur-md">
+          <div className="mx-4 mt-4 px-4 py-3.5 rounded-xl border border-amber-500/20 bg-amber-50/80 backdrop-blur-md shadow-sm">
             <div className="flex items-start gap-3">
-              <span className="text-amber-400 text-lg leading-none mt-0.5">⚠</span>
+              <span className="text-amber-500 text-lg leading-none mt-0.5">⚠</span>
               <div className="flex-1">
-                <p className="text-amber-200 text-[14px] font-semibold leading-snug">移动端尚未优化完成</p>
-                <p className="text-amber-400/70 text-[12px] mt-1 leading-relaxed">建议使用电脑端访问以获得最佳体验</p>
+                <p className="text-amber-800 text-[14px] font-semibold leading-snug">移动端尚未优化完成</p>
+                <p className="text-amber-700/70 text-[12px] mt-1 leading-relaxed">建议使用电脑端访问以获得最佳体验</p>
               </div>
             </div>
           </div>
@@ -497,24 +534,24 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
           {/* Header — always visible */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src="/title/island-outline.svg" alt="" className="w-8 h-8 opacity-25" />
+              <img src="/title/island-outline.svg" alt="" className="w-8 h-8 opacity-60 drop-shadow-sm filter contrast-125 brightness-150 mix-blend-screen" />
               <div className="flex flex-col">
-                <span className="text-white/25 text-[10px] tracking-[0.5em] uppercase font-mono">Wander Island</span>
-                <span className="text-white/12 text-[8px] tracking-[0.15em] font-mono mt-0.5">
+                <span className="text-slate-200 text-[10px] tracking-[0.5em] uppercase font-mono font-bold">Wander Island</span>
+                <span className="text-slate-300 text-[8px] tracking-[0.15em] font-mono mt-0.5">
                   {isReady ? 'READY' : 'ENVIRONMENT SETUP'}
                 </span>
               </div>
             </div>
             <div className="flex items-center gap-3">
               {phase === 'verify' && (
-                <span className="text-emerald-400/50 text-[9px] tracking-[0.2em] font-mono" style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>
+                <span className="text-emerald-500/80 text-[9px] tracking-[0.2em] font-mono font-bold" style={{ animation: 'pulse 1.5s ease-in-out infinite' }}>
                   VERIFYING
                 </span>
               )}
               {isReady && (
-                <span className="text-emerald-400/60 text-[9px] tracking-[0.2em] font-mono">VERIFIED</span>
+                <span className="text-emerald-600 text-[9px] tracking-[0.2em] font-mono font-bold">VERIFIED</span>
               )}
-              <span className="text-white/25 text-[14px] tracking-[0.15em] font-mono tabular-nums font-extralight">
+              <span className="text-slate-200 text-[14px] tracking-[0.15em] font-mono tabular-nums font-bold drop-shadow-sm">
                 {totalProgress}%
               </span>
             </div>
@@ -523,25 +560,25 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
           {/* Status text / Welcome text */}
           <div className="min-h-[22px]">
             {!isReady ? (
-              <p className="text-white/50 text-[12px] tracking-[0.03em] truncate" key={statusText} style={{ animation: 'fadeIn 0.3s ease' }}>
+              <p className="text-slate-300 text-[12px] tracking-[0.03em] truncate drop-shadow-sm" key={statusText} style={{ animation: 'fadeIn 0.3s ease' }}>
                 {statusText}
               </p>
             ) : (
               <div className="flex flex-col items-center gap-2 pt-4" style={{ animation: 'fadeIn 0.5s ease' }}>
                 <p
-                  className="text-white/25 text-[14px] tracking-[0.4em] font-light"
+                  className="text-slate-300 text-[14px] tracking-[0.4em] font-medium drop-shadow-sm"
                   style={{ animation: 'welcomeBlur 1s ease 0s both' }}
                 >
                   欢迎来到
                 </p>
                 <p
-                  className="hand-drawn-title text-5xl text-white/70 -rotate-1"
+                  className="hand-drawn-title text-5xl text-white -rotate-1 drop-shadow-md"
                   style={{ animation: 'welcomeBlur 1s ease 0.3s both' }}
                 >
                   流浪岛
                 </p>
                 <p
-                  className="text-white/15 text-[9px] tracking-[0.7em] uppercase font-mono mt-2"
+                  className="text-slate-300 text-[9px] tracking-[0.7em] uppercase font-mono mt-2 font-bold drop-shadow-sm"
                   style={{ animation: 'welcomeBlur 1s ease 0.6s both' }}
                 >
                   WANDER ISLAND
@@ -551,16 +588,17 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
           </div>
 
           {/* Progress bar */}
-          <div className="w-full h-[2px] bg-white/[0.06] rounded-full overflow-hidden">
+          <div className="w-full h-[3px] bg-stone-200 rounded-full overflow-hidden shadow-inner">
             <div
               className="h-full rounded-full transition-all duration-500 ease-out"
               style={{
                 width: `${totalProgress}%`,
                 background: isReady
-                  ? 'linear-gradient(90deg, rgba(52,211,153,0.5), rgba(52,211,153,0.7))'
+                  ? 'linear-gradient(90deg, #34d399, #10b981)'
                   : phase === 'verify'
-                  ? 'linear-gradient(90deg, rgba(52,211,153,0.4), rgba(52,211,153,0.6))'
-                  : 'rgba(255,255,255,0.25)',
+                  ? 'linear-gradient(90deg, #6ee7b7, #34d399)'
+                  : '#94a3b8',
+                boxShadow: isReady ? '0 0 10px rgba(52,211,153,0.4)' : 'none'
               }}
             />
           </div>
@@ -572,23 +610,23 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
                 <div
                   key={item.id}
                   className={`flex items-center gap-3 py-[5px] transition-all duration-200 ${
-                    item.status === 'done' ? 'opacity-30' :
+                    item.status === 'done' ? 'opacity-40' :
                     item.status === 'installing' ? 'opacity-100' :
-                    item.status === 'fail' ? 'opacity-50' : 'opacity-15'
+                    item.status === 'fail' ? 'opacity-80 text-red-500' : 'opacity-30'
                   }`}
                 >
                   <div className="w-2.5 flex-shrink-0 flex items-center justify-center">
-                    {item.status === 'done' && <div className="w-[5px] h-[5px] rounded-full bg-white/50" />}
-                    {item.status === 'installing' && <div className="w-[5px] h-[5px] rounded-full bg-white/70" style={{ animation: 'pulse 1s ease-in-out infinite' }} />}
-                    {item.status === 'pending' && <div className="w-[3px] h-[3px] rounded-full bg-white/15" />}
-                    {item.status === 'fail' && <div className="w-[5px] h-[5px] rounded-full bg-red-400/50" />}
+                    {item.status === 'done' && <div className="w-[6px] h-[6px] rounded-full bg-emerald-400" />}
+                    {item.status === 'installing' && <div className="w-[6px] h-[6px] rounded-full bg-sky-400" style={{ animation: 'bouncingDot 1s ease-in-out infinite' }} />}
+                    {item.status === 'pending' && <div className="w-[4px] h-[4px] rounded-full bg-slate-300" />}
+                    {item.status === 'fail' && <div className="w-[6px] h-[6px] rounded-full bg-red-400" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[10px] tracking-[0.12em] font-mono text-white/60 truncate">{item.label}</div>
+                    <div className="text-[10px] tracking-[0.12em] font-mono text-slate-300 truncate font-semibold drop-shadow-sm">{item.label}</div>
                   </div>
                   <div className="w-8 flex-shrink-0 text-right">
-                    {item.status === 'done' && <span className="text-[8px] font-mono text-white/20">OK</span>}
-                    {item.status === 'installing' && <span className="text-[8px] font-mono text-white/25 tabular-nums">{Math.round(item.progress)}%</span>}
+                    {item.status === 'done' && <span className="text-[8px] font-mono text-emerald-600 font-bold">OK</span>}
+                    {item.status === 'installing' && <span className="text-[8px] font-mono text-sky-600 font-bold tabular-nums">{Math.round(item.progress)}%</span>}
                   </div>
                 </div>
               ))}
@@ -597,9 +635,9 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
 
           {/* Status line / Enter button */}
           {!isReady ? (
-            <div className="flex items-center justify-between text-[9px] font-mono text-white/15 tracking-[0.1em]">
+            <div className="flex items-center justify-between text-[9px] font-mono text-slate-300 font-bold tracking-[0.1em] drop-shadow-sm">
               <span>
-                {phase === 'install' && `${doneCount}/${items.length} installed`}
+                {phase === 'install' && `${items.filter(i => i.status === 'done').length}/${items.length} installed`}
                 {phase === 'verify' && `Verifying ${verifyCount}/${items.length}...`}
               </span>
               <span>
@@ -610,16 +648,15 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
           ) : showEnter && (
             <div className="flex flex-col items-center gap-5 pt-4" style={{ animation: 'fadeIn 0.6s ease' }}>
               {isTouch && (
-                <div className="w-full max-w-[300px] px-4 py-3.5 rounded-xl border border-amber-500/40 bg-amber-950/40 text-center">
-                  <p className="text-amber-200 text-[14px] font-semibold">移动端尚未优化完成</p>
-                  <p className="text-amber-400/70 text-[12px] mt-1">建议使用电脑端访问以获得最佳体验</p>
+                <div className="w-full max-w-[300px] px-4 py-3.5 rounded-xl border border-amber-500/20 bg-amber-50/80 text-center shadow-sm">
+                  <p className="text-amber-800 text-[14px] font-semibold">移动端尚未优化完成</p>
+                  <p className="text-amber-700/70 text-[12px] mt-1">建议使用电脑端访问以获得最佳体验</p>
                 </div>
               )}
 
               <button
                 onClick={handleEnter}
-                className="group relative px-16 py-4 bg-white text-[#08090c] hover:bg-white/90 active:bg-white/80 transition-all duration-300 rounded-sm w-full max-w-[280px]"
-                style={{ boxShadow: '0 0 40px rgba(255,255,255,0.1), 0 0 80px rgba(255,255,255,0.05)' }}
+                className="group relative px-16 py-4 bg-slate-800 text-white hover:bg-slate-700 active:bg-slate-900 transition-all duration-300 rounded-2xl w-full max-w-[280px] shadow-[0_8px_20px_rgba(30,41,59,0.15)] hover:shadow-[0_12px_24px_rgba(30,41,59,0.2)] hover:-translate-y-0.5"
               >
                 <span className="text-[12px] tracking-[0.5em] uppercase font-mono font-bold">
                   {isTouch ? '继续使用移动端' : '开 始'}
@@ -629,9 +666,9 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
               {!isTouch && !isFullscreen && (
                 <button
                   onClick={() => { playClick(); requestFullscreen(); }}
-                  className="flex items-center gap-1.5 text-white/15 hover:text-white/35 transition-colors duration-300"
+                  className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors duration-300 font-bold drop-shadow-sm"
                 >
-                  <Maximize2 size={9} />
+                  <Maximize2 size={10} />
                   <span className="text-[8px] tracking-[0.2em] font-mono">FULLSCREEN RECOMMENDED</span>
                 </button>
               )}
@@ -639,11 +676,21 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
           )}
         </div>
       </div>
+      </>
+      )}
 
       <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 1; }
+        @keyframes introFadeIn {
+          from { opacity: 0; filter: blur(8px); transform: translateY(6px); }
+          to { opacity: 1; filter: blur(0px); transform: translateY(0); }
+        }
+        @keyframes introFadeOut {
+          from { opacity: 1; filter: blur(0px); }
+          to { opacity: 0; filter: blur(12px); transform: scale(1.02); }
+        }
+        @keyframes bouncingDot {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-3px); }
         }
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(4px); }

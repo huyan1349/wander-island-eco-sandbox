@@ -6,7 +6,7 @@
 // ── 笔刷模式 ──────────────────────────────────────────
 export type BrushMode = 'raise' | 'lower' | 'flatten' | 'smooth' | 'paint';
 
-export type BrushFalloff = 'smooth' | 'linear' | 'sharp';
+export type BrushFalloff = 'smooth' | 'linear' | 'sharp' | 'flat_center';
 
 // 地表材质类型（与 Terrain.tsx 的 types 数组对应）
 export type SurfaceType = 0 | 1 | 2 | 3 | 4 | 5;
@@ -39,8 +39,8 @@ export interface BrushOptions {
   maxY?: number;         // 高度上限
 }
 
-const DEFAULT_MIN_Y = -3.0;
-const DEFAULT_MAX_Y = 8.0;
+const DEFAULT_MIN_Y = -15.0;
+const DEFAULT_MAX_Y = 500.0;
 
 // ── 羽化曲线 ──────────────────────────────────────────
 function applyFalloff(normalizedDist: number, falloff: BrushFalloff): number {
@@ -56,6 +56,11 @@ function applyFalloff(normalizedDist: number, falloff: BrushFalloff): number {
       // 中心几乎满，边缘极陡
       const t = 1 - normalizedDist;
       return t * t * t;
+    case 'flat_center':
+      // 内部 70% 是绝对平坦的 (influence = 1)，仅在边缘 30% 发生平滑过渡
+      if (normalizedDist < 0.7) return 1.0;
+      const t_flat = 1 - (normalizedDist - 0.7) / 0.3;
+      return t_flat * t_flat * (3 - 2 * t_flat);
   }
 }
 

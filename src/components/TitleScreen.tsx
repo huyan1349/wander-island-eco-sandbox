@@ -9,8 +9,6 @@ import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 
 type ModalType = 'NONE' | 'SETTINGS' | 'CREDITS' | 'PROFILE' | 'MAILBOX' | 'VISITORS' | 'PLAZA' | 'PRIVACY';
 
-const PRIVACY_AGREED_KEY = 'wander-island-privacy-agreed';
-
 let hasSeenSplash = false;
 
 export const TitleScreen: React.FC = () => {
@@ -30,9 +28,6 @@ export const TitleScreen: React.FC = () => {
     const [splashPhase, setSplashPhase] = useState<'AUTHOR' | 'TITLE' | 'DONE'>(hasSeenSplash ? 'DONE' : 'AUTHOR');
     const [splashVisible, setSplashVisible] = useState(false);
     const [splashOverlayVisible, setSplashOverlayVisible] = useState(!hasSeenSplash);
-
-    // 首次打开隐私条款弹窗
-    const [showPrivacyGate, setShowPrivacyGate] = useState(() => !localStorage.getItem(PRIVACY_AGREED_KEY));
 
     const [isEditingName, setIsEditingName] = useState(false);
     const [tempName, setTempName] = useState('');
@@ -500,19 +495,7 @@ export const TitleScreen: React.FC = () => {
                 </div>
             )}
 
-            {/* 首次打开隐私条款 Gate */}
-            {showPrivacyGate && (
-                <div className="absolute inset-0 z-[60] flex items-center justify-center bg-slate-900/30 backdrop-blur-md pointer-events-auto">
-                    <PrivacyPolicyModal
-                        onClose={() => {}}
-                        showAgree
-                        onAgree={() => {
-                            localStorage.setItem(PRIVACY_AGREED_KEY, '1');
-                            setShowPrivacyGate(false);
-                        }}
-                    />
-                </div>
-            )}
+
         </div>
         </>
     );

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
-import { X, Mail, Send, Trash2, ArrowLeft, Pen, User, Gift, UserPlus, Check } from 'lucide-react';
+import { X, Mail, Send, Trash2, ArrowLeft, Pen, User, Gift, UserPlus, Check, Hammer, Castle, TowerControl, PenTool } from 'lucide-react';
 import { AudioSystem } from '../lib/audio';
 import { emitFriendAccepted } from '../lib/socket';
 import { TRACKS, renderTrackTexture, isCardOwned, grantCard } from './ui/musicData';
@@ -351,6 +351,9 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
 
   // 解析教程邮件：gift_type = "tutorial_guide"
   const isTutorialMail = (mail: any) => mail?.gift_type === 'tutorial_guide';
+  
+  // 建筑全解锁金卡：gift_type = "unlock_all_buildings"
+  const isBuildingUnlockMail = (mail: any) => mail?.gift_type === 'unlock_all_buildings';
 
   // DeepSeek升级公告邮件
   const isDeepseekAnnouncement = (mail: any) => mail?.gift_type === 'announcement_deepseek_multiplayer_v2' || mail?.gift_type === 'announcement_deepseek_multiplayer';
@@ -595,6 +598,65 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
                   ) : (
                     <button onClick={() => claimCard(card.url)} className="hand-drawn-btn px-7 py-3 font-bold bg-white flex items-center gap-2">
                       <Gift size={16} /> 领取这段记忆
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* 建筑金卡领取 */}
+            {(() => {
+              if (!isBuildingUnlockMail(selectedMail)) return null;
+              const owned = localStorage.getItem('claimed_buildings_card') === '1';
+              return (
+                <div className="flex flex-col items-center gap-4 py-2 mt-4">
+                  <div
+                    className="relative w-40 h-56 rounded-2xl overflow-hidden transition-transform duration-500 shadow-[0_12px_30px_rgba(15,23,42,0.12)] border border-slate-200"
+                    style={{
+                      transform: claimAnim ? 'scale(1.07) rotate(-2deg)' : 'scale(1)',
+                    }}
+                  >
+                    <img 
+                      src="/lighthouse_blueprint.png" 
+                      alt="Building Blueprint" 
+                      className="absolute inset-0 w-full h-full object-cover"
+                      style={{ filter: owned ? 'none' : 'grayscale(60%) brightness(0.8) contrast(0.9) blur(1px)' }}
+                    />
+                    
+                    {/* 纸张噪点纹理，增加质感 */}
+                    {renderTrackTexture(-1)}
+
+                    {!owned && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-slate-900/10 backdrop-blur-[2px]">
+                        <span className="px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-400/40 text-slate-50 text-[11px] font-bold tracking-widest shadow-md">
+                          🔒 未提取
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* 高级感毛玻璃标签 */}
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[85%] py-2 rounded-xl bg-white/40 backdrop-blur-md border border-white/60 shadow-[0_4px_12px_rgba(0,0,0,0.05)] flex items-center justify-center">
+                      <span className={`font-bold text-[13px] tracking-widest ${owned ? 'text-slate-800' : 'text-slate-600'}`}>
+                        岛屿建设蓝图
+                      </span>
+                    </div>
+                    
+                    {claimAnim && <div className="absolute inset-0 animate-pulse bg-white/40 mix-blend-overlay" style={{ boxShadow: 'inset 0 0 50px rgba(255,255,255,1)' }} />}
+                  </div>
+                  
+                  {owned ? (
+                    <p className="text-emerald-600 font-bold text-sm flex items-center gap-1">✓ 已收入你的工具箱 ♪</p>
+                  ) : (
+                    <button onClick={() => {
+                      setClaimAnim(true);
+                      AudioSystem.playPop();
+                      setTimeout(() => {
+                        localStorage.setItem('claimed_buildings_card', '1');
+                        setClaimAnim(false);
+                        setClaimedTick(t => t + 1);
+                      }, 600);
+                    }} className="hand-drawn-btn px-7 py-3 font-bold bg-white flex items-center gap-2">
+                      <Gift size={16} /> 领取建筑权限
                     </button>
                   )}
                 </div>

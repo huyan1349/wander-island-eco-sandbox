@@ -6,7 +6,7 @@ import { useGameStore, ToolType } from '../store';
 import { AudioSystem } from '../lib/audio';
 import { emitHermitPlace } from '../lib/socket';
 import { applyTerrainBrush, paintSurface } from '../utils/terrainBrush';
-import { fitPond, encodePondState } from '../game/water/pondFit';
+import { fitPond, encodePondState, carvePondAndEncode, flattenForSpring } from '../game/water/pondFit';
 import { encodeStreamState } from '../game/water/streamPath';
 import { getTerrainHeight } from '../utils/terrain';
 
@@ -113,6 +113,17 @@ function ShockwaveRing() {
 function BuildPreview({ cursorWorldPos, cursorActive }: { cursorWorldPos: React.MutableRefObject<THREE.Vector3>, cursorActive: React.MutableRefObject<boolean> }) {
     const selectedTool = useGameStore(state => state.selectedTool);
     const assets = useGameStore(state => state.assets);
+    const buildAnchors = useMemo(
+        () =>
+            assets
+                .filter(a => a.type === 'platform' || a.type === 'pier' || a.type === 'sub_island')
+                .map(a => ({
+                    x: a.position.x,
+                    z: a.position.z,
+                    y: a.type === 'sub_island' ? a.position.y : Math.max(a.position.y, 0),
+                })),
+        [assets],
+    );
     
     const ghostGroup = useRef<THREE.Group>(null);
     const matRef = useRef<THREE.MeshBasicMaterial>(null);
@@ -152,11 +163,10 @@ function BuildPreview({ cursorWorldPos, cursorActive }: { cursorWorldPos: React.
             } else {
                 if (point.y > -0.6) isValid = true;
                 if (!isValid) {
-                    for (const a of assets) {
-                        if (a.type === 'platform' || a.type === 'pier' || a.type === 'sub_island') {
-                            const dist = Math.sqrt((a.position.x - point.x)**2 + (a.position.z - point.z)**2);
-                            if (dist < 4.5) { isValid = true; break; }
-                        }
+                    for (const anchor of buildAnchors) {
+                        const dx = anchor.x - point.x;
+                        const dz = anchor.z - point.z;
+                        if (dx * dx + dz * dz < 4.5 * 4.5) { isValid = true; break; }
                     }
                 }
             }
@@ -174,25 +184,34 @@ function BuildPreview({ cursorWorldPos, cursorActive }: { cursorWorldPos: React.
             ghostGroup.current.visible = false;
             
             // Find valid anchors
-            let anchors = assets.filter(a => a.type === 'platform' || a.type === 'pier' || a.type === 'sub_island')
-                                .map(a => ({
-                                    pos: new THREE.Vector3(
-                                        a.position.x,
-                                        a.type === 'sub_island' ? a.position.y : Math.max(a.position.y, 0),
-                                        a.position.z
-                                    ),
-                                    dist: Math.sqrt((a.position.x - point.x)**2 + (a.position.z - point.z)**2)
-                                }))
-                                .filter(a => a.dist < 12)
-                                .sort((a, b) => a.dist - b.dist);
+            let firstAnchor: { pos: THREE.Vector3; distSq: number } | null = null;
+            let secondAnchor: { pos: THREE.Vector3; distSq: number } | null = null;
+            for (const anchor of buildAnchors) {
+                const dx = anchor.x - point.x;
+                const dz = anchor.z - point.z;
+                const distSq = dx * dx + dz * dz;
+                if (distSq >= 12 * 12) continue;
+
+                const candidate = {
+                    pos: new THREE.Vector3(anchor.x, anchor.y, anchor.z),
+                    distSq,
+                };
+
+                if (!firstAnchor || distSq < firstAnchor.distSq) {
+                    secondAnchor = firstAnchor;
+                    firstAnchor = candidate;
+                } else if (!secondAnchor || distSq < secondAnchor.distSq) {
+                    secondAnchor = candidate;
+                }
+            }
                                 
-            if (anchors.length >= 2) {
+            if (firstAnchor && secondAnchor) {
                 // Two anchors in range: Show solid bridge placement preview
                 dotsRef.current.visible = false;
                 bridgeGroup.current.visible = true;
                 
-                const p1 = anchors[0].pos;
-                const p2 = anchors[1].pos;
+                const p1 = firstAnchor.pos;
+                const p2 = secondAnchor.pos;
                 const center = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
                 bridgeGroup.current.position.copy(center);
                 bridgeGroup.current.lookAt(p2);
@@ -201,12 +220,12 @@ function BuildPreview({ cursorWorldPos, cursorActive }: { cursorWorldPos: React.
                 const mesh = bridgeGroup.current.children[0] as THREE.Mesh;
                 if (mesh.material) (mesh.material as THREE.Material).opacity = 0.5 + Math.sin(time * 6) * 0.2;
                 
-            } else if (anchors.length === 1) {
+            } else if (firstAnchor) {
                 // One anchor in range: Show leading dotted line to cursor
                 bridgeGroup.current.visible = false;
                 dotsRef.current.visible = true;
                 
-                const p1 = anchors[0].pos;
+                const p1 = firstAnchor.pos;
                 const p2 = new THREE.Vector3(point.x, Math.max(point.y, 0) + 1.0, point.z); 
                 
                 for (let i = 0; i < dotsCount; i++) {
@@ -419,27 +438,6 @@ export function Terrain() {
 
         const isPath = types[i] === 1 || types[i + 1] === 1 || types[i + 2] === 1;
 
-        // ── 坡度检测：陡坡自动变岩石 ──
-        let maxSlope = 0;
-        for (let v = 0; v < 3; v++) {
-          const vi = i + v;
-          const vy = posAttr.getY(vi);
-          const vx = posAttr.getX(vi);
-          const vz = posAttr.getZ(vi);
-          for (let v2 = v + 1; v2 < 3; v2++) {
-            const vi2 = i + v2;
-            const dy = Math.abs(vy - posAttr.getY(vi2));
-            const dx = Math.abs(vx - posAttr.getX(vi2));
-            const dz = Math.abs(vz - posAttr.getZ(vi2));
-            const horizDist = Math.sqrt(dx * dx + dz * dz);
-            if (horizDist > 0.001) {
-              const slope = dy / horizDist;
-              if (slope > maxSlope) maxSlope = slope;
-            }
-          }
-        }
-        const isSteep = maxSlope > SLOPE_THRESHOLD;
-
         // ── 手动材质笔刷覆盖（types: 0=草 1=路 2=沙 3=石 4=雪 5=花草）──
         const faceType = types[i]; // 3 顶点同类型（paintSurface 保证）
         const isPainted = faceType >= 2; // 2/3/4/5 是手动刷的材质
@@ -457,8 +455,6 @@ export function Terrain() {
              targetColor.copy(healthyGrass);
              if (i % 9 < 3) targetColor.lerp(new THREE.Color('#e879f9'), 0.4); // 粉花
              else if (i % 9 < 5) targetColor.lerp(new THREE.Color('#fbbf24'), 0.3); // 黄花
-        } else if (isSteep) {
-             targetColor.copy(new THREE.Color('#6c757d')); // 岩石（自动坡度）
         } else {
              if (faceHeight < 1.0) {
                  targetColor.copy(sandColor);
@@ -502,13 +498,13 @@ export function Terrain() {
                  }
              }
 
-         const variation = (i % 5 === 0) ? 0.02 : (i % 3 === 0) ? -0.02 : 0;
+             const variation = (i % 5 === 0) ? 0.02 : (i % 3 === 0) ? -0.02 : 0;
              if (variation !== 0) {
                  const hsl = { h: 0, s: 0, l: 0 };
                  targetColor.getHSL(hsl);
                  targetColor.setHSL(hsl.h, hsl.s, Math.max(0, Math.min(1, hsl.l + variation)));
              }
-        }
+        } // Closing the 'else' block for the manual material override
 
         const tr = targetColor.r;
         const tg = targetColor.g;
@@ -638,10 +634,10 @@ export function Terrain() {
          }
        } else {
          // 高度笔刷：改 positions 数组（隆起/挖低/找平/柔化）
-         const changed = applyTerrainBrush(posAttr.array as Float32Array, {
-           mode: brushMode, size: brushSize, strength: brushStrength, falloff: brushFalloff,
-           isDrag: isDragEvent, px: point.x, pz: point.z, targetY: flattenTargetY.current, minY: -3.0, maxY: 8.0,
-         });
+          const changed = applyTerrainBrush(posAttr.array as Float32Array, {
+            mode: brushMode, size: brushSize, strength: brushStrength, falloff: brushFalloff,
+            isDrag: isDragEvent, px: point.x, pz: point.z, targetY: flattenTargetY.current,
+          });
          if (changed) {
            posAttr.needsUpdate = true;
            geometry.computeVertexNormals();
@@ -701,12 +697,18 @@ export function Terrain() {
         if (selectedTool === 'seed_carrot') assetType = 'crop_carrot';
 
         let placedCustom = String(selectedTool).startsWith('balloon') ? useGameStore.getState().balloonColor : undefined;
+
+        // 允许自由放置，不做任何碰撞拦截
         let placedY = Math.max(point.y, 0);
+
         if (selectedTool === 'pond') {
-            // 贴地拟合：探测洼地岸线，水面落在真实水位（不再悬浮）。
-            const fit = fitPond(point.x, point.z);
-            placedCustom = encodePondState(fit);
+            // 挖浅碗 + 贴地拟合：水面落在真实凹陷里，任何地形都不穿模。
+            placedCustom = carvePondAndEncode(point.x, point.z);
             placedY = point.y;
+        } else if (selectedTool === 'spring') {
+            // 生命之泉自动平整地形，避免在斜坡上悬浮或穿模
+            flattenForSpring(point.x, point.z);
+            placedY = getTerrainHeight(point.x, point.z);
         }
 
         const placed = {

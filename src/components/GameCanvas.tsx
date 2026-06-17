@@ -36,7 +36,8 @@ function WASDControls({ controlsRef }: { controlsRef: React.RefObject<any> }) {
     const down = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      keys.current[e.key.toLowerCase()] = true;
+      const k = e.key.toLowerCase();
+      keys.current[k] = true;
     };
     const up = (e: KeyboardEvent) => { keys.current[e.key.toLowerCase()] = false; };
     window.addEventListener('keydown', down);
@@ -82,6 +83,16 @@ function WASDControls({ controlsRef }: { controlsRef: React.RefObject<any> }) {
     const move = velocity.current.clone().multiplyScalar(delta);
     state.camera.position.add(move);
     c.target.add(move);
+
+    if (move.lengthSq() > 0 && !useGameStore.getState().tutorialPanDone) {
+      if (!c.panAccum) c.panAccum = 0;
+      c.panAccum += move.length();
+      const progress = Math.min(1, c.panAccum / 5);
+      useGameStore.getState().setTutorialPanProgress(progress);
+      if (c.panAccum > 5) {
+        useGameStore.getState().setTutorialPanDone(true);
+      }
+    }
   });
 
   return null;
@@ -94,6 +105,8 @@ function SmoothZoom({ controlsRef, minDistance, maxDistance }: {
 }) {
   const targetRef = useRef<number | null>(null);
   const mountedRef = useRef(false);
+  const gestureBaseDistanceRef = useRef<number | null>(null);
+  const zoomAccumRef = useRef(0);
 
   useFrame(() => {
     const controls = controlsRef.current;
@@ -111,9 +124,57 @@ function SmoothZoom({ controlsRef, minDistance, maxDistance }: {
         minDistance,
         maxDistance
       );
+      if (!useGameStore.getState().tutorialZoomDone) {
+        zoomAccumRef.current += Math.abs(e.deltaY);
+        const progress = Math.min(1, zoomAccumRef.current / 150);
+        useGameStore.getState().setTutorialZoomProgress(progress);
+        if (zoomAccumRef.current > 150) {
+          useGameStore.getState().setTutorialZoomDone(true);
+        }
+      }
+    };
+
+    const readGestureScale = (e: Event) => {
+      return typeof (e as Event & { scale?: number }).scale === 'number'
+        ? (e as Event & { scale: number }).scale
+        : 1;
+    };
+
+    const onGestureStart = (e: Event) => {
+      e.preventDefault();
+      const camera = controls.object as THREE.Camera;
+      gestureBaseDistanceRef.current = camera.position.distanceTo(controls.target);
+    };
+
+    const onGestureChange = (e: Event) => {
+      e.preventDefault();
+      const scale = readGestureScale(e);
+      const baseDistance = gestureBaseDistanceRef.current;
+      if (!baseDistance || scale <= 0) return;
+      targetRef.current = THREE.MathUtils.clamp(
+        baseDistance / scale,
+        minDistance,
+        maxDistance
+      );
+      if (!useGameStore.getState().tutorialZoomDone) {
+        zoomAccumRef.current += Math.abs(1 - scale) * 1000;
+        const progress = Math.min(1, zoomAccumRef.current / 200);
+        useGameStore.getState().setTutorialZoomProgress(progress);
+        if (zoomAccumRef.current > 200) {
+          useGameStore.getState().setTutorialZoomDone(true);
+        }
+      }
+    };
+
+    const onGestureEnd = (e: Event) => {
+      e.preventDefault();
+      gestureBaseDistanceRef.current = null;
     };
 
     dom.addEventListener('wheel', onWheel, { passive: false });
+    dom.addEventListener('gesturestart', onGestureStart, { passive: false });
+    dom.addEventListener('gesturechange', onGestureChange, { passive: false });
+    dom.addEventListener('gestureend', onGestureEnd, { passive: false });
     mountedRef.current = true;
   });
 
@@ -197,6 +258,24 @@ export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = 
         <OrbitControls
           ref={orbitRef}
           enabled={enableOrbitControls}
+          onChange={() => {
+            const state = useGameStore.getState();
+            const controls = orbitRef.current;
+            if (controls && state.screen === 'PLAYING' && !state.tutorialRotateDone) {
+              if (controls.lastAzimuth !== undefined) {
+                const diff = Math.abs(controls.getAzimuthalAngle() - controls.lastAzimuth);
+                if (diff > 0.001) {
+                  controls.rotateAccum = (controls.rotateAccum || 0) + diff;
+                  const progress = Math.min(1, controls.rotateAccum / 0.5);
+                  state.setTutorialRotateProgress(progress);
+                  if (controls.rotateAccum > 0.5) {
+                    state.setTutorialRotateDone(true);
+                  }
+                }
+              }
+              controls.lastAzimuth = controls.getAzimuthalAngle();
+            }
+          }}
           autoRotate={screen !== 'PLAYING' || (immersive && autoRotateOn)}
           autoRotateSpeed={0.8}
           maxPolarAngle={Math.PI / 2 - 0.05}

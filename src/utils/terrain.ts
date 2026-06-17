@@ -34,25 +34,48 @@ function bilinearInterpolate(
     return top + (bottom - top) * fracRow;
 }
 
+function getClosestVertexHeight(positions: Float32Array | number[], x: number, z: number): number {
+    let minDistSq = Infinity;
+    let closestY = -2;
+    const len = positions.length;
+    for (let i = 0; i < len; i += 3) {
+        const dx = positions[i] - x;
+        const dz = positions[i + 2] - z;
+        const distSq = dx * dx + dz * dz;
+        if (distSq < minDistSq) {
+            minDistSq = distSq;
+            closestY = positions[i + 1];
+        }
+    }
+    return closestY;
+}
+
 export function getTerrainHeight(x: number, z: number) {
     const data = useGameStore.getState().terrainData;
     let mainIslandHeight = -2;
     if (data.positions) {
         const { size, segments, positions } = data;
-        const halfSize = size / 2;
+        const count = positions.length / 3;
+        const gridW = Math.round(Math.sqrt(count));
+        const isGrid = gridW * gridW === count;
 
-        // Normalize coordinates to 0..1
-        let u = (x + halfSize) / size;
-        let v = (z + halfSize) / size;
+        if (isGrid) {
+            const halfSize = size / 2;
+            let u = (x + halfSize) / size;
+            let v = (z + halfSize) / size;
 
-        if (u >= 0 && u <= 1 && v >= 0 && v <= 1) {
-            const col = u * segments;
-            const row = v * segments;
+            if (u >= 0 && u <= 1 && v >= 0 && v <= 1) {
+                const col = u * segments;
+                const row = v * segments;
 
-            const fracCol = col - Math.floor(col);
-            const fracRow = row - Math.floor(row);
+                const fracCol = col - Math.floor(col);
+                const fracRow = row - Math.floor(row);
 
-            mainIslandHeight = bilinearInterpolate(positions, segments, col, row, fracCol, fracRow);
+                mainIslandHeight = bilinearInterpolate(positions, segments, col, row, fracCol, fracRow);
+            }
+        } else {
+            // Non-indexed triangle soup (like Wander Island's main mesh)
+            mainIslandHeight = getClosestVertexHeight(positions, x, z);
         }
     }
 

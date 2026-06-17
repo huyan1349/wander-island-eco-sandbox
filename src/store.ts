@@ -4,6 +4,7 @@ import { getGlobalXP, addGlobalXP, levelFromXP } from './lib/globalProgress';
 import { getCiAffinity, addCiAffinity, getCiMemory, addCiMemory as addCiMemoryEntry, getCiMemorySummary } from './lib/ciProgress';
 import type { BrushMode, BrushFalloff, SurfaceType } from './utils/terrainBrush';
 import { FlourishCardId, FLOURISH_CARDS, STARTING_DECK, HAND_SIZE, SEASON_BASE_ECO, evaluateSymbiosis, shuffle } from './game/flourish';
+import { getTerrainHeight } from './utils/terrain';
 
 export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'water_flow' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox';
 export type WeatherType = 'sunny' | 'cloudy' | 'rainy' | 'foggy' | 'snowy' | 'stormy';
@@ -86,6 +87,14 @@ export interface SaveSlot {
   playtime: number;
 }
 
+export const DEFAULT_AVATAR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0f172a"/><stop offset="100%" stop-color="#1e293b"/></linearGradient><linearGradient id="g2" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient></defs><rect width="120" height="120" fill="url(#g1)"/><circle cx="60" cy="45" r="24" fill="url(#g2)" opacity="0.9"/><path d="M10 100 L60 40 L110 100 Z" fill="#0f172a" opacity="0.7"/><path d="M45 100 L80 50 L115 100 Z" fill="#020617" opacity="0.6"/></svg>`;
+export const AVATAR_PRESETS = [
+  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(DEFAULT_AVATAR_SVG)}`,
+  'https://api.dicebear.com/7.x/lorelei/svg?seed=Wander&backgroundColor=ffdfbf',
+  'https://api.dicebear.com/7.x/bottts/svg?seed=Wander&backgroundColor=b6e3f4'
+];
+const DEFAULT_AVATAR = AVATAR_PRESETS[1];
+
 interface GameState {
   screen: GameScreen;
   setScreen: (screen: GameScreen) => void;
@@ -136,7 +145,26 @@ interface GameState {
   setIsTimeScrubbing: (scrubbing: boolean) => void;
   timeSpeed: number; // 1 = 1 real minute per game hour
   setTimeSpeed: (speed: number) => void;
+  hasMovedCamera: boolean;
+  setHasMovedCamera: (moved: boolean) => void;
+  cameraFollowId: string | null;
+  setCameraFollowId: (id: string | null) => void;
+
+  tutorialPanDone: boolean;
+  setTutorialPanDone: (done: boolean) => void;
+  tutorialPanProgress: number;
+  setTutorialPanProgress: (p: number) => void;
   
+  tutorialRotateDone: boolean;
+  setTutorialRotateDone: (done: boolean) => void;
+  tutorialRotateProgress: number;
+  setTutorialRotateProgress: (p: number) => void;
+  
+  tutorialZoomDone: boolean;
+  setTutorialZoomDone: (done: boolean) => void;
+  tutorialZoomProgress: number;
+  setTutorialZoomProgress: (p: number) => void;
+
   weather: WeatherType;
   setWeather: (weather: WeatherType) => void;
   forecast: WeatherType[];
@@ -295,7 +323,12 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   // Auth
   authUser: null,
-  setAuthUser: (user) => set({ authUser: user }),
+  setAuthUser: (user) => {
+    if (user && user.avatar && user.avatar.includes('robohash')) {
+      user.avatar = DEFAULT_AVATAR;
+    }
+    set({ authUser: user });
+  },
   clearAuthUser: () => set({ authUser: null, screen: 'LOGIN' as GameScreen }),
 
   // Toasts
@@ -362,8 +395,27 @@ export const useGameStore = create<GameState>((set, get) => ({
   setTimeOfDay: (time) => set({ timeOfDay: time }),
   isTimeScrubbing: false,
   setIsTimeScrubbing: (scrubbing) => set({ isTimeScrubbing: scrubbing }),
+  hasMovedCamera: false,
+  setHasMovedCamera: (moved) => set({ hasMovedCamera: moved }),
+  cameraFollowId: null,
+  setCameraFollowId: (id) => set({ cameraFollowId: id }),
   timeSpeed: 1,
   setTimeSpeed: (speed) => set({ timeSpeed: speed }),
+
+  tutorialPanDone: false,
+  setTutorialPanDone: (done) => set({ tutorialPanDone: done }),
+  tutorialPanProgress: 0,
+  setTutorialPanProgress: (p) => set({ tutorialPanProgress: p }),
+
+  tutorialRotateDone: false,
+  setTutorialRotateDone: (done) => set({ tutorialRotateDone: done }),
+  tutorialRotateProgress: 0,
+  setTutorialRotateProgress: (p) => set({ tutorialRotateProgress: p }),
+
+  tutorialZoomDone: false,
+  setTutorialZoomDone: (done) => set({ tutorialZoomDone: done }),
+  tutorialZoomProgress: 0,
+  setTutorialZoomProgress: (p) => set({ tutorialZoomProgress: p }),
   
   weather: 'sunny',
   setWeather: (weather) => set({ weather: weather }),
@@ -417,7 +469,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   
   playerName: 'huyan',
   setPlayerName: (name) => set({ playerName: name }),
-  playerAvatar: 'https://api.dicebear.com/7.x/micah/svg?seed=Felix&backgroundColor=fcf8ec',
+  playerAvatar: DEFAULT_AVATAR,
   setPlayerAvatar: (avatar) => set({ playerAvatar: avatar }),
   playerXP: getGlobalXP(),                 // 全局：跨所有小岛累加
   playerLevel: levelFromXP(getGlobalXP()),
@@ -539,7 +591,18 @@ export const useGameStore = create<GameState>((set, get) => ({
   updateAsset: (id, updater) => set((state) => ({
     assets: state.assets.map((asset) => asset.id === id ? updater(asset) : asset)
   })),
-  addAsset: (assetData) => set((state) => {
+  addAsset: (assetData) => {
+    // 农田要求地面平整：脚下范围起伏过大则拒绝放置，提示先整平（避免平面农田穿模）
+    if (assetData.type === 'farmland') {
+      const { x, z } = assetData.position;
+      const samples = [[0, 0], [1.1, 1.1], [-1.1, 1.1], [1.1, -1.1], [-1.1, -1.1]]
+        .map(([ox, oz]) => getTerrainHeight(x + ox, z + oz));
+      if (Math.max(...samples) - Math.min(...samples) > 0.5) {
+        get().addToast('这块地高低不平，先用「平整地形」把它整平，再来开垦农田', 'info');
+        return;
+      }
+    }
+    set((state) => {
     const asset: PlacedAsset = {
       ...assetData,
       id: Math.random().toString(36).substring(2, 9),
@@ -584,7 +647,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       _history: [...state._history, state.assets].slice(-40),
       _future: [],
     };
-  }),
+    });
+  },
   removeAsset: (id) => set((state) => {
     const newAssets = state.assets.filter(a => a.id !== id);
     const deerCount = newAssets.filter(a => a.type === 'deer').length;
@@ -743,55 +807,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   setIsDrawing: (isDrawing) => set({ isDrawing }),
   
   getSavedSlots: () => {
+    // 不再伪造写死的 default_01 demo；默认岛由 ensureHomeSlot 用 preset-demo 落地。
     try {
       const indexStr = localStorage.getItem('eco_saves_index');
-      if (indexStr) {
-          return JSON.parse(indexStr);
-      } else {
-          // Initialize pre-baked Save 1
-          const defaultSlot = {
-              id: 'default_01',
-              name: 'Wander Island (Demo)',
-              lastPlayed: Date.now(),
-              ecoPoints: 5000,
-              playtime: 3600
-          };
-          
-          const defaultData = {
-              timeOfDay: 6,
-              weather: 'sunny',
-              assets: [
-                  { id: 'a1', type: 'house', position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: 1.2 },
-                  { id: 'a2', type: 'windmill', position: { x: 8, y: 0, z: -8 }, rotation: { x: 0, y: 0.8, z: 0 }, scale: 1.2 },
-                  { id: 'a3', type: 'lighthouse', position: { x: -12, y: 0, z: 12 }, rotation: { x: 0, y: 0, z: 0 }, scale: 1.5 },
-                  { id: 'a4', type: 'spring', position: { x: -4, y: 0, z: -4 }, rotation: { x: 0, y: 0, z: 0 }, scale: 1 },
-                  { id: 't1', type: 'treeA', position: { x: -5, y: 0, z: -5 }, rotation: { x: 0, y: 1, z: 0 }, scale: 1.1 },
-                  { id: 't2', type: 'treeB', position: { x: -3, y: 0, z: -7 }, rotation: { x: 0, y: 2, z: 0 }, scale: 0.9 },
-                  { id: 't3', type: 'treeA', position: { x: -6, y: 0, z: -3 }, rotation: { x: 0, y: 3, z: 0 }, scale: 1.3 },
-                  { id: 't4', type: 'treeB', position: { x: 4, y: 0, z: 5 }, rotation: { x: 0, y: 4, z: 0 }, scale: 1 },
-                  { id: 't5', type: 'treeA', position: { x: 5, y: 0, z: 3 }, rotation: { x: 0, y: 5, z: 0 }, scale: 0.8 },
-                  { id: 't6', type: 'treeB', position: { x: 3, y: 0, z: 7 }, rotation: { x: 0, y: 6, z: 0 }, scale: 1.2 },
-                  { id: 'r1', type: 'rock', position: { x: 8, y: 0, z: 2 }, rotation: { x: 0, y: 0, z: 0 }, scale: 1.4 },
-                  { id: 'd1', type: 'deer', position: { x: -2, y: 0, z: 5 }, rotation: { x: 0, y: 1, z: 0 }, scale: 1 },
-                  { id: 'd2', type: 'deer', position: { x: 2, y: 0, z: 6 }, rotation: { x: 0, y: 2, z: 0 }, scale: 1 },
-                  { id: 'w1', type: 'wolf', position: { x: -8, y: 0, z: 8 }, rotation: { x: 0, y: -1, z: 0 }, scale: 1 },
-              ],
-              grassHealth: 100,
-              deerCount: 2,
-              wolfCount: 1,
-              playerName: 'huyan',
-              playerAvatar: 'https://api.dicebear.com/7.x/micah/svg?seed=Felix&backgroundColor=fcf8ec',
-              playerXP: 500,
-              playerLevel: 5,
-              ecoPoints: 5000,
-              stats: { playtime: 3600, itemsPlaced: 14 }
-          };
-          
-          localStorage.setItem('eco_saves_index', JSON.stringify([defaultSlot]));
-          localStorage.setItem(`eco_save_${defaultSlot.id}`, JSON.stringify(defaultData));
-          
-          return [defaultSlot];
-      }
+      return indexStr ? JSON.parse(indexStr) : [];
     } catch {
       return [];
     }
@@ -884,7 +903,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           deerCount: data.deerCount,
           wolfCount: data.wolfCount,
           playerName: data.playerName || 'huyan',
-          playerAvatar: data.playerAvatar || 'https://api.dicebear.com/7.x/micah/svg?seed=Felix&backgroundColor=fcf8ec',
+          playerAvatar: (data.playerAvatar && data.playerAvatar.includes('robohash')) ? DEFAULT_AVATAR : (data.playerAvatar || DEFAULT_AVATAR),
           playerXP: getGlobalXP(),          // 全局等级：加载任何小岛都保持联合进度，不被单岛存档覆盖
           playerLevel: levelFromXP(getGlobalXP()),
           ecoPoints: data.ecoPoints !== undefined ? data.ecoPoints : 200,

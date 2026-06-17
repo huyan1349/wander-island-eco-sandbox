@@ -11,14 +11,12 @@ import {
   onUserOffline,
   onUserOnline,
 } from "../lib/socket";
-import { applyIslandSnapshot, loadPresetIsland } from "../utils/islandIO";
+import { applyIslandSnapshot, showTitleBackdrop } from "../utils/islandIO";
 
 export function useRestoreTitleBackground() {
   useEffect(() => {
-    const slots = useGameStore.getState().getSavedSlots();
-    if (slots.length > 0) {
-      useGameStore.getState().loadGame(slots[0].id, true);
-    }
+    // 开屏背景永远展示预置岛 preset-demo（与玩家存档/登录解耦）
+    showTitleBackdrop().catch(() => {});
   }, []);
 }
 
@@ -37,13 +35,12 @@ export function useAuthBootstrap(authUser: AuthUser | null, setAuthUser: (user: 
       api
         .getMe()
         .then(async (res) => {
+          if (api.getToken() !== token) return;
           setAuthUser(res.user);
           connectSocket(token);
           await syncOnLogin();
-          const slots = useGameStore.getState().getSavedSlots();
-          if (slots.length > 0) {
-            useGameStore.getState().loadGame(slots[0].id, true);
-          }
+          // 标题背景保持预置岛展示（不被玩家自己的岛覆盖）
+          await showTitleBackdrop();
         })
         .catch(() => {
           api.setToken(null);
@@ -186,18 +183,6 @@ export function useAudioBootstrap(appLoaded: boolean) {
     };
     events.forEach((e) => window.addEventListener(e, unlock, opts));
     return removeUnlock;
-  }, [appLoaded]);
-}
-
-export function useDemoTitleIsland(appLoaded: boolean) {
-  const demoLoadedRef = useRef(false);
-
-  useEffect(() => {
-    if (!appLoaded || demoLoadedRef.current) return;
-    const state = useGameStore.getState();
-    if (state.assets.length > 0) return;
-    demoLoadedRef.current = true;
-    loadPresetIsland("/preset-demo.json?v=2").catch(() => {});
   }, [appLoaded]);
 }
 

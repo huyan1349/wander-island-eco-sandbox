@@ -222,7 +222,9 @@ export function stepCreature(
       state.position.z = nextZ;
       actualDisplacement = step;
     } else {
-      // 前方不可走 → 尝试左右偏转（多点探测：近点+远点）
+      // 前方不可走 → 平滑避障
+      // 而不是瞬间改变 heading（那会导致锯齿状的抽搐），我们为它设定一个新的可走 Target，
+      // 并让它暂时停下脚步，依赖原有的平滑转向系统自然地转过去。
       const steerAngles = [Math.PI / 6, -Math.PI / 6, Math.PI / 3, -Math.PI / 3, Math.PI / 2, -Math.PI / 2];
       let steered = false;
 
@@ -231,36 +233,26 @@ export function stepCreature(
         const testDirX = Math.sin(testHeading);
         const testDirZ = Math.cos(testHeading);
 
-        // 近点探测 (半步)
-        const nearX = state.position.x + testDirX * step * 0.5;
-        const nearZ = state.position.z + testDirZ * step * 0.5;
-        // 远点探测 (全步)
-        const farX = state.position.x + testDirX * step;
-        const farZ = state.position.z + testDirZ * step;
+        const farX = state.position.x + testDirX * 3.0;
+        const farZ = state.position.z + testDirZ * 3.0;
 
-        const nearWalkable = isWalkable(nearX, nearZ, ctx.assets);
-        const farWalkable = isWalkable(farX, farZ, ctx.assets);
-
-        if (nearWalkable && farWalkable) {
-          // 坡度检查
-          const currentH = getTerrainHeight(state.position.x, state.position.z);
-          const farH = getTerrainHeight(farX, farZ);
-          const heightDiff = farH - currentH;
-          if (Math.abs(heightDiff) <= 2.0 * step) {
-            state.heading = testHeading;
-            state.position.x = farX;
-            state.position.z = farZ;
-            actualDisplacement = step;
+        if (isWalkable(farX, farZ, ctx.assets)) {
+            // 将目标设置到避障方向
+            state.target.x = farX;
+            state.target.z = farZ;
+            state.wanderTimer = 0; // 重置游荡计时器，确保能走向新目标
             steered = true;
             break;
-          }
         }
       }
 
+      // 遇到障碍物时减速/停步，以平滑转弯
+      moveSpeed *= 0.5; // 不要瞬间停死，保留一点速度让转向更自然
+      actualDisplacement = 0;
+
       if (!steered) {
-        // 所有方向都不可走 → 停一帧，AI 层会换目标
-        moveSpeed = 0;
-        actualDisplacement = 0;
+        // 死胡同，强迫下一次 AI tick 重新规划
+        state.wanderTimer = 999;
       }
     }
   }
@@ -274,9 +266,15 @@ export function stepCreature(
     ctx.assets
   );
 
-  // Y 值平滑过渡：用 lerp 而非直接赋值，防止高度跳变
-  const ySmoothRate = 12; // Y 值平滑系数，越大贴合越快
-  state.smoothY += (surfaceY - state.smoothY) * Math.min(1, dt * ySmoothRate);
+  // Y 值贴地：普通地形（小高度差）平滑过渡，但插值速度要足够快（尤其在跑步时），防止爬坡/下坡时严重浮空或穿模
+  const dy = surfaceY - state.smoothY;
+  if (Math.abs(dy) > 1.5) {
+    state.smoothY = surfaceY; // 较大落差直接吸附
+  } else {
+    // 基础插值速率为 15，移动时根据速度增加插值速率以更紧密贴合地形
+    const catchupRate = 15 + (state.currentSpeed * 10); 
+    state.smoothY += dy * Math.min(1, dt * catchupRate);
+  }
   state.position.y = state.smoothY;
 
   // 坡度对齐
@@ -395,9 +393,11 @@ export function applyLocomotionToGroup(
   state: LocomotionState,
   bobAmplitude: number = 0.015,
 ): void {
+  // 采用平滑的正弦波进行 bobbing，并使用平滑后的 prevMoveSpeed 避免走停时瞬间卡顿归零
+  const bob = (Math.sin(state.legPhase * Math.PI * 4) * -0.5 + 0.5) * bobAmplitude * state.prevMoveSpeed;
   group.position.set(
     state.position.x,
-    state.position.y + (state.isMoving ? Math.abs(Math.sin(state.legPhase * Math.PI * 2)) * bobAmplitude * state.currentSpeed : 0),
+    state.position.y + bob,
     state.position.z,
   );
 

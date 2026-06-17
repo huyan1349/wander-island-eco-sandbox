@@ -76,6 +76,19 @@ const SERVER_ANNOUNCEMENTS = [
 快捷键：W/A/S/D 移动 · Tab 切换模式 · Esc 退出选中
 更多内容请展开下方各章节 ↓`,
   },
+  {
+    id: 'unlock_all_buildings',
+    subject: '权限许可 · 建筑系统全面开放',
+    content: `新手向导已完成。
+
+所有的建筑卡片权限已为你全面开放。你可以自由建造房屋、风车、灯塔、桥梁……甚至搭建属于你的空中气球岛。
+
+发挥你的想象力，尽情探索和创造这座属于你的流浪岛吧！
+
+请在下方提取你的「岛屿建设蓝图」。
+
+—— 辞`,
+  },
 ];
 
 function sendAnnouncementMail(db: any, userId: string, announcement: typeof SERVER_ANNOUNCEMENTS[number]) {
@@ -162,7 +175,7 @@ router.post('/register', (req: AuthRequest, res: Response) => {
 
   const id = crypto.randomUUID();
   const passwordHash = bcrypt.hashSync(password, 10);
-  const avatar = `https://api.dicebear.com/7.x/notionists/svg?seed=${username}&backgroundColor=b6e3f4`;
+  const avatar = `https://robohash.org/${encodeURIComponent(username)}.png?set=set4&bgset=bg1&size=150x150`;
 
   db.prepare('INSERT INTO users (id, username, password_hash, avatar) VALUES (?, ?, ?, ?)')
     .run(id, username, passwordHash, avatar);

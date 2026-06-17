@@ -9,7 +9,7 @@ import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
 import { applyTerrainBrush, paintSurface } from '../utils/terrainBrush';
 import { getWaterHeight as getOceanHeight, getWaveAmplitude } from './Water';
 import { StylizedWater } from '../game/water/StylizedWater';
-import { decodePondState } from '../game/water/pondFit';
+import { decodePondState, carvePondAndEncode } from '../game/water/pondFit';
 import { buildStream, decodeStreamState } from '../game/water/streamPath';
 import {
   createLocomotionState,
@@ -18,6 +18,16 @@ import {
   computeLegAngles,
   applyLocomotionToGroup,
 } from '../game/creatures/locomotion';
+import {
+  Balloon as MarineBalloon,
+  Boat as MarineBoat,
+  BridgePillar as MarineBridgePillar,
+  BridgeRenderer as MarineBridgeRenderer,
+  MarineAssetIndexProvider,
+  Pier as MarinePier,
+  Platform as MarinePlatform,
+  RopeRenderer as MarineRopeRenderer,
+} from './assets/marine';
 import { usePopIn } from './assets/shared';
 import { TreeA, TreeB, Rock, CherryTree, Bamboo, PineTree, WillowTree, Bush } from './assets/Plants';
 
@@ -379,7 +389,7 @@ function Spring({ position, rotation, scale = 1 }: { position: any, rotation?: a
   }, []);
 
   return (
-    <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(rotation?.x || 0, rotation?.y || 0, rotation?.z || 0, 'YXZ')} scale={0} ref={groupRef}>
+    <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0, 'YXZ')} scale={0} ref={groupRef}>
        {/* Sunken earthen basin so the water reads as set into the ground */}
        <mesh position={[0, -0.05, 0]} receiveShadow>
          <cylinderGeometry args={[1.15, 0.95, 0.35, 24]} />
@@ -432,6 +442,12 @@ function Pond({ position, rotation, scale = 1, customState }: { position: any, r
 
   return (
     <group position={[position.x, position.y, position.z]} rotation={new THREE.Euler(0, rotation?.y || 0, 0, 'YXZ')} scale={0} ref={groupRef}>
+      {/* Earthen basin wall to bridge the gap between water and floor. Extended deep into the ground to prevent floating. */}
+      <mesh position={[0, waterLocalY - 1.0, 0]} receiveShadow>
+        <cylinderGeometry args={[radius * 1.0, radius * 0.85, 2.0, 32, 1, true]} />
+        <meshStandardMaterial color="#5d4b3a" roughness={1} side={THREE.DoubleSide} />
+      </mesh>
+      
       {/* Dark basin floor giving the water visual depth */}
       <mesh position={[0, waterLocalY - 0.24, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[radius * 1.02, 36]} />
@@ -737,28 +753,9 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
                 if (Math.random() < 0.1) loco.aiState = 'idle';
             }
         }
-        // ── 游荡 + 鹿群 cohesion ────────────────────────
+        // ── 游荡 ────────────────────────────────────────
         else {
             loco.aiState = 'wander';
-            updateWanderTarget(loco, DEER_CFG, allAssets);
-
-            // 鹿群 cohesion: 朝质心偏移目标
-            if (herdCount > 0) {
-                herdCenterX /= herdCount;
-                herdCenterZ /= herdCount;
-                const toHerdDx = herdCenterX - loco.position.x;
-                const toHerdDz = herdCenterZ - loco.position.z;
-                const toHerdDist = Math.sqrt(toHerdDx * toHerdDx + toHerdDz * toHerdDz);
-                // 太远时朝质心走，太近时不靠
-                if (toHerdDist > 6) {
-                    loco.target.x += toHerdDx * 0.3;
-                    loco.target.z += toHerdDz * 0.3;
-                } else if (toHerdDist < 1.5) {
-                    // 分离：太近时稍微远离
-                    loco.target.x -= toHerdDx * 0.2;
-                    loco.target.z -= toHerdDz * 0.2;
-                }
-            }
         }
 
         const grassHealth = useGameStore.getState().grassHealth;
@@ -767,16 +764,34 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
             return;
         }
 
-        // 游荡目标更新
+        // 游荡目标更新 + 鹿群 cohesion：统一在此调用一次，覆盖所有进入 wander 的路径
+        // （含「饿了找不到树→wander」「夜里微移→wander」），避免某些路径目标不刷新而卡住，
+        // 也避免之前在分支内重复调用导致的航向翻倍抖动。
         if (loco.aiState === 'wander') {
             updateWanderTarget(loco, DEER_CFG, allAssets);
+            if (herdCount > 0) {
+                herdCenterX /= herdCount;
+                herdCenterZ /= herdCount;
+                const toHerdDx = herdCenterX - loco.position.x;
+                const toHerdDz = herdCenterZ - loco.position.z;
+                const toHerdDist = Math.sqrt(toHerdDx * toHerdDx + toHerdDz * toHerdDz);
+                if (toHerdDist > 6) {
+                    loco.target.x += toHerdDx * 0.05;
+                    loco.target.z += toHerdDz * 0.05;
+                } else if (toHerdDist < 1.5) {
+                    loco.target.x -= toHerdDx * 0.05;
+                    loco.target.z -= toHerdDz * 0.05;
+                }
+            }
         }
     }
 
     // ── 运动逻辑 (交给 locomotion 模块) ─────────────────
-    stepCreature(loco, delta, DEER_CFG, {
+    // dt 钳到上限：掉帧时 delta 飙高会让 step 跨一大步造成「瞬移」
+    const dt = Math.min(delta, 0.05);
+    stepCreature(loco, dt, DEER_CFG, {
       time: t,
-      delta,
+      delta: dt,
       assets: allAssets,
       weather,
     });
@@ -785,7 +800,7 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
     applyLocomotionToGroup(groupRef.current, loco, 0.02);
 
     // ── 头部动画 ────────────────────────────────────────
-    const head = groupRef.current.children[1];
+    const head = groupRef.current.getObjectByName('head');
     if (head) {
          if ((loco.aiState === 'graze' || loco.aiState === 'drink') && !loco.isMoving) head.rotation.x = 0.8;
          else head.rotation.x = Math.sin(loco.legPhase * Math.PI * 2 * 0.5) * 0.15;
@@ -793,10 +808,10 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
 
     // ── 腿部动画 (位移驱动) ─────────────────────────────
     const legAngles = computeLegAngles(loco.legPhase, loco.isMoving);
-    const legFL = groupRef.current.children[2];
-    const legFR = groupRef.current.children[3];
-    const legBL = groupRef.current.children[4];
-    const legBR = groupRef.current.children[5];
+    const legFL = groupRef.current.getObjectByName('legFL');
+    const legFR = groupRef.current.getObjectByName('legFR');
+    const legBL = groupRef.current.getObjectByName('legBL');
+    const legBR = groupRef.current.getObjectByName('legBR');
 
     if (legFL && legFR && legBL && legBR) {
         legFL.rotation.x = legAngles.fl;
@@ -829,7 +844,7 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
         <meshStandardMaterial color="#a16207" flatShading />
       </mesh>
       {/* Head */}
-      <group position={[0, 1.45, 0.75]}>
+      <group name="head" position={[0, 1.45, 0.75]}>
          <mesh position={[0, 0, 0]} castShadow>
            <boxGeometry args={[0.28, 0.3, 0.35]} />
            <meshStandardMaterial color="#b45309" flatShading />
@@ -884,36 +899,23 @@ function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: 
         <boxGeometry args={[0.1, 0.1, 0.25]} />
         <meshStandardMaterial color="#d6d3d1" flatShading />
       </mesh>
-      {/* Legs */}
-      <group position={[-0.18, 0.8, -0.45]}>
+      {/* Legs & Hooves */}
+      <group name="legBL" position={[-0.18, 0.8, -0.45]}>
           <mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.09, 0.8, 0.09]} /><meshStandardMaterial color="#78350f" flatShading /></mesh>
+          <mesh position={[0, -0.78, 0]} castShadow><boxGeometry args={[0.1, 0.04, 0.1]} /><meshStandardMaterial color="#44403c" flatShading /></mesh>
       </group>
-      <group position={[0.18, 0.8, -0.45]}>
+      <group name="legBR" position={[0.18, 0.8, -0.45]}>
           <mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.09, 0.8, 0.09]} /><meshStandardMaterial color="#78350f" flatShading /></mesh>
+          <mesh position={[0, -0.78, 0]} castShadow><boxGeometry args={[0.1, 0.04, 0.1]} /><meshStandardMaterial color="#44403c" flatShading /></mesh>
       </group>
-      <group position={[-0.18, 0.8, 0.45]}>
+      <group name="legFL" position={[-0.18, 0.8, 0.45]}>
           <mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.09, 0.8, 0.09]} /><meshStandardMaterial color="#78350f" flatShading /></mesh>
+          <mesh position={[0, -0.78, 0]} castShadow><boxGeometry args={[0.1, 0.04, 0.1]} /><meshStandardMaterial color="#44403c" flatShading /></mesh>
       </group>
-      <group position={[0.18, 0.8, 0.45]}>
+      <group name="legFR" position={[0.18, 0.8, 0.45]}>
           <mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.09, 0.8, 0.09]} /><meshStandardMaterial color="#78350f" flatShading /></mesh>
+          <mesh position={[0, -0.78, 0]} castShadow><boxGeometry args={[0.1, 0.04, 0.1]} /><meshStandardMaterial color="#44403c" flatShading /></mesh>
       </group>
-      {/* Hooves */}
-      <mesh position={[-0.18, 0.38, -0.45]} castShadow>
-        <boxGeometry args={[0.1, 0.04, 0.1]} />
-        <meshStandardMaterial color="#44403c" flatShading />
-      </mesh>
-      <mesh position={[0.18, 0.38, -0.45]} castShadow>
-        <boxGeometry args={[0.1, 0.04, 0.1]} />
-        <meshStandardMaterial color="#44403c" flatShading />
-      </mesh>
-      <mesh position={[-0.18, 0.38, 0.45]} castShadow>
-        <boxGeometry args={[0.1, 0.04, 0.1]} />
-        <meshStandardMaterial color="#44403c" flatShading />
-      </mesh>
-      <mesh position={[0.18, 0.38, 0.45]} castShadow>
-        <boxGeometry args={[0.1, 0.04, 0.1]} />
-        <meshStandardMaterial color="#44403c" flatShading />
-      </mesh>
     </group>
   );
 }
@@ -1013,10 +1015,10 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
                 const toPackDx = packCenterX - loco.position.x;
                 const toPackDz = packCenterZ - loco.position.z;
                 const toPackDist = Math.sqrt(toPackDx * toPackDx + toPackDz * toPackDz);
-                // 太近时分散巡逻
+                // 太近时分散巡逻，减弱互相排斥力以防抽搐
                 if (toPackDist < 5) {
-                    loco.target.x -= toPackDx * 0.3;
-                    loco.target.z -= toPackDz * 0.3;
+                    loco.target.x -= toPackDx * 0.05;
+                    loco.target.z -= toPackDz * 0.05;
                 }
             }
         }
@@ -1034,7 +1036,7 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
     applyLocomotionToGroup(groupRef.current, loco, 0.025);
 
     // ── 头部动画 ────────────────────────────────────────
-    const head = groupRef.current.children[1];
+    const head = groupRef.current.getObjectByName('head');
     if (head) {
          if (loco.aiState === 'chase') head.rotation.x = 0.3;
          else head.rotation.x = Math.sin(loco.legPhase * Math.PI * 2 * 0.5) * 0.1;
@@ -1042,10 +1044,10 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
 
     // ── 腿部动画 (位移驱动) ─────────────────────────────
     const legAngles = computeLegAngles(loco.legPhase, loco.isMoving);
-    const legFL = groupRef.current.children[2];
-    const legFR = groupRef.current.children[3];
-    const legBL = groupRef.current.children[4];
-    const legBR = groupRef.current.children[5];
+    const legFL = groupRef.current.getObjectByName('legFL');
+    const legFR = groupRef.current.getObjectByName('legFR');
+    const legBL = groupRef.current.getObjectByName('legBL');
+    const legBR = groupRef.current.getObjectByName('legBR');
 
     if (legFL && legFR && legBL && legBR) {
         legFL.rotation.x = legAngles.fl;
@@ -1078,7 +1080,7 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
         <meshStandardMaterial color="#475569" flatShading />
       </mesh>
       {/* Head */}
-      <group position={[0, 1.2, 0.75]}>
+      <group name="head" position={[0, 1.2, 0.75]}>
          <mesh position={[0, 0, 0]} castShadow>
            <boxGeometry args={[0.3, 0.28, 0.35]} />
            <meshStandardMaterial color="#334155" flatShading />
@@ -1130,36 +1132,23 @@ function Wolf({ position, scale = 1, id }: { position: any, scale?: number, id: 
          <boxGeometry args={[0.12, 0.12, 0.25]} />
          <meshStandardMaterial color="#475569" flatShading />
       </mesh>
-      {/* Legs */}
-      <group position={[-0.14, 0.7, -0.45]}>
+      {/* Legs & Paws */}
+      <group name="legBL" position={[-0.14, 0.7, -0.45]}>
           <mesh position={[0, -0.35, 0]} castShadow><boxGeometry args={[0.09, 0.7, 0.09]} /><meshStandardMaterial color="#1e293b" flatShading /></mesh>
+          <mesh position={[0, -0.68, 0]} castShadow><boxGeometry args={[0.1, 0.04, 0.12]} /><meshStandardMaterial color="#0f172a" flatShading /></mesh>
       </group>
-      <group position={[0.14, 0.7, -0.45]}>
+      <group name="legBR" position={[0.14, 0.7, -0.45]}>
           <mesh position={[0, -0.35, 0]} castShadow><boxGeometry args={[0.09, 0.7, 0.09]} /><meshStandardMaterial color="#1e293b" flatShading /></mesh>
+          <mesh position={[0, -0.68, 0]} castShadow><boxGeometry args={[0.1, 0.04, 0.12]} /><meshStandardMaterial color="#0f172a" flatShading /></mesh>
       </group>
-      <group position={[-0.14, 0.7, 0.4]}>
+      <group name="legFL" position={[-0.14, 0.7, 0.4]}>
           <mesh position={[0, -0.35, 0]} castShadow><boxGeometry args={[0.09, 0.7, 0.09]} /><meshStandardMaterial color="#1e293b" flatShading /></mesh>
+          <mesh position={[0, -0.68, 0]} castShadow><boxGeometry args={[0.1, 0.04, 0.12]} /><meshStandardMaterial color="#0f172a" flatShading /></mesh>
       </group>
-      <group position={[0.14, 0.7, 0.4]}>
+      <group name="legFR" position={[0.14, 0.7, 0.4]}>
           <mesh position={[0, -0.35, 0]} castShadow><boxGeometry args={[0.09, 0.7, 0.09]} /><meshStandardMaterial color="#1e293b" flatShading /></mesh>
+          <mesh position={[0, -0.68, 0]} castShadow><boxGeometry args={[0.1, 0.04, 0.12]} /><meshStandardMaterial color="#0f172a" flatShading /></mesh>
       </group>
-      {/* Paws */}
-      <mesh position={[-0.14, 0.33, -0.45]} castShadow>
-        <boxGeometry args={[0.1, 0.04, 0.12]} />
-        <meshStandardMaterial color="#0f172a" flatShading />
-      </mesh>
-      <mesh position={[0.14, 0.33, -0.45]} castShadow>
-        <boxGeometry args={[0.1, 0.04, 0.12]} />
-        <meshStandardMaterial color="#0f172a" flatShading />
-      </mesh>
-      <mesh position={[-0.14, 0.33, 0.4]} castShadow>
-        <boxGeometry args={[0.1, 0.04, 0.12]} />
-        <meshStandardMaterial color="#0f172a" flatShading />
-      </mesh>
-      <mesh position={[0.14, 0.33, 0.4]} castShadow>
-        <boxGeometry args={[0.1, 0.04, 0.12]} />
-        <meshStandardMaterial color="#0f172a" flatShading />
-      </mesh>
     </group>
   );
 }
@@ -2425,7 +2414,7 @@ export function SubIsland(props: any) {
         // 高度笔刷：改 positions 数组（隆起/挖低/找平/柔化）
         const changed = applyTerrainBrush(posAttr.array as Float32Array, {
           mode: brushMode, size: brushSize, strength: brushStrength, falloff: brushFalloff,
-          isDrag: isDragEvent, px: localPoint.x, pz: localPoint.z, targetY: flattenTargetY.current, minY: -3.0, maxY: 8.0,
+          isDrag: isDragEvent, px: localPoint.x, pz: localPoint.z, targetY: flattenTargetY.current,
         });
         if (changed) {
           posAttr.needsUpdate = true;
@@ -2461,12 +2450,46 @@ export function SubIsland(props: any) {
       }
 
       const isPillar = selectedTool === 'bridge_pillar';
+
+      if (selectedTool === 'pond') {
+        const centerH = getTerrainHeight(worldPoint.x, worldPoint.z);
+        const changed = applyTerrainBrush(posAttr.array as Float32Array, {
+          mode: 'flatten', targetY: placementY - 0.7, size: 8.5, strength: 1.0, falloff: 'flat_center',
+          isDrag: false, px: localPoint.x, pz: localPoint.z
+        });
+        if (changed) {
+          posAttr.needsUpdate = true;
+          geometry.computeVertexNormals();
+          refreshColors();
+          positionsRef.current = new Float32Array(posAttr.array);
+          persistTerrain();
+        }
+      }
+      
+      if (selectedTool === 'spring') {
+        const changed = applyTerrainBrush(posAttr.array as Float32Array, {
+          mode: 'flatten', targetY: placementY, size: 4.0, strength: 1.0, falloff: 'flat_center',
+          isDrag: false, px: localPoint.x, pz: localPoint.z
+        });
+        if (changed) {
+          posAttr.needsUpdate = true;
+          geometry.computeVertexNormals();
+          refreshColors();
+          positionsRef.current = new Float32Array(posAttr.array);
+          persistTerrain();
+        }
+      }
+
+      // 池塘：挖浅碗 + 贴地拟合，如果放在 SubIsland 上则通过 skipBrush 仅计算不改主岛
+      const placedCustom = selectedTool === 'pond'
+        ? carvePondAndEncode(worldPoint.x, worldPoint.z, true)
+        : (String(selectedTool).startsWith('balloon') ? useGameStore.getState().balloonColor : undefined);
       addAsset({
         type: selectedTool as any,
         position: { x: worldPoint.x, y: placementY, z: worldPoint.z },
         rotation: { x: rx, y: isPillar ? 0 : Math.random() * Math.PI * 2, z: rz },
         scale: isPillar ? 1.0 : 0.8 + Math.random() * 0.4,
-        customState: String(selectedTool).startsWith('balloon') ? useGameStore.getState().balloonColor : undefined
+        customState: placedCustom
       });
     }
   };
@@ -4000,10 +4023,10 @@ export function Assets() {
   const assets = useGameStore(state => state.assets);
 
   return (
-    <>
+    <MarineAssetIndexProvider assets={assets}>
       <VFXSystem />
-      <RopeRenderer />
-      <BridgeRenderer />
+      <MarineRopeRenderer />
+      <MarineBridgeRenderer />
       {assets.map(asset => {
         let content: React.ReactNode = null;
         switch (asset.type) {
@@ -4022,13 +4045,13 @@ export function Assets() {
           case 'house': content = <House {...asset} />; break;
           case 'windmill': content = <Windmill {...asset} />; break;
           case 'lighthouse': content = <Lighthouse {...asset} />; break;
-          case 'platform': content = <Platform {...asset} />; break;
-          case 'pier': content = <Pier {...asset} />; break;
-          case 'bridge_pillar': content = <BridgePillar {...asset} assetId={asset.id} />; break;
-          case 'boat': content = <Boat {...asset} />; break;
+          case 'platform': content = <MarinePlatform {...asset} />; break;
+          case 'pier': content = <MarinePier {...asset} />; break;
+          case 'bridge_pillar': content = <MarineBridgePillar {...asset} assetId={asset.id} />; break;
+          case 'boat': content = <MarineBoat {...asset} />; break;
           case 'balloon':
           case 'balloon_ladder':
-          case 'balloon_bridge': content = <Balloon {...asset} />; break;
+          case 'balloon_bridge': content = <MarineBalloon {...asset} />; break;
           case 'sub_island': content = <SubIsland {...asset} />; break;
           case 'birdhouse': content = <Birdhouse {...asset} />; break;
           case 'hoe': 
@@ -4061,6 +4084,6 @@ export function Assets() {
           </SelectableAssetWrapper>
         );
       })}
-    </>
+    </MarineAssetIndexProvider>
   );
 }
