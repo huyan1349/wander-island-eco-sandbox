@@ -27,6 +27,7 @@ export class AudioSystem {
     private static bgmAutoplayBlocked = false;
     private static bgmPlaylist: string[] = []; // ordered playlist URLs
     private static bgmShuffle = false;
+    private static bgmAutoNextTriggered = false; // prevent double trigger
 
     // 交互音效去重：记录最近一次"点击类"音效时间，全局监听据此避免与组件内调用重复发声
     static lastPlayAt = 0;
@@ -103,16 +104,14 @@ export class AudioSystem {
 
         // Create <audio> element
         const audio = new Audio();
-        audio.loop = false; // No loop — auto-advance to next track via 'ended' event
+        audio.loop = false;
         audio.volume = 0;
         audio.preload = 'auto';
         audio.src = url;
         audio.load();
 
-        // Auto-play next track when current ends
-        audio.addEventListener('ended', () => {
-            this.playNext();
-        });
+        // Auto-advance: use both 'ended' and 'timeupdate' for reliability
+        this.attachAutoNext(audio);
 
         // Cache it
         this.bgmCache.set(url, audio);
@@ -128,10 +127,28 @@ export class AudioSystem {
         audio.preload = 'auto';
         audio.src = url;
         audio.load();
-        audio.addEventListener('ended', () => {
-            this.playNext();
-        });
+        this.attachAutoNext(audio);
         this.bgmCache.set(url, audio);
+    }
+
+    /** Attach auto-next listeners to an audio element */
+    private static attachAutoNext(audio: HTMLAudioElement) {
+        // Primary: 'ended' event
+        audio.addEventListener('ended', () => {
+            if (!this.bgmAutoNextTriggered) {
+                this.bgmAutoNextTriggered = true;
+                this.playNext();
+            }
+        });
+        // Backup: 'timeupdate' — detect when song is about to end (last 0.3s)
+        audio.addEventListener('timeupdate', () => {
+            if (audio.duration && audio.duration > 0 && audio.currentTime >= audio.duration - 0.3) {
+                if (!this.bgmAutoNextTriggered) {
+                    this.bgmAutoNextTriggered = true;
+                    this.playNext();
+                }
+            }
+        });
     }
 
     static playBGM(): Promise<boolean> {
@@ -235,12 +252,16 @@ export class AudioSystem {
         if (this.currentBgmUrl === url && this.isBgmPlaying) return;
 
         const switchToken = ++this.bgmSwitchToken;
+        this.bgmAutoNextTriggered = false; // reset for new track
 
-        // Fade out current
-        if (this.isBgmPlaying && this.bgmEl) {
+        // Fade out current (skip if already ended)
+        if (this.isBgmPlaying && this.bgmEl && !this.bgmEl.ended) {
             await this.fadeBGMOUT();
             if (switchToken !== this.bgmSwitchToken) return;
             this.bgmEl.pause();
+        } else if (this.bgmEl) {
+            this.bgmEl.pause();
+            this.bgmEl.currentTime = 0;
         }
 
         // Get from cache or load
