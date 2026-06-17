@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { X, Shield, ChevronDown } from 'lucide-react';
 import { AudioSystem } from '../lib/audio';
 
@@ -223,6 +223,44 @@ const PRIVACY_CONTENT = [
   },
 ];
 
+const AccordionItem: React.FC<{
+  isExpanded: boolean;
+  onToggle: () => void;
+  title: string;
+  children: React.ReactNode;
+}> = ({ isExpanded, onToggle, title, children }) => {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const contentHeight = contentRef.current?.scrollHeight ?? 0;
+
+  return (
+    <div
+      className="rounded-xl border border-slate-200/80 overflow-hidden"
+      style={{ background: isExpanded ? 'rgba(254,243,199,0.3)' : 'rgba(255,255,255,0.5)' }}
+    >
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center gap-3 px-5 py-3.5 text-left"
+      >
+        <span className="text-sm font-bold text-slate-800 tracking-wide flex-1">{title}</span>
+        <span
+          className="text-slate-400 text-xs transition-transform duration-300"
+          style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        >
+          <ChevronDown size={16} />
+        </span>
+      </button>
+      <div
+        className="overflow-hidden transition-[max-height] duration-300 ease-in-out"
+        style={{ maxHeight: isExpanded ? contentHeight : 0 }}
+      >
+        <div ref={contentRef} className="px-5 pb-4 flex flex-col gap-4">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const PrivacyPolicyModal: React.FC<{
   onClose: () => void;
   showAgree?: boolean;
@@ -260,44 +298,23 @@ export const PrivacyPolicyModal: React.FC<{
         </div>
 
         <div className="flex flex-col gap-3">
-          {PRIVACY_CONTENT.map((section, si) => {
-            const isExpanded = expandedSection === si;
-            return (
-              <div
-                key={si}
-                className="rounded-xl border border-slate-200/80 overflow-hidden"
-                style={{ background: isExpanded ? 'rgba(254,243,199,0.3)' : 'rgba(255,255,255,0.5)' }}
-              >
-                <button
-                  onClick={() => { setExpandedSection(isExpanded ? null : si); AudioSystem.playTap(); }}
-                  className="w-full flex items-center gap-3 px-5 py-3.5 text-left"
-                >
-                  <span className="text-sm font-bold text-slate-800 tracking-wide flex-1">{section.title}</span>
-                  <span
-                    className="text-slate-400 text-xs transition-transform duration-300"
-                    style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                  >
-                    <ChevronDown size={16} />
-                  </span>
-                </button>
-                <div
-                  className="overflow-hidden"
-                  style={{ maxHeight: isExpanded ? 5000 : 0 }}
-                >
-                  <div className="px-5 pb-4 flex flex-col gap-4">
-                    {section.items.map((item, ii) => (
-                      <div key={ii} className="flex flex-col gap-1.5">
-                        <p className="text-[11px] font-bold text-amber-800 bg-amber-100/80 px-2.5 py-0.5 rounded-md self-start border border-amber-200/50">
-                          {item.label}
-                        </p>
-                        <p className="text-[12px] text-slate-600 leading-[1.8] whitespace-pre-wrap pl-1">{item.desc}</p>
-                      </div>
-                    ))}
-                  </div>
+          {PRIVACY_CONTENT.map((section, si) => (
+            <AccordionItem
+              key={si}
+              isExpanded={expandedSection === si}
+              onToggle={() => { setExpandedSection(expandedSection === si ? null : si); AudioSystem.playTap(); }}
+              title={section.title}
+            >
+              {section.items.map((item, ii) => (
+                <div key={ii} className="flex flex-col gap-1.5">
+                  <p className="text-[11px] font-bold text-amber-800 bg-amber-100/80 px-2.5 py-0.5 rounded-md self-start border border-amber-200/50">
+                    {item.label}
+                  </p>
+                  <p className="text-[12px] text-slate-600 leading-[1.8] whitespace-pre-wrap pl-1">{item.desc}</p>
                 </div>
-              </div>
-            );
-          })}
+              ))}
+            </AccordionItem>
+          ))}
         </div>
 
         <div className="mt-6 pt-4 border-t border-slate-200/50 text-center">
