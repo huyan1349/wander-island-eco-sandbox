@@ -21,7 +21,7 @@ export function SoundLayer() {
       if (!el || el === lastHoverEl) return;
       lastHoverEl = el;
       const now = performance.now();
-      if (now - lastHoverAt < 55) return; // 节流，避免快速划过时连发
+      if (now - lastHoverAt < 95) return; // 节流，避免快速划过时连发
       lastHoverAt = now;
       AudioSystem.playHover();
     };
