@@ -5,6 +5,7 @@ import { connectSocket } from '../lib/socket';
 import { syncOnLogin } from '../lib/cloudSync';
 import { AudioSystem } from '../lib/audio';
 import { User, Lock, ArrowRight, Globe, ArrowLeft, Check, X } from 'lucide-react';
+import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 
 type NameStatus = 'idle' | 'checking' | 'available' | 'taken' | 'short';
 
@@ -17,6 +18,8 @@ export const LoginScreen: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [nameStatus, setNameStatus] = useState<NameStatus>('idle');
+  const [privacyAgreed, setPrivacyAgreed] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   // 注册模式下实时校验用户名是否可用（防抖）
   useEffect(() => {
@@ -163,10 +166,28 @@ export const LoginScreen: React.FC = () => {
               </div>
             )}
 
+            {/* Privacy Agreement (register only) */}
+            {mode === 'register' && (
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={privacyAgreed}
+                  onChange={(e) => { setPrivacyAgreed(e.target.checked); AudioSystem.playToggle(); }}
+                  className="mt-0.5 w-4 h-4 accent-amber-700 shrink-0"
+                />
+                <span className="text-[11px] text-slate-500 leading-relaxed">
+                  我已阅读并同意
+                  <button type="button" onClick={() => { setShowPrivacy(true); AudioSystem.playClick(); }} className="text-amber-700 font-bold underline underline-offset-2 hover:text-amber-600 mx-0.5">
+                    《流浪岛隐私政策》
+                  </button>
+                </span>
+              </label>
+            )}
+
             {/* Submit */}
             <button
               type="submit"
-              disabled={loading || (mode === 'register' && (nameStatus === 'taken' || nameStatus === 'short'))}
+              disabled={loading || (mode === 'register' && (nameStatus === 'taken' || nameStatus === 'short' || !privacyAgreed))}
               className="hand-drawn-btn w-full py-3.5 text-lg font-bold tracking-[0.2em] flex items-center justify-center gap-3 disabled:opacity-50"
             >
               {loading ? (
@@ -191,6 +212,13 @@ export const LoginScreen: React.FC = () => {
           WANDER ISLAND v2.0.0 · MULTIPLAYER
         </p>
       </div>
+
+      {/* Privacy Policy Modal */}
+      {showPrivacy && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/30 backdrop-blur-md">
+          <PrivacyPolicyModal onClose={() => { setShowPrivacy(false); }} />
+        </div>
+      )}
     </div>
   );
 };

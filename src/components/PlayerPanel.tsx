@@ -10,7 +10,7 @@ import {
   User, Edit2, BarChart2, Leaf, Unlock, Settings, LogOut, Clock, Layers,
   Wifi, WifiOff, Camera, X, Users, MessageCircle, Globe, Search, Send,
   UserPlus, Check, ArrowLeft, Mail, BookOpen, Compass, Star, Waves, Download, Gift, Upload, Trash2,
-  Award, Trophy, TreePine, Home, Rabbit, ChevronRight, Lock, Sparkles, Image as ImageIcon, IdCard
+  Award, Trophy, TreePine, Home, Rabbit, ChevronRight, Lock, Sparkles, Image as ImageIcon, IdCard, Shield
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { exportIslandFile, applyIslandData, captureScreenshot } from '../utils/islandIO';
@@ -778,6 +778,7 @@ export const PlayerPanel: React.FC = () => {
                     </div>
                     <button onClick={() => { AudioSystem.playClick(); setShowGift(true); }} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Gift size={18} /> 生成礼物链接</button>
                     <button onClick={() => { AudioSystem.playClick(); if (confirm('确定清空当前岛屿上的所有物体？此操作不可撤销。')) { store.clearAll(); setIsOpen(false); } }} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3 text-red-600"><Trash2 size={18} /> 清空岛屿</button>
+                    <button onClick={() => { AudioSystem.playClick(); window.dispatchEvent(new CustomEvent('wander:show-privacy')); }} className="hand-drawn-btn px-8 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Shield size={18} /> 隐私政策</button>
                     {authUser && (
                       <button onClick={() => { AudioSystem.playConfirm(); api.setToken(null); disconnectSocket(); clearAuthUser(); setIsOpen(false); }} className="w-full flex items-center justify-center gap-3 hand-drawn-btn px-8 py-4 text-red-600 font-bold">
                         <LogOut size={18} /><span className="font-light tracking-[0.2em] uppercase text-sm">退出登录</span>

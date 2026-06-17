@@ -5,8 +5,13 @@ import { AudioSystem } from '../lib/audio';
 import { api } from '../lib/api';
 import { disconnectSocket } from '../lib/socket';
 import { PlayerPanel } from './PlayerPanel';
+import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 
-type ModalType = 'NONE' | 'SETTINGS' | 'CREDITS' | 'PROFILE' | 'MAILBOX' | 'VISITORS' | 'PLAZA';
+type ModalType = 'NONE' | 'SETTINGS' | 'CREDITS' | 'PROFILE' | 'MAILBOX' | 'VISITORS' | 'PLAZA' | 'PRIVACY';
+
+const PRIVACY_AGREED_KEY = 'wander-island-privacy-agreed';
+
+let hasSeenSplash = false;
 
 export const TitleScreen: React.FC = () => {
     const setScreen = useGameStore(state => state.setScreen);
@@ -22,9 +27,12 @@ export const TitleScreen: React.FC = () => {
     const islandName = useGameStore(state => state.islandName);
 
     const [activeModal, setActiveModal] = useState<ModalType>('NONE');
-    const [splashPhase, setSplashPhase] = useState<'AUTHOR' | 'TITLE' | 'DONE'>('AUTHOR');
+    const [splashPhase, setSplashPhase] = useState<'AUTHOR' | 'TITLE' | 'DONE'>(hasSeenSplash ? 'DONE' : 'AUTHOR');
     const [splashVisible, setSplashVisible] = useState(false);
-    const [splashOverlayVisible, setSplashOverlayVisible] = useState(true);
+    const [splashOverlayVisible, setSplashOverlayVisible] = useState(!hasSeenSplash);
+
+    // 首次打开隐私条款弹窗
+    const [showPrivacyGate, setShowPrivacyGate] = useState(() => !localStorage.getItem(PRIVACY_AGREED_KEY));
 
     const [isEditingName, setIsEditingName] = useState(false);
     const [tempName, setTempName] = useState('');
@@ -86,6 +94,13 @@ export const TitleScreen: React.FC = () => {
         window.location.reload();
     };
 
+    // 监听游戏内打开隐私政策的请求
+    useEffect(() => {
+        const handler = () => setActiveModal('PRIVACY');
+        window.addEventListener('wander:show-privacy', handler);
+        return () => window.removeEventListener('wander:show-privacy', handler);
+    }, []);
+
     // 已登录玩家进入标题时的「欢迎回来」通知
     const [welcomeBack, setWelcomeBack] = useState(false);
     const welcomeShownRef = useRef(false);
@@ -113,7 +128,10 @@ export const TitleScreen: React.FC = () => {
     }, [authUser]);
 
     React.useEffect(() => {
-        if (splashPhase === 'DONE') return;
+        if (splashPhase === 'DONE') {
+            hasSeenSplash = true;
+            return;
+        }
         setSplashVisible(true);
         const t1 = setTimeout(() => setSplashVisible(false), 2500);
         const t2 = setTimeout(() => {
@@ -393,6 +411,12 @@ export const TitleScreen: React.FC = () => {
                                     >
                                         {isClearingData ? '正在清除...' : '一键清除所有数据'}
                                     </button>
+                                    <button
+                                        onClick={() => { AudioSystem.playClick(); setActiveModal('PRIVACY'); }}
+                                        className="hand-drawn-btn px-6 py-2 text-sm text-slate-700 font-bold"
+                                    >
+                                        查看隐私政策
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -400,9 +424,9 @@ export const TitleScreen: React.FC = () => {
 
                     {/* CREDITS MODAL */}
                     {activeModal === 'CREDITS' && (
-                        <div className={`hand-drawn-panel p-12 flex flex-col items-center gap-10 animate-slide-up text-center ring-1 ring-slate-800/10 ${isTouch ? 'touch-modal-full touch-safe-bottom overflow-y-auto' : 'w-[500px]'}`}>
-                            <div className="w-full flex justify-end">
-                                <button onClick={() => { AudioSystem.playClose(); setActiveModal('NONE'); }} className={`hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200 ${isTouch ? 'w-12 h-12' : ''}`}>
+                        <div className={`hand-drawn-panel p-12 flex flex-col items-center gap-10 animate-slide-up text-center ring-1 ring-slate-800/10 ${isTouch ? 'touch-modal-full touch-safe-bottom overflow-y-auto' : 'w-[500px] max-h-[85vh] overflow-y-auto my-8 custom-scrollbar'}`}>
+                            <div className="w-full flex justify-end shrink-0">
+                                <button onClick={() => { AudioSystem.playClose(); setActiveModal('NONE'); }} className={`hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200 sticky top-0 z-10 bg-white/80 backdrop-blur ${isTouch ? 'w-12 h-12' : ''}`}>
                                     <X size={24} strokeWidth={3} className="text-slate-800" />
                                 </button>
                             </div>
@@ -450,6 +474,11 @@ export const TitleScreen: React.FC = () => {
                                 <div className="flex flex-col gap-2 bg-[#74b9ff] border-2 border-slate-800 p-4 rotate-1 shadow-[4px_4px_0_#2d3436]">
                                     <span className="text-sm font-bold text-slate-800">特别鸣谢</span>
                                     <span className="text-2xl font-bold text-slate-900">xyh</span>
+                                    <div className="flex flex-col gap-1 mt-1 border-t-2 border-slate-800/20 pt-3">
+                                        <span className="text-sm font-bold text-slate-900">Google AI Studio</span>
+                                        <span className="text-sm font-bold text-slate-900">Antigravity</span>
+                                        <span className="text-sm font-bold text-slate-900">Claude Code</span>
+                                    </div>
                                 </div>
                                 <div className="flex flex-col gap-2 bg-emerald-100 border-2 border-slate-800 p-4 -rotate-1 shadow-[4px_4px_0_#2d3436]">
                                     <span className="text-sm font-bold text-slate-600">启元开物</span>
@@ -462,8 +491,26 @@ export const TitleScreen: React.FC = () => {
                             </div>
                         </div>
                     )}
+                    {/* PRIVACY POLICY MODAL */}
+                    {activeModal === 'PRIVACY' && (
+                        <PrivacyPolicyModal onClose={() => { setActiveModal('NONE'); }} />
+                    )}
 
 
+                </div>
+            )}
+
+            {/* 首次打开隐私条款 Gate */}
+            {showPrivacyGate && (
+                <div className="absolute inset-0 z-[60] flex items-center justify-center bg-slate-900/30 backdrop-blur-md pointer-events-auto">
+                    <PrivacyPolicyModal
+                        onClose={() => {}}
+                        showAgree
+                        onAgree={() => {
+                            localStorage.setItem(PRIVACY_AGREED_KEY, '1');
+                            setShowPrivacyGate(false);
+                        }}
+                    />
                 </div>
             )}
         </div>
