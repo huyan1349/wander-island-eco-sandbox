@@ -357,7 +357,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
         AudioSystem.preloadBGM(track.url);
       });
       await Promise.all(bgmPromises);
-      AudioSystem.setPlaylist(BGM_TRACKS.map(t => t.url));
+      AudioSystem.setPlaylist(TRACKS.map(t => t.url));
       AudioSystem.loadBGM('/Tides_of_Mahogany.mp3');
 
       const fontPromises = FONTS.map(async (font, i) => {
