@@ -21,6 +21,15 @@ export const LoginScreen: React.FC = () => {
   const [privacyAgreed, setPrivacyAgreed] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [privacyWarning, setPrivacyWarning] = useState(false);
+  const [hasShownPrivacyOnRegister, setHasShownPrivacyOnRegister] = useState(false);
+
+  // 切换到注册模式时自动弹出隐私政策
+  useEffect(() => {
+    if (mode === 'register' && !hasShownPrivacyOnRegister) {
+      setShowPrivacy(true);
+      setHasShownPrivacyOnRegister(true);
+    }
+  }, [mode, hasShownPrivacyOnRegister]);
 
   // 注册模式下实时校验用户名是否可用（防抖）
   useEffect(() => {
@@ -232,7 +241,15 @@ export const LoginScreen: React.FC = () => {
       {/* Privacy Policy Modal */}
       {showPrivacy && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/30 backdrop-blur-md">
-          <PrivacyPolicyModal onClose={() => { setShowPrivacy(false); }} />
+          <PrivacyPolicyModal
+            onClose={() => { setShowPrivacy(false); }}
+            showAgree={mode === 'register'}
+            onAgree={() => {
+              setPrivacyAgreed(true);
+              setPrivacyWarning(false);
+              setShowPrivacy(false);
+            }}
+          />
         </div>
       )}
     </div>
