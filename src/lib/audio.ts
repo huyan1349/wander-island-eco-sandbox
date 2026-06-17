@@ -25,6 +25,8 @@ export class AudioSystem {
     private static bgmSwitchToken = 0;
     private static bgmFadeRAF: number | null = null;
     private static bgmAutoplayBlocked = false;
+    private static bgmPlaylist: string[] = []; // ordered playlist URLs
+    private static bgmShuffle = false;
 
     // 交互音效去重：记录最近一次"点击类"音效时间，全局监听据此避免与组件内调用重复发声
     static lastPlayAt = 0;
@@ -101,11 +103,16 @@ export class AudioSystem {
 
         // Create <audio> element
         const audio = new Audio();
-        audio.loop = true;
+        audio.loop = false; // No loop — auto-advance to next track via 'ended' event
         audio.volume = 0;
         audio.preload = 'auto';
         audio.src = url;
         audio.load();
+
+        // Auto-play next track when current ends
+        audio.addEventListener('ended', () => {
+            this.playNext();
+        });
 
         // Cache it
         this.bgmCache.set(url, audio);
@@ -116,11 +123,14 @@ export class AudioSystem {
     static preloadBGM(url: string) {
         if (this.bgmCache.has(url)) return;
         const audio = new Audio();
-        audio.loop = true;
+        audio.loop = false;
         audio.volume = 0;
         audio.preload = 'auto';
         audio.src = url;
         audio.load();
+        audio.addEventListener('ended', () => {
+            this.playNext();
+        });
         this.bgmCache.set(url, audio);
     }
 
@@ -245,6 +255,7 @@ export class AudioSystem {
                 this.bgmAutoplayBlocked = false;
                 this.currentBgmUrl = url;
                 this.fadeBGMIN();
+                this.emitBGMChange();
             }).catch(() => {
                 this.bgmAutoplayBlocked = true;
             });
@@ -252,6 +263,7 @@ export class AudioSystem {
             this.isBgmPlaying = true;
             this.currentBgmUrl = url;
             this.fadeBGMIN();
+            this.emitBGMChange();
         }
     }
 
@@ -262,6 +274,40 @@ export class AudioSystem {
 
     static getCurrentBGMUrl(): string | null {
         return this.currentBgmUrl;
+    }
+
+    /** Set the playlist and enable auto-next on track end */
+    static setPlaylist(urls: string[], shuffle = false) {
+        this.bgmPlaylist = [...urls];
+        this.bgmShuffle = shuffle;
+    }
+
+    /** Emit a global event so UI components can sync */
+    private static emitBGMChange() {
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('wander:bgm-changed', { detail: { url: this.currentBgmUrl } }));
+        }
+    }
+
+    /** Play the next track in the playlist */
+    static playNext() {
+        if (!this.bgmPlaylist.length || !this.currentBgmUrl) return;
+        const idx = this.bgmPlaylist.indexOf(this.currentBgmUrl);
+        let nextIdx: number;
+        if (this.bgmShuffle) {
+            nextIdx = Math.floor(Math.random() * this.bgmPlaylist.length);
+        } else {
+            nextIdx = (idx + 1) % this.bgmPlaylist.length;
+        }
+        this.switchBGM(this.bgmPlaylist[nextIdx]);
+    }
+
+    /** Play the previous track in the playlist */
+    static playPrev() {
+        if (!this.bgmPlaylist.length || !this.currentBgmUrl) return;
+        const idx = this.bgmPlaylist.indexOf(this.currentBgmUrl);
+        const prevIdx = (idx - 1 + this.bgmPlaylist.length) % this.bgmPlaylist.length;
+        this.switchBGM(this.bgmPlaylist[prevIdx]);
     }
 
     static isBGMAutoplayBlocked(): boolean {

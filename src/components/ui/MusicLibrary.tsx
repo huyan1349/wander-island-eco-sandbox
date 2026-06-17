@@ -19,7 +19,12 @@ export function MusicLibrary({ onClose }: { onClose: () => void }) {
       setPlayingUrl(AudioSystem.getCurrentBGMUrl());
       setProgress(AudioSystem.getBGMProgress());
     }, 400);
-    return () => clearInterval(id);
+    const onBGMChange = () => {
+      setPlayingUrl(AudioSystem.getCurrentBGMUrl());
+      setProgress(0);
+    };
+    window.addEventListener('wander:bgm-changed', onBGMChange);
+    return () => { clearInterval(id); window.removeEventListener('wander:bgm-changed', onBGMChange); };
   }, []);
 
   const play = (url: string) => {

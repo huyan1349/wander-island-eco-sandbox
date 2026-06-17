@@ -79,7 +79,12 @@ function MusicCardPanel() {
       setPlayingUrl(AudioSystem.getCurrentBGMUrl());
       setProgress(AudioSystem.getBGMProgress());
     }, 400);
-    return () => clearInterval(id);
+    const onBGMChange = () => {
+      setPlayingUrl(AudioSystem.getCurrentBGMUrl());
+      setProgress(0);
+    };
+    window.addEventListener('wander:bgm-changed', onBGMChange);
+    return () => { clearInterval(id); window.removeEventListener('wander:bgm-changed', onBGMChange); };
   }, []);
 
   useEffect(() => {
@@ -352,6 +357,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ onReady }) => {
         AudioSystem.preloadBGM(track.url);
       });
       await Promise.all(bgmPromises);
+      AudioSystem.setPlaylist(BGM_TRACKS.map(t => t.url));
       AudioSystem.loadBGM('/Tides_of_Mahogany.mp3');
 
       const fontPromises = FONTS.map(async (font, i) => {
