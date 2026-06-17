@@ -146,38 +146,42 @@ export const PlayerStatsTab: React.FC<PlayerStatsTabProps> = ({ handleAvatarUplo
         : '这份护照刚刚签发。岛还很安静，等待第一件真正属于你的东西。';
 
   return (
-    <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#f7f2e6] text-slate-900 animate-in fade-in slide-in-from-bottom-4">
-      <div className="min-h-full px-10 py-9">
-        <div className="mb-7 flex items-center justify-between border-b border-slate-900/70 pb-5">
+    <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#f4ebd0] text-slate-900 animate-in fade-in slide-in-from-bottom-4 relative">
+      <div className="absolute inset-0 bg-grid-paper opacity-40 mix-blend-multiply pointer-events-none" />
+      
+      <div className="relative z-10 min-h-full px-10 py-9 max-lg:px-6">
+        <div className="mb-8 flex items-center justify-between border-b-[3px] border-dashed border-slate-800/30 pb-6">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.42em] text-slate-500">Wander Island Archive</p>
-            <h2 className="mt-2 text-3xl font-black tracking-[0.12em] text-slate-900">潮语者护照</h2>
+            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-slate-600 mb-2">
+              <Compass size={16} strokeWidth={2.5} />
+              Wander Island Archive
+            </p>
+            <h2 className="hand-drawn-title text-4xl text-slate-800">潮语者护照</h2>
           </div>
-          <div className="hidden rounded-full border border-slate-900/30 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.28em] text-slate-600 sm:block">
-            No. {residentNo}
+          <div className="stamp border-slate-500 text-slate-600 px-3 py-1.5 text-xs font-black tracking-widest hidden sm:block">
+            NO. {residentNo}
           </div>
         </div>
 
         {/* Identity dossier */}
-        <section className="relative mb-7 overflow-hidden rounded-[6px] border border-slate-900/80 bg-[#fbf7eb] shadow-[0_12px_0_rgba(15,23,42,0.12)]">
-          <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: 'linear-gradient(90deg, #0f172a 1px, transparent 1px), linear-gradient(#0f172a 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
-          <div className="relative grid gap-7 p-7 lg:grid-cols-[170px_1fr]">
+        <section className="hand-drawn-panel mb-8 bg-white p-7 lg:p-8">
+          <div className="grid gap-8 lg:grid-cols-[160px_1fr]">
             <div className="relative shrink-0 group">
-              <div className="aspect-[4/5] w-[150px] overflow-hidden rounded-[4px] border border-slate-900 bg-[#e8efe8] p-2 shadow-[5px_5px_0_rgba(15,23,42,0.18)]">
-                <div className="h-full w-full overflow-hidden rounded-[3px] bg-[#dfe9e1] flex items-center justify-center">
-                  {avatarSrc ? <img src={avatarSrc} alt="" className="h-full w-full object-cover grayscale-[15%] saturate-[0.8]" /> : <User size={44} className="text-slate-500" />}
+              <div className="aspect-[4/5] w-[150px] overflow-hidden border-[3px] border-slate-800 bg-[#e8efe8] p-2 shadow-[4px_4px_0_#2d3436] rotate-[-2deg]">
+                <div className="h-full w-full border-[3px] border-slate-800 bg-[#dfe9e1] flex items-center justify-center relative overflow-hidden">
+                  {avatarSrc ? <img src={avatarSrc} alt="" className="absolute inset-0 h-full w-full object-cover grayscale-[20%] saturate-[0.8] hover:grayscale-0 hover:saturate-100 transition-all duration-500" /> : <User size={44} className="text-slate-500" />}
                 </div>
               </div>
-              <div className="mt-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.26em] text-slate-500">
-                <IdCard size={13} />
+              <div className="mt-4 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.26em] text-slate-500 rotate-[-2deg]">
+                <IdCard size={14} strokeWidth={2.5} />
                 Resident File
               </div>
-          {authUser && (
-                <label className="absolute inset-0 flex h-[188px] w-[150px] cursor-pointer items-center justify-center rounded-[4px] bg-slate-950/45 opacity-0 transition-opacity group-hover:opacity-100" title="更换头像">
-              <Camera size={20} className="text-white" />
-              <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
-            </label>
-          )}
+              {authUser && (
+                <label className="absolute inset-0 flex h-[188px] w-[150px] cursor-pointer items-center justify-center bg-slate-900/60 opacity-0 transition-opacity group-hover:opacity-100 rotate-[-2deg]" title="更换头像">
+                  <Camera size={24} className="text-white" />
+                  <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
+                </label>
+              )}
             </div>
 
             <div className="min-w-0">
@@ -187,134 +191,140 @@ export const PlayerStatsTab: React.FC<PlayerStatsTabProps> = ({ handleAvatarUplo
                   <div className="flex items-center gap-3">
                     {isEditing ? (
                       <div className="flex items-center gap-2">
-                        <input autoFocus value={tempName} onChange={e => setTempName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveName()} className="max-w-[320px] rounded-[4px] border border-slate-900 bg-white/70 px-3 py-2 text-2xl font-black tracking-[0.08em] text-slate-900 outline-none" />
-                        <button onClick={handleSaveName} className="rounded-[4px] border border-slate-900 px-2 py-2 text-slate-800 hover:bg-slate-900 hover:text-white" title="保存名字"><Check size={16} /></button>
+                        <input autoFocus value={tempName} onChange={e => setTempName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveName()} className="max-w-[320px] rounded-none border-[3px] border-slate-800 bg-slate-50 px-3 py-2 text-2xl font-black tracking-[0.08em] text-slate-900 outline-none" />
+                        <button onClick={handleSaveName} className="hand-drawn-btn p-2 text-slate-800" title="保存名字"><Check size={20} strokeWidth={3} /></button>
                       </div>
                     ) : (
                       <>
-                        <h3 className="truncate text-4xl font-black tracking-[0.14em] text-slate-950">{authUser ? authUser.username : playerName}</h3>
-                        <button onClick={() => { AudioSystem.playClick(); setTempName(authUser ? authUser.username : playerName); setIsEditing(true); }} className="rounded-[4px] border border-transparent p-2 text-slate-500 hover:border-slate-900 hover:text-slate-900" title="修改名字"><Edit2 size={15} /></button>
+                        <h3 className="hand-drawn-title truncate text-5xl text-slate-800">{authUser ? authUser.username : playerName}</h3>
+                        <button onClick={() => { AudioSystem.playClick(); setTempName(authUser ? authUser.username : playerName); setIsEditing(true); }} className="p-2 text-slate-400 hover:text-slate-800 transition-colors" title="修改名字"><Edit2 size={18} strokeWidth={2.5} /></button>
                       </>
                     )}
                   </div>
                 </div>
-                <div className="rounded-[4px] border border-amber-800/50 bg-amber-100/40 px-4 py-3 text-right">
-                  <p className="text-[9px] font-black uppercase tracking-[0.28em] text-amber-900/70">Current Rank</p>
-                  <p className="mt-1 text-sm font-black tracking-[0.1em] text-amber-950">{rank}</p>
+                <div className="stamp border-amber-600 text-amber-700 px-4 py-2 text-right rotate-[3deg]">
+                  <p className="text-[9px] font-black uppercase tracking-[0.28em] opacity-80">Current Rank</p>
+                  <p className="mt-1 text-sm font-black tracking-widest">{rank}</p>
                 </div>
               </div>
 
-              <div className="grid gap-3 text-sm md:grid-cols-3">
-                <div className="border-t border-slate-900/30 pt-3">
-                  <p className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-500">Island</p>
-                  <p className="mt-1 truncate font-black text-slate-900">{residentCard.islandName || islandName || '未命名之岛'}</p>
+              <div className="grid gap-4 text-sm md:grid-cols-3">
+                <div className="border-t-[2px] border-dashed border-slate-300 pt-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500 mb-1">Island</p>
+                  <p className="truncate font-black text-slate-800 text-lg">{residentCard.islandName || islandName || '未命名之岛'}</p>
                 </div>
-                <div className="border-t border-slate-900/30 pt-3">
-                  <p className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-500">Level</p>
-                  <p className="mt-1 font-black text-slate-900">LV.{playerLevel}</p>
+                <div className="border-t-[2px] border-dashed border-slate-300 pt-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500 mb-1">Level</p>
+                  <p className="font-black text-slate-800 text-lg">LV.{playerLevel}</p>
                 </div>
-                <div className="border-t border-slate-900/30 pt-3">
-                  <p className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-500">Issued</p>
-                  <p className="mt-1 font-black text-slate-900">{residentCard.joinDate || '已登记'}</p>
+                <div className="border-t-[2px] border-dashed border-slate-300 pt-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500 mb-1">Issued</p>
+                  <p className="font-black text-slate-800 text-lg">{residentCard.joinDate || '已登记'}</p>
                 </div>
               </div>
 
-              <div className="mt-7">
+              <div className="mt-8">
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <span className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">Experience</span>
-                  <span className="text-xs font-black text-slate-600">{currentLevelXP} / {xpForNextLevel}</span>
+                  <span className="hand-drawn-title text-xl text-slate-700">{currentLevelXP} / {xpForNextLevel}</span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-900/12">
-                  <div className="h-full rounded-full bg-slate-900 transition-all duration-700" style={{ width: `${xpPercentage}%` }} />
+                <div className="h-3 w-full border-[3px] border-slate-800 bg-slate-100 p-0.5" style={{ borderRadius: '15px 5px 15px 5px' }}>
+                  <div className="h-full bg-slate-800 transition-all duration-700" style={{ width: `${xpPercentage}%`, borderRadius: '8px 2px 8px 2px' }} />
                 </div>
-                <p className="mt-2 text-xs font-semibold text-slate-500">距下一级还差 {xpForNextLevel - currentLevelXP} 点经验</p>
+                <p className="mt-2 text-xs font-bold text-slate-500">距下一级还差 {xpForNextLevel - currentLevelXP} 点经验</p>
               </div>
             </div>
           </div>
         </section>
 
         {/* Island status */}
-        <section className="mb-7 grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-[6px] border border-slate-900/70 bg-[#fbf7eb] p-6">
-            <div className="mb-4 flex items-start justify-between gap-4">
+        <section className="mb-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="hand-drawn-panel bg-white p-6">
+            <div className="mb-5 flex items-start justify-between gap-4">
               <div>
-                <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Star size={14} /> Island Waking</p>
-                <h3 className="mt-2 text-2xl font-black tracking-[0.08em] text-slate-900">岛屿苏醒度 · {awakeningTier}</h3>
+                <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Star size={16} strokeWidth={2.5} /> Island Waking</p>
+                <h3 className="hand-drawn-title mt-2 text-3xl text-slate-800">岛屿苏醒度 · {awakeningTier}</h3>
               </div>
-              <span className="font-mono text-xl font-black text-slate-900">{aw}/100</span>
+              <span className="hand-drawn-title text-3xl text-slate-800">{aw}/100</span>
             </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-slate-900/12">
-              <div className="h-full rounded-full bg-[#274238] transition-all duration-700" style={{ width: `${aw}%` }} />
+            <div className="h-3 w-full border-[3px] border-slate-800 bg-slate-100 p-0.5" style={{ borderRadius: '5px 15px 5px 15px' }}>
+              <div className="h-full bg-emerald-700 transition-all duration-700 relative" style={{ width: `${aw}%`, borderRadius: '2px 8px 2px 8px' }}>
+                 <div className="absolute top-0.5 left-1 right-1 h-0.5 bg-white/30 rounded-full" />
+              </div>
             </div>
-            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-600">这不是生态评分，而是岛与你之间的关系记录。它醒得越深，回声和辞的表达就越接近完整。</p>
+            <p className="mt-5 max-w-2xl text-sm font-bold leading-relaxed text-slate-600">这不是生态评分，而是岛与你之间的关系记录。它醒得越深，回声和辞的表达就越接近完整。</p>
           </div>
-          <div className="rounded-[6px] border border-slate-900/70 bg-[#f3f0e6] p-6">
-            <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Compass size={14} /> Current Note</p>
-            <p className="mt-3 text-lg font-black text-slate-900">当前旅程记录</p>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">{journeyNote}</p>
+          <div className="hand-drawn-panel bg-[#faf9f5] p-6">
+            <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Compass size={16} strokeWidth={2.5} /> Current Note</p>
+            <p className="hand-drawn-title mt-3 text-2xl text-slate-800">当前旅程记录</p>
+            <p className="mt-3 text-sm font-bold leading-relaxed text-slate-600">{journeyNote}</p>
           </div>
         </section>
 
         {/* Journey fields */}
-        <section className="mb-7 grid gap-5 lg:grid-cols-2">
-          <div className="rounded-[6px] border border-slate-900/70 bg-[#fbf7eb] p-6">
-            <div className="mb-5 flex items-center justify-between">
-              <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Clock size={14} /> Journey Record</p>
+        <section className="mb-8 grid gap-6 lg:grid-cols-2">
+          <div className="hand-drawn-panel bg-white p-6">
+            <div className="mb-5 flex items-center justify-between border-b-[2px] border-dashed border-slate-300 pb-4">
+              <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Clock size={16} strokeWidth={2.5} /> Journey Record</p>
               <span className="text-xs font-black text-slate-500">旅程摘要</span>
             </div>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
               {journeyFields.map(field => (
-                <div key={field.label} className="border-t border-slate-900/20 pt-3">
-                  <p className="text-xs font-bold text-slate-500">{field.label}</p>
-                  <p className="mt-1 text-2xl font-black tracking-[0.08em] text-slate-900">{field.value}</p>
+                <div key={field.label}>
+                  <p className="text-xs font-black tracking-widest text-slate-500">{field.label}</p>
+                  <p className="hand-drawn-title mt-1 text-3xl text-slate-800">{field.value}</p>
                 </div>
               ))}
             </div>
           </div>
-          <div className="rounded-[6px] border border-slate-900/70 bg-[#fbf7eb] p-6">
-            <div className="mb-5 flex items-center justify-between">
-              <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Layers size={14} /> Island Notes</p>
+          <div className="hand-drawn-panel bg-white p-6">
+            <div className="mb-5 flex items-center justify-between border-b-[2px] border-dashed border-slate-300 pb-4">
+              <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Layers size={16} strokeWidth={2.5} /> Island Notes</p>
               <span className="text-xs font-black text-slate-500">轻量记录</span>
             </div>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
               {islandFields.map(field => (
-                <div key={field.label} className="border-t border-slate-900/20 pt-3">
-                  <p className="text-xs font-bold text-slate-500">{field.label}</p>
-                  <p className="mt-1 text-2xl font-black tracking-[0.08em] text-slate-900">{field.value}</p>
+                <div key={field.label}>
+                  <p className="text-xs font-black tracking-widest text-slate-500">{field.label}</p>
+                  <p className="hand-drawn-title mt-1 text-3xl text-slate-800">{field.value}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-      {/* 成就陈列 */}
-        <section className="rounded-[6px] border border-slate-900/70 bg-[#fbf7eb] p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-              <Trophy size={18} className="text-slate-700" />
-              <span className="font-black tracking-wide text-slate-900">成就记录</span>
-              <span className="text-sm font-black text-slate-500">{achDone}/{ACHIEVEMENTS.length}</span>
+        {/* 成就陈列 */}
+        <section className="hand-drawn-panel bg-[#faf9f5] p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+                <Trophy size={20} className="text-slate-800" strokeWidth={2.5} />
+                <span className="hand-drawn-title text-2xl text-slate-800">成就记录</span>
+                <span className="hand-drawn-title text-xl text-slate-500">{achDone}/{ACHIEVEMENTS.length}</span>
+            </div>
+            <button onClick={() => { AudioSystem.playClick(); setActiveTab('card'); }} className="hand-drawn-btn flex items-center gap-1 bg-white px-4 py-2 text-sm font-black text-slate-800">
+               居民证 <ChevronRight size={16} strokeWidth={3} />
+            </button>
           </div>
-            <button onClick={() => { AudioSystem.playClick(); setActiveTab('card'); }} className="flex items-center gap-1 rounded-[4px] border border-slate-900/60 px-3 py-1.5 text-xs font-black text-slate-700 hover:bg-slate-900 hover:text-white">居民证 <ChevronRight size={13} /></button>
-        </div>
-          <div className="mb-4 h-2 overflow-hidden rounded-full bg-slate-900/12">
-            <div className="h-full rounded-full bg-slate-800 transition-all duration-700" style={{ width: `${(achDone / ACHIEVEMENTS.length) * 100}%` }} />
-        </div>
-        <div className="flex flex-wrap gap-2 mb-4">
-          {ACHIEVEMENTS.map(a => {
-            const done = unlockedAch.has(a.id);
-            return (
-                <div key={a.id} title={`${a.title} · ${a.desc}`} className={`flex h-9 w-9 items-center justify-center rounded-full border transition-transform hover:scale-105 ${done ? 'border-slate-800 bg-slate-900 text-[#f7f2e6]' : 'border-slate-300 bg-slate-100 text-slate-400'}`}>
-                  {done ? <Award size={16} /> : <Lock size={13} />}
-              </div>
-            );
-          })}
-        </div>
-          <div className="rounded-[4px] border border-slate-900/15 bg-[#f3f0e6] px-4 py-3 text-sm text-slate-600">
-            {nextAch ? <><span className="font-black text-slate-900">下一段旅程：</span>{nextAch.title} · {nextAch.desc}</> : <span className="font-black text-slate-900">全部成就已完成，这份护照已经写满了。</span>}
+          <div className="mb-6 h-3 w-full border-[3px] border-slate-800 bg-slate-100 p-0.5" style={{ borderRadius: '15px 5px 15px 5px' }}>
+            <div className="h-full bg-slate-800 transition-all duration-700 relative" style={{ width: `${(achDone / ACHIEVEMENTS.length) * 100}%`, borderRadius: '8px 2px 8px 2px' }}>
+               <div className="absolute top-0.5 left-1 right-1 h-0.5 bg-white/30 rounded-full" />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3 mb-6">
+            {ACHIEVEMENTS.map(a => {
+              const done = unlockedAch.has(a.id);
+              return (
+                  <div key={a.id} title={`${a.title} · ${a.desc}`} className={`flex h-10 w-10 items-center justify-center rounded-sm border-[3px] transition-transform hover:scale-110 cursor-help ${done ? 'border-slate-800 bg-amber-200 text-amber-900 shadow-[2px_2px_0_#2d3436] rotate-1' : 'border-slate-300 bg-slate-100 text-slate-400 rotate-[-1deg]'}`}>
+                    {done ? <Award size={20} strokeWidth={2.5} /> : <Lock size={16} strokeWidth={2.5} />}
+                </div>
+              );
+            })}
+          </div>
+          <div className="rounded-sm border-[2px] border-dashed border-slate-300 bg-white px-5 py-4 text-sm text-slate-600">
+            {nextAch ? <><span className="font-black text-slate-800">下一段旅程：</span>{nextAch.title} · {nextAch.desc}</> : <span className="font-black text-slate-800">全部成就已完成，这份护照已经写满了。</span>}
           </div>
         </section>
-        </div>
+      </div>
     </div>
   );
 };

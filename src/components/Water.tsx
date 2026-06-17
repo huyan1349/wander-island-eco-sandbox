@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../store';
 import { AudioSystem } from '../lib/audio';
 import { Edges } from '@react-three/drei';
+import { getFloatingPlatformSnap } from '../utils/platformPlacement';
 
 const ISAND_SIZE = 40;
 
@@ -372,6 +373,12 @@ diffuseColor.a *= vUnder;`);
                    targetRotY = 0;
                }
 
+               if (tool === 'platform') {
+                   const snap = getFloatingPlatformSnap({ x: e.point.x, y: 0, z: e.point.z }, state.assets);
+                   targetX = snap.position.x;
+                   targetZ = snap.position.z;
+               }
+
                if (tool === 'bridge_pillar') {
                    targetScale = 1.0;
                    targetRotY = 0;
@@ -405,6 +412,11 @@ diffuseColor.a *= vUnder;`);
                         targetX = Math.round(targetX / 3) * 3;
                         targetZ = Math.round(targetZ / 3) * 3;
                         cursorRef.current.scale.set(0.75, 1, 0.75); // 3x3 bounding box
+                        if (tool === 'platform') {
+                            const snap = getFloatingPlatformSnap({ x: e.point.x, y: 0, z: e.point.z }, state.assets);
+                            targetX = snap.position.x;
+                            targetZ = snap.position.z;
+                        }
                     } else if (tool === 'sub_island') {
                         cursorRef.current.scale.set(1.5, 1, 1.5);
                     } else if (tool === 'boat') {

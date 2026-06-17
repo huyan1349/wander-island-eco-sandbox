@@ -337,8 +337,14 @@ export const PlayerPanel: React.FC = () => {
       {/* Full Modal */}
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-500">
-          <div className={`bg-[#fbf7ec] rounded-3xl border border-slate-300/70 flex overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.45)] animate-slide-up ${isTouch ? 'touch-modal-full touch-safe-bottom flex-col rounded-none' : 'w-[960px] h-[640px]'}`}>
+          <div className={`hand-drawn-panel bg-[#fdfcf8] flex relative shadow-[16px_16px_0_rgba(0,0,0,0.4)] animate-slide-up ${isTouch ? 'touch-modal-full touch-safe-bottom flex-col rounded-none' : 'w-[960px] h-[640px]'}`}>
+            <div className="absolute inset-0 bg-grid-paper opacity-40 mix-blend-multiply pointer-events-none" style={{ borderRadius: 'inherit' }} />
+            
+            <button onClick={() => { AudioSystem.playClose(); setIsOpen(false); }} className="hand-drawn-close-btn" title="关闭">
+              <X size={26} strokeWidth={3} />
+            </button>
 
+            <div className="relative z-10 flex w-full h-full max-lg:flex-col overflow-hidden" style={{ borderRadius: 'inherit' }}>
             {/* Sidebar - Desktop: left column / Touch: bottom tab bar */}
             {!isTouch ? (
               <div className="w-56 border-r-2 border-slate-800 p-6 flex flex-col gap-2">
@@ -421,9 +427,6 @@ export const PlayerPanel: React.FC = () => {
 
             {/* Content Area */}
             <div className="flex-1 flex flex-col relative">
-              <button onClick={() => { AudioSystem.playClose(); setIsOpen(false); }} className="absolute top-6 right-6 hand-drawn-btn p-2 rounded-full z-10">
-                <X size={20} />
-              </button>
 
               {/* ====== Passport Tab (玩家档案 / 角色卡) ====== */}
               {activeTab === 'stats' && (
@@ -790,6 +793,7 @@ export const PlayerPanel: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
             </div>
           </div>
         </div>

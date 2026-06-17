@@ -182,7 +182,14 @@ export const SocialPanel: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-500">
-      <div className={`hand-drawn-panel flex overflow-hidden shadow-2xl animate-slide-up ${isTouch ? 'touch-modal-full touch-safe-bottom flex-col' : 'w-[900px] h-[640px]'}`}>
+      <div className={`hand-drawn-panel flex relative bg-[#fdfcf8] shadow-[16px_16px_0_rgba(0,0,0,0.4)] animate-slide-up ${isTouch ? 'touch-modal-full touch-safe-bottom flex-col' : 'w-[900px] h-[640px]'}`}>
+        <div className="absolute inset-0 bg-grid-paper opacity-40 mix-blend-multiply pointer-events-none" style={{ borderRadius: 'inherit' }} />
+        
+        <button onClick={() => { AudioSystem.playClose(); setIsOpen(false); }} className="hand-drawn-close-btn" title="关闭">
+          <X size={26} strokeWidth={3} />
+        </button>
+
+        <div className="relative z-10 flex w-full h-full overflow-hidden" style={{ borderRadius: 'inherit' }}>
 
         {/* Sidebar - Desktop: left / Touch: bottom tab */}
         {!isTouch ? (
@@ -241,13 +248,6 @@ export const SocialPanel: React.FC = () => {
 
         {/* Content */}
         <div className="flex-1 flex flex-col relative">
-          {/* Close */}
-          <button
-            onClick={() => { AudioSystem.playClose(); setIsOpen(false); }}
-            className="absolute top-6 right-6 hand-drawn-btn p-2 rounded-full z-10"
-          >
-            <X size={20} />
-          </button>
 
           {/* Friends Tab */}
           {activeTab === 'friends' && (
@@ -459,6 +459,7 @@ export const SocialPanel: React.FC = () => {
               )}
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
