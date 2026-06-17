@@ -268,6 +268,9 @@ export class AudioSystem {
         await this.loadBGM(url);
         if (switchToken !== this.bgmSwitchToken) return;
 
+        // Reset playback position (critical for cached elements that ended previously)
+        this.bgmEl!.currentTime = 0;
+
         const playPromise = this.bgmEl!.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
@@ -290,6 +293,14 @@ export class AudioSystem {
 
     static getBGMProgress(): number {
         if (!this.bgmEl || !this.isBgmPlaying || !this.bgmEl.duration) return 0;
+        // Auto-advance: detect song end via polling (most reliable fallback)
+        if (this.bgmEl.ended || (this.bgmEl.duration > 0 && this.bgmEl.currentTime >= this.bgmEl.duration - 0.1)) {
+            if (!this.bgmAutoNextTriggered) {
+                this.bgmAutoNextTriggered = true;
+                this.playNext();
+            }
+            return 1;
+        }
         return this.bgmEl.currentTime / this.bgmEl.duration;
     }
 
