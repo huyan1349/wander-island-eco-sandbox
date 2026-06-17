@@ -53,16 +53,31 @@ export class AudioSystem {
         }
     }
 
-    /** Call this on user gesture to unlock AudioContext */
+    /** Call this on user gesture to unlock AudioContext and resume BGM if blocked */
     static ensureResumed() {
         if (this.ctx && this.ctx.state === 'suspended') {
             this.ctx.resume().catch(() => {});
         }
-        // On any user gesture, if BGM isn't actually playing, (re)start it now.
-        // Don't gate on bgmAutoplayBlocked — that flag can lag behind a rejected
-        // autoplay attempt, which would otherwise skip the retry on some devices.
-        if (this.bgmEl && !this.isBGMActuallyPlaying()) {
-            // play() MUST be called synchronously inside the gesture (iOS Safari)
+        // If BGM was blocked by autoplay policy, try again now (user gesture unlocks it)
+        if (this.bgmEl && this.bgmAutoplayBlocked) {
+            this.bgmEl.currentTime = 0;
+            const p = this.bgmEl.play();
+            if (p !== undefined) {
+                p.then(() => {
+                    this.isBgmPlaying = true;
+                    this.bgmAutoplayBlocked = false;
+                    this.currentBgmUrl = this.bgmEl!.src;
+                    this.fadeBGMIN();
+                    this.emitBGMChange();
+                    this.startBGMWatch();
+                    console.log('[BGM] Resumed after user gesture:', this.currentBgmUrl);
+                }).catch(() => {
+                    this.bgmAutoplayBlocked = true;
+                });
+            }
+        }
+        // Also handle case where BGM isn't playing at all
+        if (this.bgmEl && !this.isBGMActuallyPlaying() && !this.bgmAutoplayBlocked) {
             const p = this.bgmEl.play();
             if (p !== undefined) {
                 p.then(() => {
@@ -73,11 +88,6 @@ export class AudioSystem {
                 }).catch(() => {
                     this.bgmAutoplayBlocked = true;
                 });
-            } else {
-                this.isBgmPlaying = true;
-                this.bgmAutoplayBlocked = false;
-                this.currentBgmUrl = this.bgmEl.src;
-                this.fadeBGMIN();
             }
         }
     }
@@ -255,17 +265,18 @@ export class AudioSystem {
         if (this.currentBgmUrl === url && this.isBgmPlaying) return;
 
         const switchToken = ++this.bgmSwitchToken;
-        this.bgmAutoNextTriggered = false; // reset for new track
+        this.bgmAutoNextTriggered = false;
 
-        // Fade out current (skip if already ended)
-        if (this.isBgmPlaying && this.bgmEl && !this.bgmEl.ended) {
-            await this.fadeBGMOUT();
-            if (switchToken !== this.bgmSwitchToken) return;
-            this.bgmEl.pause();
-        } else if (this.bgmEl) {
+        // Stop current — skip fade if already ended
+        if (this.bgmEl) {
+            if (this.isBgmPlaying && !this.bgmEl.ended) {
+                await this.fadeBGMOUT();
+                if (switchToken !== this.bgmSwitchToken) return;
+            }
             this.bgmEl.pause();
             this.bgmEl.currentTime = 0;
         }
+        this.isBgmPlaying = false;
 
         // Get from cache or load
         await this.loadBGM(url);
@@ -284,8 +295,13 @@ export class AudioSystem {
                 this.fadeBGMIN();
                 this.emitBGMChange();
                 this.startBGMWatch();
-            }).catch(() => {
+                console.log('[BGM] Now playing:', url);
+            }).catch((e) => {
                 this.bgmAutoplayBlocked = true;
+                // Still update URL so UI knows what's "current"
+                this.currentBgmUrl = url;
+                this.emitBGMChange();
+                console.warn('[BGM] Autoplay blocked, will resume on next user gesture:', url, e);
             });
         } else {
             this.isBgmPlaying = true;
@@ -328,6 +344,8 @@ export class AudioSystem {
             if (this.bgmEl.ended || (this.bgmEl.duration > 0 && this.bgmEl.currentTime >= this.bgmEl.duration - 0.2)) {
                 if (!this.bgmAutoNextTriggered) {
                     this.bgmAutoNextTriggered = true;
+                    console.log('[BGM] Song ended, auto-advancing to next track');
+                    this.isBgmPlaying = false; // Mark as not playing before switch
                     this.playNext();
                 }
             }
