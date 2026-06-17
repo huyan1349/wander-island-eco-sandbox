@@ -168,6 +168,38 @@
     transform: translate(-2px, -2px) rotate(1deg);
   }
 
+  .hand-drawn-close-btn {
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    z-index: 9999;
+    width: 56px;
+    height: 56px;
+    background-color: #fcf8ec;
+    border: 3px solid #2d3436;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #2d3436;
+    pointer-events: auto;
+    cursor: pointer;
+    box-shadow: 4px 4px 0px #2d3436;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  .hand-drawn-close-btn:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 0px 0px 0px #2d3436;
+    background-color: #ffeaa7;
+  }
+
+  .hand-drawn-close-btn:active {
+    transform: translate(4px, 4px);
+    box-shadow: 0px 0px 0px #2d3436;
+    background-color: #fdcb6e;
+  }
+
   /* 底部工具坞内的所有格子：保留手绘圆角与偏移阴影，但去掉旋转倾斜，
      让选中高亮框端正地罩住图标（仅作用于工具坞，不影响侧栏等其它按钮） */
   #tool-dock .hand-drawn-btn,
@@ -513,4 +545,44 @@
   0% { transform: scale(1); }
   50% { transform: scale(1.2); }
   100% { transform: scale(0.8); opacity: 0.5; }
+}
+
+/* 神树祈愿图标火花 */
+@keyframes sparkPop {
+  0% { opacity: 0; transform: scale(0); }
+  60% { opacity: 1; transform: scale(1.3); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* 叙事碎片「起源」揭示 */
+@keyframes fragOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fragGlow {
+  0%, 100% { opacity: 0.5; transform: scale(0.95); }
+  50% { opacity: 0.9; transform: scale(1.06); }
+}
+@keyframes fragCardIn {
+  0% { opacity: 0; transform: perspective(900px) rotateY(28deg) translateY(40px) scale(0.7); }
+  60% { opacity: 1; transform: perspective(900px) rotateY(-6deg) translateY(-6px) scale(1.04); }
+  100% { opacity: 1; transform: perspective(900px) rotateY(0deg) translateY(0) scale(1); }
+}
+@keyframes fragGlyphIn {
+  0% { opacity: 0; transform: scale(0) rotate(-30deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+@keyframes fragTextIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 抽签：签筒摇动 + 竹签抽起 */
+@keyframes omikujiShake {
+  0%, 100% { transform: rotate(-7deg) translateY(0); }
+  25% { transform: rotate(6deg) translateY(-3px); }
+  50% { transform: rotate(-5deg) translateY(0); }
+  75% { transform: rotate(7deg) translateY(-2px); }
+}
+@keyframes stickRise {
+  0% { transform: translateY(0); opacity: 1; }
+  70% { transform: translateY(-26px); opacity: 1; }
+  100% { transform: translateY(-30px); opacity: 1; }
 }
