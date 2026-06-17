@@ -27,6 +27,7 @@ import { OnboardingFlow } from "./components/OnboardingFlow";
 import { WelcomeGuide } from "./components/WelcomeGuide";
 import { SoundLayer } from "./components/SoundLayer";
 import { SignEditorModal } from "./components/SignEditorModal";
+import { FragmentRevealModal } from "./components/FragmentRevealModal";
 import { AchievementSystem } from "./components/AchievementSystem";
 import { HermitOnline } from "./components/HermitOnline";
 import { MailboxModal } from "./components/MailboxModal";
@@ -39,6 +40,7 @@ import { PomodoroTimer } from "./components/PomodoroTimer";
 import { VisitOverlay } from "./components/VisitOverlay";
 import { CiSpirit } from "./components/CiSpirit";
 import { CiForecastAlert } from "./components/ui/CiForecastAlert";
+import { IslandStatusPanel } from "./components/IslandStatusPanel";
 import {
   useAudioBootstrap,
   useAutoFullscreen,
@@ -139,6 +141,7 @@ export default function App() {
   const [giftClaimId, setGiftClaimId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [envMenuOpen, setEnvMenuOpen] = useState(false);
+  const [isIslandStatusOpen, setIsIslandStatusOpen] = useState(false);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [hasSeenSailingTutorial, setHasSeenSailingTutorial] = useState(() => {
     try {
@@ -346,10 +349,10 @@ export default function App() {
 
            {/* Tool Column (Below Avatar) */}
            <div className={`flex ${isTouch ? 'flex-row gap-2' : 'flex-col gap-4'}`}>
-             {/* 小岛面板（概况·成就·居民证·明信片）— 直达打开用户面板 */}
+             {/* 小岛面板：展示当前岛屿状态与访客记录 */}
              <button
                 id="guide-islandhub"
-                onClick={() => { AudioSystem.playClick(); useGameStore.getState().setPanelInitialTab('stats'); useGameStore.getState().setOpenPlayerPanel(true); showTouchTooltip('小岛面板'); }}
+                onClick={() => { AudioSystem.playClick(); setIsIslandStatusOpen(true); showTouchTooltip('小岛面板'); }}
                 className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 transition-transform duration-200 hover:scale-110 active:scale-95 ${isTouch ? 'w-11 h-11' : 'w-12 h-12'}`}
              >
                 <TreePalm size={isTouch ? 20 : 24} className="text-slate-800 group-hover:text-emerald-600 transition-colors" />
@@ -830,6 +833,7 @@ export default function App() {
       {screen === 'PLAYING' && !isImmersive && <CiSpirit />}
       {screen === 'PLAYING' && !isImmersive && <CiForecastAlert />}
       {screen === 'PLAYING' && <SignEditorModal />}
+      {screen === 'PLAYING' && <FragmentRevealModal />}
       {screen === 'PLAYING' && <AchievementSystem />}
       {screen === 'PLAYING' && online && <HermitOnline />}
       {screen === 'PLAYING' && mailboxOpen && (
@@ -892,6 +896,7 @@ export default function App() {
       {giftClaimId && (
         <GiftModal mode="claim" giftId={giftClaimId} onClose={() => { setGiftClaimId(null); history.replaceState({}, '', location.pathname); }} />
       )}
+      {isIslandStatusOpen && <IslandStatusPanel onClose={() => setIsIslandStatusOpen(false)} />}
       {visitingIsland && <VisitOverlay />}
     </div>
   );

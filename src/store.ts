@@ -5,6 +5,8 @@ import { getCiAffinity, addCiAffinity, getCiMemory, addCiMemory as addCiMemoryEn
 import type { BrushMode, BrushFalloff, SurfaceType } from './utils/terrainBrush';
 import { FlourishCardId, FLOURISH_CARDS, STARTING_DECK, HAND_SIZE, SEASON_BASE_ECO, evaluateSymbiosis, shuffle } from './game/flourish';
 import { getTerrainHeight } from './utils/terrain';
+import { pickFragment } from './game/fragments';
+import { snapFloatingPlatformPlacement } from './utils/platformPlacement';
 
 export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'water_flow' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox' | 'lantern_girl';
 export type WeatherType = 'sunny' | 'cloudy' | 'rainy' | 'foggy' | 'snowy' | 'stormy';
@@ -293,6 +295,13 @@ interface GameState {
   setCiBubble: (s: string | null) => void;
   clearCiBubble: () => void;
 
+  // 叙事碎片：向神树祈愿偶得的小卡片
+  collectedFragments: string[];
+  pendingFragment: string | null; // 正在「起源」揭示中的碎片 id
+  awardFragment: () => void;
+  dismissFragment: () => void;
+  pray: () => void;
+
   lastPlacedSynergy: { type: string, position: Vector3Data, id: number } | null;
   setLastPlacedSynergy: (synergy: { type: string, position: Vector3Data, id: number } | null) => void;
 
@@ -471,7 +480,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   connectingPillarId: null,
   setConnectingPillarId: (id) => set({ connectingPillarId: id }),
   
-  playerName: 'huyan',
+  playerName: 'wander',
   setPlayerName: (name) => set({ playerName: name }),
   playerAvatar: DEFAULT_AVATAR,
   setPlayerAvatar: (avatar) => set({ playerAvatar: avatar }),
@@ -573,6 +582,37 @@ export const useGameStore = create<GameState>((set, get) => ({
     const newAffinity = addCiAffinity(n);
     set((state) => ({ ci: { ...state.ci, affinity: newAffinity } }));
   },
+
+  // ===== 叙事碎片 =====
+  collectedFragments: [],
+  pendingFragment: null,
+  awardFragment: () => {
+    const frag = pickFragment(get().collectedFragments);
+    set({ pendingFragment: frag.id });
+  },
+  dismissFragment: () => {
+    const id = get().pendingFragment;
+    set((s) => ({
+      pendingFragment: null,
+      collectedFragments: id && !s.collectedFragments.includes(id)
+        ? [...s.collectedFragments, id]
+        : s.collectedFragments,
+    }));
+  },
+  pray: () => {
+    const lines = [
+      '你来许愿了……神树听见了，叶子落下来作回应。',
+      '把心愿交给岛吧，它记性很好，从不弄丢谁的话。',
+      '我替这棵树谢谢你——它已经很久没被人这样郑重地对待了。',
+      '风停了一瞬。这一刻，整座岛都在听你。',
+    ];
+    const now = Date.now();
+    // 绕过 ciSay 的 10s 节流，祈愿必有回应
+    set((s) => ({ ci: { ...s.ci, bubble: lines[Math.floor(Math.random() * lines.length)], bubbleAt: now, lastSpokenAt: now } }));
+    get().addAffinity(1);
+    get().bumpAwakening(2);
+    get().awardFragment();
+  },
   setCiBubble: (s) => {
     set((state) => ({
       ci: { ...state.ci, bubble: s, bubbleAt: s ? Date.now() : state.ci.bubbleAt }
@@ -611,12 +651,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
     }
     set((state) => {
+    const snappedAssetData = snapFloatingPlatformPlacement(assetData, state.assets);
     const asset: PlacedAsset = {
-      ...assetData,
+      ...snappedAssetData,
       id: Math.random().toString(36).substring(2, 9),
       plantedAt: (
-        assetData.type === 'crop_wheat' || assetData.type === 'crop_carrot'
-      ) ? state.stats.playtime : assetData.plantedAt
+        snappedAssetData.type === 'crop_wheat' || snappedAssetData.type === 'crop_carrot'
+      ) ? state.stats.playtime : snappedAssetData.plantedAt
     };
 
     const newAssets = [...state.assets, asset];
@@ -910,7 +951,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           grassHealth: data.grassHealth,
           deerCount: data.deerCount,
           wolfCount: data.wolfCount,
-          playerName: data.playerName || 'huyan',
+          playerName: data.playerName || 'wander',
           playerAvatar: (data.playerAvatar && data.playerAvatar.includes('robohash')) ? DEFAULT_AVATAR : (data.playerAvatar || DEFAULT_AVATAR),
           playerXP: getGlobalXP(),          // 全局等级：加载任何小岛都保持联合进度，不被单岛存档覆盖
           playerLevel: levelFromXP(getGlobalXP()),
