@@ -108,7 +108,7 @@ const PRIVACY_CONTENT = [
     items: [
       {
         label: '4.1 数据存储地域',
-        desc: '您的个人信息存储在位于中华人民共和国境内的阿里云服务器上。我们不会将您的个人信息传输至境外。\n\n我们通过 Cloudflare CDN 提供全球加速访问服务，CDN 节点可能分布在全球多个地区。CDN 仅缓存静态资源文件（HTML、CSS、JavaScript、图片），不缓存您的个人信息。CDN 节点可能临时处理您的 HTTP 请求（含 IP 地址），但该处理仅用于请求路由和响应，不会持久化存储。',
+        desc: '您的个人信息存储在中华人民共和国境内的阿里云服务器上。除本政策第八章所述的跨境转移情形外，我们不会将您的个人信息传输至境外。\n\n我们通过 Cloudflare CDN 提供全球加速访问服务，CDN 节点可能分布在全球多个地区。CDN 仅缓存静态资源文件（HTML、CSS、JavaScript、图片），不缓存您的个人信息。CDN 节点可能临时处理您的 HTTP 请求（含 IP 地址），但该处理仅用于请求路由和响应，不会持久化存储。',
       },
       {
         label: '4.2 数据存储期限',
@@ -265,7 +265,7 @@ export const PrivacyPolicyModal: React.FC<{
             return (
               <div
                 key={si}
-                className="rounded-xl border border-slate-200/80 overflow-hidden transition-all duration-300"
+                className="rounded-xl border border-slate-200/80 overflow-hidden"
                 style={{ background: isExpanded ? 'rgba(254,243,199,0.3)' : 'rgba(255,255,255,0.5)' }}
               >
                 <button
@@ -281,8 +281,8 @@ export const PrivacyPolicyModal: React.FC<{
                   </span>
                 </button>
                 <div
-                  className="overflow-hidden transition-all duration-300"
-                  style={{ maxHeight: isExpanded ? 5000 : 0, opacity: isExpanded ? 1 : 0 }}
+                  className="overflow-hidden"
+                  style={{ maxHeight: isExpanded ? 5000 : 0 }}
                 >
                   <div className="px-5 pb-4 flex flex-col gap-4">
                     {section.items.map((item, ii) => (
