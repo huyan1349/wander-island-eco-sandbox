@@ -13,8 +13,11 @@ export class AudioSystem {
     private static rainGain: GainNode | null = null;
     private static windGain: GainNode | null = null;
     private static waterGain: GainNode | null = null;
+    private static bloomGain: GainNode | null = null;
+    private static birdGain: GainNode | null = null;
     
     private static windFilter: BiquadFilterNode | null = null;
+    private static birdTimer: ReturnType<typeof setTimeout> | null = null;
 
     // BGM — uses <audio> element for better autoplay support (MEI-based)
     private static bgmEl: HTMLAudioElement | null = null;
@@ -271,6 +274,12 @@ export class AudioSystem {
         if (this.rainGain) this.rainGain.gain.value = 0;
         if (this.windGain) this.windGain.gain.value = 0;
         if (this.waterGain) this.waterGain.gain.value = 0;
+        if (this.bloomGain) this.bloomGain.gain.value = 0;
+        if (this.birdGain) this.birdGain.gain.value = 0;
+        if (this.birdTimer) {
+            clearTimeout(this.birdTimer);
+            this.birdTimer = null;
+        }
     }
 
     static async switchBGM(url: string) {
@@ -491,6 +500,33 @@ export class AudioSystem {
         waterSource.loop = true;
         waterSource.connect(this.waterGain);
         waterSource.start();
+
+        // --- BLOOM AIR ---
+        // Gentle high-air bed: not a literal bird/forest loop, more like warm air moving through leaves.
+        this.bloomGain = this.ctx.createGain();
+        this.bloomGain.gain.value = 0.018;
+        const bloomHigh = this.ctx.createBiquadFilter();
+        bloomHigh.type = 'highpass';
+        bloomHigh.frequency.value = 1800;
+        const bloomLow = this.ctx.createBiquadFilter();
+        bloomLow.type = 'lowpass';
+        bloomLow.frequency.value = 5200;
+        this.bloomGain.connect(bloomHigh);
+        bloomHigh.connect(bloomLow);
+        bloomLow.connect(this.masterGain);
+
+        const bloomSource = this.ctx.createBufferSource();
+        bloomSource.buffer = this.noiseBuffer;
+        bloomSource.loop = true;
+        bloomSource.connect(this.bloomGain);
+        bloomSource.start();
+
+        // --- DISTANT LIFE ---
+        // Sparse procedural calls, kept very low so they read as place, not as an audio gimmick.
+        this.birdGain = this.ctx.createGain();
+        this.birdGain.gain.value = 0.025;
+        this.birdGain.connect(this.masterGain);
+        this.scheduleDistantLife();
     }
 
     private static animateWind() {
@@ -523,6 +559,152 @@ export class AudioSystem {
         let targetWater = Math.min(0.15, springCount * 0.03);
         this.waterGain.gain.cancelScheduledValues(t);
         this.waterGain.gain.linearRampToValueAtTime(targetWater, t + 2.0);
+
+        if (this.bloomGain) {
+            const targetBloom = weather === 'stormy' ? 0.006 : weather === 'rainy' ? 0.01 : 0.018;
+            this.bloomGain.gain.cancelScheduledValues(t);
+            this.bloomGain.gain.linearRampToValueAtTime(targetBloom, t + 2.5);
+        }
+
+        if (this.birdGain) {
+            const targetBirds = weather === 'stormy' || weather === 'rainy' ? 0.006 : 0.024;
+            this.birdGain.gain.cancelScheduledValues(t);
+            this.birdGain.gain.linearRampToValueAtTime(targetBirds, t + 2.5);
+        }
+    }
+
+    private static makeNoiseBurst(duration: number, decay = 0.12) {
+        if (!this.ctx) return null;
+        const bufferSize = Math.max(1, Math.floor(this.ctx.sampleRate * duration));
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            const envelope = Math.exp(-i / (bufferSize * decay));
+            data[i] = (Math.random() * 2 - 1) * envelope;
+        }
+        const source = this.ctx.createBufferSource();
+        source.buffer = buffer;
+        return source;
+    }
+
+    private static connectWithPan(input: AudioNode, output: AudioNode, pan = 0) {
+        if (!this.ctx) return;
+        if (typeof StereoPannerNode !== 'undefined') {
+            const panner = new StereoPannerNode(this.ctx, { pan });
+            input.connect(panner);
+            panner.connect(output);
+        } else {
+            input.connect(output);
+        }
+    }
+
+    private static scheduleDistantLife() {
+        if (!this.ctx || !this.birdGain) return;
+        const nextIn = 7000 + Math.random() * 15000;
+        this.birdTimer = setTimeout(() => {
+            if (!this.ctx || !this.birdGain) return;
+            if (Math.random() < 0.62) this.playDistantGull();
+            else this.playSpringChirp();
+            this.scheduleDistantLife();
+        }, nextIn);
+    }
+
+    private static playSpringChirp() {
+        if (!this.ctx || !this.birdGain) return;
+        const t = this.ctx.currentTime;
+        const pan = (Math.random() - 0.5) * 1.2;
+        const base = 1450 + Math.random() * 420;
+        const repeats = Math.random() < 0.45 ? 2 : 1;
+
+        for (let i = 0; i < repeats; i++) {
+            const offset = i * (0.09 + Math.random() * 0.04);
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const filter = this.ctx.createBiquadFilter();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(base, t + offset);
+            osc.frequency.exponentialRampToValueAtTime(base * (1.28 + Math.random() * 0.18), t + offset + 0.035);
+            filter.type = 'bandpass';
+            filter.frequency.value = base * 1.2;
+            filter.Q.value = 7;
+            gain.gain.setValueAtTime(0.0001, t + offset);
+            gain.gain.exponentialRampToValueAtTime(0.025, t + offset + 0.018);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + offset + 0.11);
+            osc.connect(filter);
+            filter.connect(gain);
+            this.connectWithPan(gain, this.birdGain, pan);
+            osc.start(t + offset);
+            osc.stop(t + offset + 0.13);
+        }
+    }
+
+    private static playDistantGull() {
+        if (!this.ctx || !this.birdGain) return;
+        const t = this.ctx.currentTime;
+        const pan = (Math.random() - 0.5) * 1.4;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(760 + Math.random() * 120, t);
+        osc.frequency.linearRampToValueAtTime(1180 + Math.random() * 160, t + 0.24);
+        osc.frequency.linearRampToValueAtTime(700 + Math.random() * 120, t + 0.72);
+        filter.type = 'bandpass';
+        filter.frequency.value = 980;
+        filter.Q.value = 3.5;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.026, t + 0.16);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.92);
+        osc.connect(filter);
+        filter.connect(gain);
+        this.connectWithPan(gain, this.birdGain, pan);
+        osc.start(t);
+        osc.stop(t + 1.0);
+    }
+
+    private static playDarkButtonTransient(kind: 'click' | 'tap' | 'confirm' | 'close') {
+        if (!this.ctx || !this.masterGain) return;
+        const t = this.ctx.currentTime;
+        const settings = {
+            click: { dur: 0.055, freq: 680, q: 3.8, vol: 0.052, body: 148 },
+            tap: { dur: 0.04, freq: 980, q: 4.4, vol: 0.036, body: 0 },
+            confirm: { dur: 0.09, freq: 520, q: 3.2, vol: 0.058, body: 120 },
+            close: { dur: 0.052, freq: 430, q: 3.6, vol: 0.038, body: 92 },
+        }[kind];
+
+        const noise = this.makeNoiseBurst(settings.dur, 0.09);
+        if (noise) {
+            const filter = this.ctx.createBiquadFilter();
+            const gain = this.ctx.createGain();
+            filter.type = 'bandpass';
+            filter.frequency.setValueAtTime(settings.freq, t);
+            filter.frequency.exponentialRampToValueAtTime(settings.freq * 0.78, t + settings.dur);
+            filter.Q.setValueAtTime(settings.q, t);
+            gain.gain.setValueAtTime(0.0001, t);
+            gain.gain.exponentialRampToValueAtTime(settings.vol, t + 0.008);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + settings.dur);
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.masterGain);
+            if (this.delayNode && kind !== 'tap') gain.connect(this.delayNode);
+            noise.start(t);
+            noise.stop(t + settings.dur + 0.02);
+        }
+
+        if (settings.body > 0) {
+            const body = this.ctx.createOscillator();
+            const bodyGain = this.ctx.createGain();
+            body.type = 'sine';
+            body.frequency.setValueAtTime(settings.body, t);
+            body.frequency.exponentialRampToValueAtTime(settings.body * 0.62, t + 0.11);
+            bodyGain.gain.setValueAtTime(0.0001, t);
+            bodyGain.gain.exponentialRampToValueAtTime(kind === 'confirm' ? 0.04 : 0.018, t + 0.014);
+            bodyGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+            body.connect(bodyGain);
+            bodyGain.connect(this.masterGain);
+            body.start(t);
+            body.stop(t + 0.18);
+        }
     }
 
     private static playSynthNote(freq: number, peakVol: number, attack: number, release: number) {
@@ -562,32 +744,7 @@ export class AudioSystem {
         this.init();
         if (!this.ctx) return;
         this.touch();
-        const t = this.ctx.currentTime;
-
-        // Wood tap — short noise burst through bandpass filter
-        const bufferSize = this.ctx.sampleRate * 0.04;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.08));
-        }
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(800, t);
-        filter.Q.setValueAtTime(2, t);
-
-        const g = this.ctx.createGain();
-        g.gain.setValueAtTime(0.12, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
-
-        noise.connect(filter);
-        filter.connect(g);
-        if (this.masterGain) g.connect(this.masterGain);
-        noise.start(t);
-        noise.stop(t + 0.06);
+        this.playDarkButtonTransient('click');
     }
 
     /** Soft tap — lighter wood click for tab switches, minor actions */
@@ -595,31 +752,7 @@ export class AudioSystem {
         this.init();
         if (!this.ctx) return;
         this.touch();
-        const t = this.ctx.currentTime;
-
-        const bufferSize = this.ctx.sampleRate * 0.025;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.06));
-        }
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(1200, t);
-        filter.Q.setValueAtTime(1.5, t);
-
-        const g = this.ctx.createGain();
-        g.gain.setValueAtTime(0.07, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
-
-        noise.connect(filter);
-        filter.connect(g);
-        if (this.masterGain) g.connect(this.masterGain);
-        noise.start(t);
-        noise.stop(t + 0.04);
+        this.playDarkButtonTransient('tap');
     }
 
     /** Confirm — warm low thud for major actions (start, login, save) */
@@ -627,45 +760,7 @@ export class AudioSystem {
         this.init();
         if (!this.ctx) return;
         this.touch();
-        const t = this.ctx.currentTime;
-
-        // Low thud component
-        const o = this.ctx.createOscillator();
-        o.type = 'sine';
-        o.frequency.setValueAtTime(150, t);
-        o.frequency.exponentialRampToValueAtTime(80, t + 0.12);
-        const og = this.ctx.createGain();
-        og.gain.setValueAtTime(0.1, t);
-        og.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-        o.connect(og);
-        if (this.masterGain) og.connect(this.masterGain);
-        o.start(t);
-        o.stop(t + 0.12);
-
-        // Wood tap on top
-        const bufferSize = this.ctx.sampleRate * 0.05;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.1));
-        }
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(600, t);
-        filter.Q.setValueAtTime(2, t);
-
-        const g = this.ctx.createGain();
-        g.gain.setValueAtTime(0.14, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-
-        noise.connect(filter);
-        filter.connect(g);
-        if (this.masterGain) g.connect(this.masterGain);
-        noise.start(t);
-        noise.stop(t + 0.08);
+        this.playDarkButtonTransient('confirm');
     }
 
     /** Toggle — crisp snap for on/off switches */
@@ -695,32 +790,7 @@ export class AudioSystem {
         this.init();
         if (!this.ctx) return;
         this.touch();
-        const t = this.ctx.currentTime;
-
-        const bufferSize = this.ctx.sampleRate * 0.03;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            // Reverse envelope — fade in then cut
-            data[i] = (Math.random() * 2 - 1) * (1 - Math.exp(-i / (bufferSize * 0.15)));
-        }
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(600, t);
-        filter.Q.setValueAtTime(2, t);
-
-        const g = this.ctx.createGain();
-        g.gain.setValueAtTime(0.08, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
-
-        noise.connect(filter);
-        filter.connect(g);
-        if (this.masterGain) g.connect(this.masterGain);
-        noise.start(t);
-        noise.stop(t + 0.04);
+        this.playDarkButtonTransient('close');
     }
 
     static playPop() {
@@ -772,18 +842,18 @@ export class AudioSystem {
         const t = this.ctx.currentTime;
 
         const o = this.ctx.createOscillator();
-        o.type = 'triangle';
-        o.frequency.setValueAtTime(2050, t);
-        o.frequency.exponentialRampToValueAtTime(2650, t + 0.03);
+        o.type = 'sine';
+        o.frequency.setValueAtTime(620, t);
+        o.frequency.exponentialRampToValueAtTime(760, t + 0.04);
 
         const g = this.ctx.createGain();
         g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(0.03, t + 0.008);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.012, t + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
 
         o.connect(g);
         if (this.masterGain) g.connect(this.masterGain);
         o.start(t);
-        o.stop(t + 0.06);
+        o.stop(t + 0.08);
     }
 }
