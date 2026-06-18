@@ -1,15 +1,22 @@
 # Handoff
 
 ## 已完成
-- **地形笔刷面板 UI 重构** — 两行布局
-  - 上行：笔刷模式按钮（隆起/挖掘/平整/绘制/侵蚀）
-  - 下行：材质色块(paint模式)+羽化+大小滑块+力度滑块
-  - 滑块旁加数值显示，分隔线区分参数组
-  - 参考 Unity Terrain 面板设计，更紧凑直观
-  - 修改文件：`src/App.tsx` (line 1079-1137)
-  - tsc --noEmit 0 错误，vite build 成功
-  - 本地已 commit 到 main (160424b)
+- 创建重庆民间文学课堂PPT（5页），巴渝暖色主题（赭红/青灰）
+- PPTX文件：`cq-folk-literature-deck/重庆民间文学概览.pptx`
+- 渲染预览：`cq-folk-literature-deck/rendered/slide-1~5.png`
+- 生成脚本：`cq-folk-literature-deck/generate_deck.js`（可重新生成/修改）
+- 已推送到GitHub，PR #31已合并到main
+
+## PPT内容
+1. 概览：三大形态（口头叙事/劳动歌谣/信仰传说）
+2. 走马镇民间故事——古驿道口头叙事宝库
+3. 川江号子与木洞山歌——长江水系声腔遗产（含时间线）
+4. 丰都鬼城传说与土家啰儿调——信仰叙事与民族歌谣
+5. 传承与思考——非遗保护下的活态延续（含个人调查发现）
 
 ## 未完成
-- **git push 失败** — GitHub SSL 连接超时，需手动 `git push origin main`
-- 辞的 3D 漂浮小灵形象（后续可升级）
+- 无
+
+## 注意
+- 个人调查部分为模拟内容，如需真实数据需替换
+- 如需修改内容，编辑 generate_deck.js 后运行 `node generate_deck.js` 重新生成

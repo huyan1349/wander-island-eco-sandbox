@@ -18,6 +18,7 @@ export class AudioSystem {
     
     private static windFilter: BiquadFilterNode | null = null;
     private static birdTimer: ReturnType<typeof setTimeout> | null = null;
+    private static lastPressAt = 0;
 
     // BGM — uses <audio> element for better autoplay support (MEI-based)
     private static bgmEl: HTMLAudioElement | null = null;
@@ -662,14 +663,28 @@ export class AudioSystem {
         osc.stop(t + 1.0);
     }
 
-    private static playDarkButtonTransient(kind: 'click' | 'tap' | 'confirm' | 'close') {
+    private static haptic(pattern: number | number[]) {
+        if (typeof navigator === 'undefined') return;
+        (navigator as any).vibrate?.(pattern);
+    }
+
+    private static connectDelaySend(input: AudioNode, amount: number) {
+        if (!this.ctx || !this.delayNode || amount <= 0) return;
+        const send = this.ctx.createGain();
+        send.gain.value = amount;
+        input.connect(send);
+        send.connect(this.delayNode);
+    }
+
+    private static playDarkButtonTransient(kind: 'click' | 'tap' | 'confirm' | 'close' | 'toggle') {
         if (!this.ctx || !this.masterGain) return;
         const t = this.ctx.currentTime;
         const settings = {
-            click: { dur: 0.055, freq: 680, q: 3.8, vol: 0.052, body: 148 },
-            tap: { dur: 0.04, freq: 980, q: 4.4, vol: 0.036, body: 0 },
-            confirm: { dur: 0.09, freq: 520, q: 3.2, vol: 0.058, body: 120 },
-            close: { dur: 0.052, freq: 430, q: 3.6, vol: 0.038, body: 92 },
+            click: { dur: 0.07, freq: 740, q: 4.2, vol: 0.064, body: 118, bodyVol: 0.034, tick: 1320, delay: 0.10 },
+            tap: { dur: 0.045, freq: 1120, q: 4.8, vol: 0.04, body: 0, bodyVol: 0, tick: 1740, delay: 0.03 },
+            confirm: { dur: 0.11, freq: 560, q: 3.4, vol: 0.072, body: 92, bodyVol: 0.056, tick: 1460, delay: 0.16 },
+            close: { dur: 0.06, freq: 420, q: 3.6, vol: 0.044, body: 78, bodyVol: 0.028, tick: 760, delay: 0.06 },
+            toggle: { dur: 0.055, freq: 900, q: 5.2, vol: 0.05, body: 104, bodyVol: 0.024, tick: 1880, delay: 0.05 },
         }[kind];
 
         const noise = this.makeNoiseBurst(settings.dur, 0.09);
@@ -686,7 +701,7 @@ export class AudioSystem {
             noise.connect(filter);
             filter.connect(gain);
             gain.connect(this.masterGain);
-            if (this.delayNode && kind !== 'tap') gain.connect(this.delayNode);
+            this.connectDelaySend(gain, settings.delay);
             noise.start(t);
             noise.stop(t + settings.dur + 0.02);
         }
@@ -698,13 +713,27 @@ export class AudioSystem {
             body.frequency.setValueAtTime(settings.body, t);
             body.frequency.exponentialRampToValueAtTime(settings.body * 0.62, t + 0.11);
             bodyGain.gain.setValueAtTime(0.0001, t);
-            bodyGain.gain.exponentialRampToValueAtTime(kind === 'confirm' ? 0.04 : 0.018, t + 0.014);
+            bodyGain.gain.exponentialRampToValueAtTime(settings.bodyVol, t + 0.012);
             bodyGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
             body.connect(bodyGain);
             bodyGain.connect(this.masterGain);
             body.start(t);
             body.stop(t + 0.18);
         }
+
+        const tick = this.ctx.createOscillator();
+        const tickGain = this.ctx.createGain();
+        tick.type = kind === 'confirm' ? 'sine' : 'triangle';
+        tick.frequency.setValueAtTime(settings.tick, t + 0.008);
+        tick.frequency.exponentialRampToValueAtTime(settings.tick * (kind === 'close' ? 0.72 : 1.18), t + 0.052);
+        tickGain.gain.setValueAtTime(0.0001, t + 0.004);
+        tickGain.gain.exponentialRampToValueAtTime(kind === 'tap' ? 0.016 : 0.024, t + 0.014);
+        tickGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+        tick.connect(tickGain);
+        tickGain.connect(this.masterGain);
+        this.connectDelaySend(tickGain, kind === 'confirm' ? 0.08 : 0.025);
+        tick.start(t + 0.004);
+        tick.stop(t + 0.09);
     }
 
     private static playSynthNote(freq: number, peakVol: number, attack: number, release: number) {
@@ -743,14 +772,57 @@ export class AudioSystem {
     static playClick() {
         this.init();
         if (!this.ctx) return;
+        this.haptic(8);
         this.touch();
         this.playDarkButtonTransient('click');
+    }
+
+    /** Press — immediate tactile downbeat before the browser click event resolves */
+    static playPress() {
+        this.init();
+        if (!this.ctx || !this.masterGain) return;
+        const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        if (now - this.lastPressAt < 55) return;
+        this.lastPressAt = now;
+        this.haptic(5);
+
+        const t = this.ctx.currentTime;
+        const body = this.ctx.createOscillator();
+        const bodyGain = this.ctx.createGain();
+        body.type = 'sine';
+        body.frequency.setValueAtTime(92, t);
+        body.frequency.exponentialRampToValueAtTime(54, t + 0.07);
+        bodyGain.gain.setValueAtTime(0.0001, t);
+        bodyGain.gain.exponentialRampToValueAtTime(0.018, t + 0.01);
+        bodyGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+        body.connect(bodyGain);
+        bodyGain.connect(this.masterGain);
+        body.start(t);
+        body.stop(t + 0.1);
+
+        const pressure = this.makeNoiseBurst(0.035, 0.1);
+        if (pressure) {
+            const filter = this.ctx.createBiquadFilter();
+            const gain = this.ctx.createGain();
+            filter.type = 'bandpass';
+            filter.frequency.value = 260;
+            filter.Q.value = 1.2;
+            gain.gain.setValueAtTime(0.0001, t);
+            gain.gain.exponentialRampToValueAtTime(0.012, t + 0.008);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+            pressure.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.masterGain);
+            pressure.start(t);
+            pressure.stop(t + 0.055);
+        }
     }
 
     /** Soft tap — lighter wood click for tab switches, minor actions */
     static playTap() {
         this.init();
         if (!this.ctx) return;
+        this.haptic(4);
         this.touch();
         this.playDarkButtonTransient('tap');
     }
@@ -759,6 +831,7 @@ export class AudioSystem {
     static playConfirm() {
         this.init();
         if (!this.ctx) return;
+        this.haptic([10, 24, 8]);
         this.touch();
         this.playDarkButtonTransient('confirm');
     }
@@ -767,28 +840,16 @@ export class AudioSystem {
     static playToggle() {
         this.init();
         if (!this.ctx) return;
+        this.haptic(7);
         this.touch();
-        const t = this.ctx.currentTime;
-
-        const o = this.ctx.createOscillator();
-        o.type = 'triangle';
-        o.frequency.setValueAtTime(1000, t);
-        o.frequency.exponentialRampToValueAtTime(500, t + 0.04);
-
-        const g = this.ctx.createGain();
-        g.gain.setValueAtTime(0.06, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-
-        o.connect(g);
-        if (this.masterGain) g.connect(this.masterGain);
-        o.start(t);
-        o.stop(t + 0.05);
+        this.playDarkButtonTransient('toggle');
     }
 
     /** Close — soft reverse tap for closing panels/modals */
     static playClose() {
         this.init();
         if (!this.ctx) return;
+        this.haptic(5);
         this.touch();
         this.playDarkButtonTransient('close');
     }
