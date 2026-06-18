@@ -1,5 +1,5 @@
 import { useGameStore, PlacedAsset } from '../store';
-import { useRef, useMemo, useState, useEffect } from 'react';
+import { memo, useRef, useMemo, useState, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { AudioSystem } from '../lib/audio';
 import { SpotLight, Html, useGLTF } from '@react-three/drei';
@@ -4554,6 +4554,66 @@ export function Waterwheel(props: any) {
   );
 }
 
+const AssetInstance = memo(function AssetInstance({ asset }: { asset: PlacedAsset }) {
+  let content: React.ReactNode = null;
+
+  switch (asset.type) {
+    case 'treeA': content = <TreeA {...asset} />; break;
+    case 'treeB': content = <TreeB {...asset} />; break;
+    case 'rock': content = <Rock {...asset} />; break;
+    case 'deer': content = <Deer {...asset} />; break;
+    case 'wolf': content = <Wolf {...asset} />; break;
+    case 'seagull': content = <Seagull {...asset} />; break;
+    case 'dolphin': content = <Dolphin {...asset} />; break;
+    case 'fish': content = <FishSchool {...asset} />; break;
+    case 'spring': content = <Spring {...asset} />; break;
+    case 'pond': content = <Pond {...asset} />; break;
+    case 'water_flow': content = <Stream {...asset} />; break;
+    case 'streetlamp': content = <Streetlamp {...asset} />; break;
+    case 'lantern_girl': content = <LanternGirl {...asset} />; break;
+    case 'house': content = <House {...asset} />; break;
+    case 'windmill': content = <Windmill {...asset} />; break;
+    case 'lighthouse': content = <Lighthouse {...asset} />; break;
+    case 'platform': content = <MarinePlatform {...asset} />; break;
+    case 'pier': content = <MarinePier {...asset} />; break;
+    case 'bridge_pillar': content = <MarineBridgePillar {...asset} assetId={asset.id} />; break;
+    case 'boat': content = <MarineBoat {...asset} />; break;
+    case 'balloon':
+    case 'balloon_ladder':
+    case 'balloon_bridge': content = <MarineBalloon {...asset} />; break;
+    case 'sub_island': content = <SubIsland {...asset} />; break;
+    case 'birdhouse': content = <Birdhouse {...asset} />; break;
+    case 'hoe':
+    case 'farmland': content = <Farmland {...asset} />; break;
+    case 'crop_wheat':
+    case 'crop_carrot': content = <Crop {...asset} />; break;
+    case 'tent': content = <Tent {...asset} />; break;
+    case 'campfire': content = <Campfire {...asset} />; break;
+    case 'fence': content = <Fence {...asset} />; break;
+    case 'well': content = <Well {...asset} />; break;
+    case 'bench': content = <Bench {...asset} />; break;
+    case 'spirit_tree': content = <SpiritTree {...asset} />; break;
+    case 'observatory': content = <Observatory {...asset} />; break;
+    case 'ruins_arch': content = <RuinsArch {...asset} />; break;
+    case 'waterwheel': content = <Waterwheel {...asset} />; break;
+    case 'cherry_tree': content = <CherryTree {...asset} />; break;
+    case 'bamboo': content = <Bamboo {...asset} />; break;
+    case 'pine_tree': content = <PineTree {...asset} />; break;
+    case 'willow_tree': content = <WillowTree {...asset} />; break;
+    case 'bush': content = <Bush {...asset} />; break;
+    case 'sign': content = <Sign {...asset} assetId={asset.id} />; break;
+    case 'mailbox': content = <Mailbox {...asset} assetId={asset.id} />; break;
+    default: content = null;
+  }
+
+  if (!content) return null;
+  return (
+    <SelectableAssetWrapper assetId={asset.id}>
+      {content}
+    </SelectableAssetWrapper>
+  );
+});
+
 export function Assets() {
   const assets = useGameStore(state => state.assets);
 
@@ -4562,64 +4622,7 @@ export function Assets() {
       <VFXSystem />
       <MarineRopeRenderer />
       <MarineBridgeRenderer />
-      {assets.map(asset => {
-        let content: React.ReactNode = null;
-        switch (asset.type) {
-          case 'treeA': content = <TreeA {...asset} />; break;
-          case 'treeB': content = <TreeB {...asset} />; break;
-          case 'rock': content = <Rock {...asset} />; break;
-          case 'deer': content = <Deer {...asset} />; break;
-          case 'wolf': content = <Wolf {...asset} />; break;
-          case 'seagull': content = <Seagull {...asset} />; break;
-          case 'dolphin': content = <Dolphin {...asset} />; break;
-          case 'fish': content = <FishSchool {...asset} />; break;
-          case 'spring': content = <Spring {...asset} />; break;
-          case 'pond': content = <Pond {...asset} />; break;
-          case 'water_flow': content = <Stream {...asset} />; break;
-          case 'streetlamp': content = <Streetlamp {...asset} />; break;
-          case 'lantern_girl': content = <LanternGirl {...asset} />; break;
-          case 'house': content = <House {...asset} />; break;
-          case 'windmill': content = <Windmill {...asset} />; break;
-          case 'lighthouse': content = <Lighthouse {...asset} />; break;
-          case 'platform': content = <MarinePlatform {...asset} />; break;
-          case 'pier': content = <MarinePier {...asset} />; break;
-          case 'bridge_pillar': content = <MarineBridgePillar {...asset} assetId={asset.id} />; break;
-          case 'boat': content = <MarineBoat {...asset} />; break;
-          case 'balloon':
-          case 'balloon_ladder':
-          case 'balloon_bridge': content = <MarineBalloon {...asset} />; break;
-          case 'sub_island': content = <SubIsland {...asset} />; break;
-          case 'birdhouse': content = <Birdhouse {...asset} />; break;
-          case 'hoe': 
-          case 'farmland': content = <Farmland {...asset} />; break;
-          case 'crop_wheat':
-          case 'crop_carrot': content = <Crop {...asset} />; break;
-          case 'tent': content = <Tent {...asset} />; break;
-          case 'campfire': content = <Campfire {...asset} />; break;
-          case 'fence': content = <Fence {...asset} />; break;
-          case 'well': content = <Well {...asset} />; break;
-          case 'bench': content = <Bench {...asset} />; break;
-          case 'spirit_tree': content = <SpiritTree {...asset} />; break;
-          case 'observatory': content = <Observatory {...asset} />; break;
-          case 'ruins_arch': content = <RuinsArch {...asset} />; break;
-          case 'waterwheel': content = <Waterwheel {...asset} />; break;
-          case 'cherry_tree': content = <CherryTree {...asset} />; break;
-          case 'bamboo': content = <Bamboo {...asset} />; break;
-          case 'pine_tree': content = <PineTree {...asset} />; break;
-          case 'willow_tree': content = <WillowTree {...asset} />; break;
-          case 'bush': content = <Bush {...asset} />; break;
-          case 'sign': content = <Sign {...asset} assetId={asset.id} />; break;
-          case 'mailbox': content = <Mailbox {...asset} assetId={asset.id} />; break;
-          default: content = null;
-        }
-
-        if (!content) return null;
-        return (
-          <SelectableAssetWrapper key={asset.id} assetId={asset.id}>
-            {content}
-          </SelectableAssetWrapper>
-        );
-      })}
+      {assets.map(asset => <AssetInstance key={asset.id} asset={asset} />)}
     </MarineAssetIndexProvider>
   );
 }

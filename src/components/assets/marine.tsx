@@ -678,6 +678,10 @@ export function BoatWake() {
     sprayMaterial.uniforms.uDaylight.value = daylight;
     const g = geomRef.current;
     if (!g) return;
+    const positionAttr = g.getAttribute('position') as THREE.BufferAttribute | undefined;
+    const uvAttr = g.getAttribute('uv') as THREE.BufferAttribute | undefined;
+    const alphaAttr = g.getAttribute('aAlpha') as THREE.BufferAttribute | undefined;
+    if (!positionAttr || !uvAttr || !alphaAttr) return;
     const pts = points.current;
     const { pos, dir, speed } = globalBoatState;
 
@@ -716,9 +720,9 @@ export function BoatWake() {
       alphas[vi] = fade; alphas[vi + 1] = fade;
     }
     g.setDrawRange(0, Math.max(0, (n - 1) * 6));
-    (g.attributes.position as THREE.BufferAttribute).needsUpdate = true;
-    (g.attributes.uv as THREE.BufferAttribute).needsUpdate = true;
-    (g.attributes.aAlpha as THREE.BufferAttribute).needsUpdate = true;
+    positionAttr.needsUpdate = true;
+    uvAttr.needsUpdate = true;
+    alphaAttr.needsUpdate = true;
 
     // --- Spray droplets: splash kicked sideways from the bow at speed ---
     const sp = sprays.current;
@@ -756,9 +760,12 @@ export function BoatWake() {
     sp.length = sn;
     const sg = sprayGeomRef.current;
     if (sg) {
+      const sprayPositionAttr = sg.getAttribute('position') as THREE.BufferAttribute | undefined;
+      const sprayAlphaAttr = sg.getAttribute('aAlpha') as THREE.BufferAttribute | undefined;
+      if (!sprayPositionAttr || !sprayAlphaAttr) return;
       sg.setDrawRange(0, sn);
-      (sg.attributes.position as THREE.BufferAttribute).needsUpdate = true;
-      (sg.attributes.aAlpha as THREE.BufferAttribute).needsUpdate = true;
+      sprayPositionAttr.needsUpdate = true;
+      sprayAlphaAttr.needsUpdate = true;
     }
   });
 
@@ -1362,6 +1369,7 @@ function DynamicBridge({ fromAsset, toAsset }: { fromAsset: any; toAsset: any })
 
   useFrame((state) => {
     if (!meshRef.current || !ropeRef.current) return;
+    if (!meshRef.current.instanceMatrix || !ropeRef.current.instanceMatrix) return;
     if (startTime.current === null) startTime.current = state.clock.elapsedTime;
 
     const timeSinceStart = state.clock.elapsedTime - startTime.current;

@@ -32,6 +32,9 @@ function WASDControls({ controlsRef }: { controlsRef: React.RefObject<any> }) {
   const keys = useRef<Record<string, boolean>>({});
   const velocity = useRef(new THREE.Vector3());
   const desiredVelocity = useRef(new THREE.Vector3());
+  const fwd = useRef(new THREE.Vector3());
+  const right = useRef(new THREE.Vector3());
+  const move = useRef(new THREE.Vector3());
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -58,16 +61,15 @@ function WASDControls({ controlsRef }: { controlsRef: React.RefObject<any> }) {
     if (k['s']) mz -= 1;
     if (k['a']) mx -= 1;
     if (k['d']) mx += 1;
-    const fwd = new THREE.Vector3();
-    state.camera.getWorldDirection(fwd);
-    fwd.y = 0;
-    fwd.normalize();
-    const right = new THREE.Vector3().crossVectors(fwd, state.camera.up).normalize();
+    state.camera.getWorldDirection(fwd.current);
+    fwd.current.y = 0;
+    fwd.current.normalize();
+    right.current.crossVectors(fwd.current, state.camera.up).normalize();
 
     desiredVelocity.current
       .set(0, 0, 0)
-      .addScaledVector(fwd, mz)
-      .addScaledVector(right, mx);
+      .addScaledVector(fwd.current, mz)
+      .addScaledVector(right.current, mx);
 
     if (desiredVelocity.current.lengthSq() > 0) {
       desiredVelocity.current.normalize().multiplyScalar(25);
@@ -81,13 +83,13 @@ function WASDControls({ controlsRef }: { controlsRef: React.RefObject<any> }) {
       return;
     }
 
-    const move = velocity.current.clone().multiplyScalar(delta);
-    state.camera.position.add(move);
-    c.target.add(move);
+    move.current.copy(velocity.current).multiplyScalar(delta);
+    state.camera.position.add(move.current);
+    c.target.add(move.current);
 
-    if (move.lengthSq() > 0 && !useGameStore.getState().tutorialPanDone) {
+    if (move.current.lengthSq() > 0 && !useGameStore.getState().tutorialPanDone) {
       if (!c.panAccum) c.panAccum = 0;
-      c.panAccum += move.length();
+      c.panAccum += move.current.length();
       const progress = Math.min(1, c.panAccum / 5);
       useGameStore.getState().setTutorialPanProgress(progress);
       if (c.panAccum > 5) {
@@ -101,6 +103,9 @@ function WASDControls({ controlsRef }: { controlsRef: React.RefObject<any> }) {
 
 function BoatCameraFollow({ controlsRef }: { controlsRef: React.RefObject<any> }) {
   const drivingBoatId = useGameStore(state => state.drivingBoatId);
+  const targetPos = useRef(new THREE.Vector3());
+  const beforeTarget = useRef(new THREE.Vector3());
+  const targetDelta = useRef(new THREE.Vector3());
 
   useFrame((state, delta) => {
     if (!drivingBoatId) return;
@@ -110,18 +115,16 @@ function BoatCameraFollow({ controlsRef }: { controlsRef: React.RefObject<any> }
     const gWindow = window as any;
     if (gWindow.__assetPositions && gWindow.__assetPositions[drivingBoatId]) {
       const mesh = gWindow.__assetPositions[drivingBoatId] as THREE.Object3D;
-      const targetPos = new THREE.Vector3();
-      mesh.getWorldPosition(targetPos);
+      mesh.getWorldPosition(targetPos.current);
       
       // Smoothly move the target
       const lerpSpeed = 1 - Math.exp(-delta * 8);
       
       // Move camera position by the same amount the target moves to keep relative distance
-      const beforeTarget = controls.target.clone();
-      controls.target.lerp(targetPos, lerpSpeed);
-      const afterTarget = controls.target.clone();
-      
-      state.camera.position.add(afterTarget.sub(beforeTarget));
+      beforeTarget.current.copy(controls.target);
+      controls.target.lerp(targetPos.current, lerpSpeed);
+      targetDelta.current.copy(controls.target).sub(beforeTarget.current);
+      state.camera.position.add(targetDelta.current);
     }
   });
   return null;
@@ -158,6 +161,7 @@ function SmoothZoom({ controlsRef, minDistance, maxDistance }: {
   const mountedRef = useRef(false);
   const gestureBaseDistanceRef = useRef<number | null>(null);
   const zoomAccumRef = useRef(0);
+  const offset = useRef(new THREE.Vector3());
 
   useFrame(() => {
     const controls = controlsRef.current;
@@ -238,10 +242,10 @@ function SmoothZoom({ controlsRef, minDistance, maxDistance }: {
     const current = camera.position.distanceTo(controls.target);
     const next = THREE.MathUtils.damp(current, targetRef.current, 8, delta);
 
-    const offset = camera.position.clone().sub(controls.target);
-    if (offset.lengthSq() === 0) return;
-    offset.setLength(next);
-    camera.position.copy(controls.target).add(offset);
+    offset.current.copy(camera.position).sub(controls.target);
+    if (offset.current.lengthSq() === 0) return;
+    offset.current.setLength(next);
+    camera.position.copy(controls.target).add(offset.current);
   });
 
   return null;

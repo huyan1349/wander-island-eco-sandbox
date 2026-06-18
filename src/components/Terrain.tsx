@@ -17,6 +17,40 @@ const noise2D = createNoise2D();
 // Generate a static heightmap for the island
 const ISAND_SIZE = 40;
 const SEGMENTS = 64;
+const CONTINUOUS_DRAG_TOOLS = new Set<ToolType>([
+  'terrainUp', 'terrainDown', 'eraser', 'pave', 'treeA', 'treeB', 'rock', 'pond', 'spring',
+]);
+const OBJECT_DRAG_TOOLS = new Set<ToolType>([
+  'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock',
+  'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot',
+  'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel',
+]);
+const GREEN_BURST_TOOLS = new Set<ToolType>([
+  'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush',
+  'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot',
+  'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel',
+]);
+const GRAY_BURST_TOOLS = new Set<ToolType>(['terrainUp', 'terrainDown', 'rock', 'pave']);
+const PLACEABLE_TOOLS = new Set<ToolType>([
+  'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock',
+  'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'streetlamp',
+  'lantern_girl', 'house', 'windmill', 'lighthouse', 'platform', 'pier', 'boat',
+  'bridge_pillar', 'sub_island', 'birdhouse', 'balloon', 'balloon_ladder', 'balloon_bridge',
+  'tent', 'campfire', 'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat',
+  'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel',
+]);
+const VERTICAL_TOOLS = new Set<ToolType>([
+  'house', 'windmill', 'lighthouse', 'streetlamp', 'lantern_girl', 'sub_island',
+  'bridge_pillar', 'balloon', 'balloon_ladder', 'balloon_bridge', 'tent', 'campfire',
+  'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat', 'seed_carrot',
+  'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'treeA', 'treeB',
+  'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush',
+]);
+const FIXED_ROTATION_TOOLS = new Set<ToolType>([
+  'bridge_pillar', 'tent', 'campfire', 'well', 'bench', 'sign', 'mailbox', 'hoe',
+  'seed_wheat', 'seed_carrot', 'observatory', 'ruins_arch', 'waterwheel',
+]);
+const BUILD_PREVIEW_TOOLS = new Set<ToolType>(['platform', 'pier', 'sub_island', 'bridge']);
 
 function ParticleBurst({ position, color }: { position: THREE.Vector3, color: string }) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
@@ -401,13 +435,19 @@ export function Terrain() {
       }
   }
 
-  const healthyGrass = new THREE.Color(baseGrass);
-  const deadGrass = new THREE.Color(baseDeadGrass);
-  const sandColor = new THREE.Color(baseSand);
-  const stoneColor = new THREE.Color(baseStone);
-
-  const pathColor = new THREE.Color('#adb5bd'); // Light stone path
-  const rainyGrassTint = useMemo(() => new THREE.Color(biome === 'volcanic' ? '#000000' : '#344e41'), [biome]);
+  const terrainColors = useMemo(() => ({
+    healthyGrass: new THREE.Color(baseGrass),
+    deadGrass: new THREE.Color(baseDeadGrass),
+    sandColor: new THREE.Color(baseSand),
+    stoneColor: new THREE.Color(baseStone),
+    pathColor: new THREE.Color('#adb5bd'),
+    paintedStone: new THREE.Color('#6c757d'),
+    paintedSnow: new THREE.Color('#f8f9fa'),
+    flowerPink: new THREE.Color('#e879f9'),
+    flowerYellow: new THREE.Color('#fbbf24'),
+    snowBlend: new THREE.Color('#ffffff'),
+    rainyGrassTint: new THREE.Color(biome === 'volcanic' ? '#000000' : '#344e41'),
+  }), [baseGrass, baseDeadGrass, baseSand, baseStone, biome]);
 
   const SLOPE_THRESHOLD = 1.2; // 高度差阈值，超过此值视为陡坡
 
@@ -418,14 +458,15 @@ export function Terrain() {
      const colorAttr = geometry.attributes.color as THREE.BufferAttribute;
      const posAttr = geometry.attributes.position as THREE.BufferAttribute;
 
-     const springs: THREE.Vector3[] = [];
+     const springs: { x: number; z: number }[] = [];
      for (let j = 0; j < assets.length; j++) {
          if (assets[j].type === 'spring') {
-             springs.push(new THREE.Vector3(assets[j].position.x, assets[j].position.y, assets[j].position.z));
+             springs.push({ x: assets[j].position.x, z: assets[j].position.z });
          }
      }
 
      const targetColor = new THREE.Color();
+     const hsl = { h: 0, s: 0, l: 0 };
      let needsUpdate = false;
 
      // Process 3 vertices (1 face) at a time to ensure solid colors per face.
@@ -435,28 +476,25 @@ export function Terrain() {
         const h3 = posAttr.getY(i + 2);
         const faceHeight = (h1 + h2 + h3) / 3;
 
-        const isPath = types[i] === 1 || types[i + 1] === 1 || types[i + 2] === 1;
-
         // ── 手动材质笔刷覆盖（types: 0=草 1=路 2=沙 3=石 4=雪 5=花草）──
         const faceType = types[i]; // 3 顶点同类型（paintSurface 保证）
-        const isPainted = faceType >= 2; // 2/3/4/5 是手动刷的材质
 
         if (faceType === 1) {
-             targetColor.copy(pathColor);
+             targetColor.copy(terrainColors.pathColor);
         } else if (faceType === 2) {
-             targetColor.copy(sandColor);  // 沙滩
+             targetColor.copy(terrainColors.sandColor);  // 沙滩
         } else if (faceType === 3) {
-             targetColor.copy(new THREE.Color('#6c757d')); // 石滩
+             targetColor.copy(terrainColors.paintedStone); // 石滩
         } else if (faceType === 4) {
-             targetColor.copy(new THREE.Color('#f8f9fa')); // 雪地
+             targetColor.copy(terrainColors.paintedSnow); // 雪地
         } else if (faceType === 5) {
              // 花草：草地底色 + 粉紫点缀
-             targetColor.copy(healthyGrass);
-             if (i % 9 < 3) targetColor.lerp(new THREE.Color('#e879f9'), 0.4); // 粉花
-             else if (i % 9 < 5) targetColor.lerp(new THREE.Color('#fbbf24'), 0.3); // 黄花
+             targetColor.copy(terrainColors.healthyGrass);
+             if (i % 9 < 3) targetColor.lerp(terrainColors.flowerPink, 0.4); // 粉花
+             else if (i % 9 < 5) targetColor.lerp(terrainColors.flowerYellow, 0.3); // 黄花
         } else {
              if (faceHeight < 1.0) {
-                 targetColor.copy(sandColor);
+                 targetColor.copy(terrainColors.sandColor);
              } else if (faceHeight < 4.5) {
                  // GRASS
                  const faceCenterX = (posAttr.getX(i) + posAttr.getX(i + 1) + posAttr.getX(i + 2)) / 3;
@@ -475,31 +513,30 @@ export function Terrain() {
                  let localGrassHealth = grassHealth / 100;
                  localGrassHealth = Math.min(1, localGrassHealth + springInfluence * 1.5);
 
-                 targetColor.copy(deadGrass).lerp(healthyGrass, localGrassHealth);
+                 targetColor.copy(terrainColors.deadGrass).lerp(terrainColors.healthyGrass, localGrassHealth);
                  if (weather === 'snowy' || season === 'winter' || biome === 'tundra') {
                      // Add more white for snow
-                     targetColor.lerp(new THREE.Color('#ffffff'), 0.8);
+                     targetColor.lerp(terrainColors.snowBlend, 0.8);
                  } else if (weather === 'rainy' && biome === 'forest') {
-                     targetColor.lerp(rainyGrassTint, 0.4);
+                     targetColor.lerp(terrainColors.rainyGrassTint, 0.4);
                  }
              } else {
                  // High mountain peaks
                  if (biome === 'volcanic') {
-                     targetColor.copy(stoneColor); // Just rock for volcano
+                     targetColor.copy(terrainColors.stoneColor); // Just rock for volcano
                  } else if (faceHeight < 6.5) {
-                     targetColor.copy(stoneColor);
+                     targetColor.copy(terrainColors.stoneColor);
                      if (weather === 'snowy' || season === 'winter' || biome === 'tundra') {
-                         targetColor.lerp(new THREE.Color('#ffffff'), 0.6);
+                         targetColor.lerp(terrainColors.snowBlend, 0.6);
                      }
                  } else {
                      // Snow peaks
-                     targetColor.copy(new THREE.Color('#f8f9fa'));
+                     targetColor.copy(terrainColors.paintedSnow);
                  }
              }
 
              const variation = (i % 5 === 0) ? 0.02 : (i % 3 === 0) ? -0.02 : 0;
              if (variation !== 0) {
-                 const hsl = { h: 0, s: 0, l: 0 };
                  targetColor.getHSL(hsl);
                  targetColor.setHSL(hsl.h, hsl.s, Math.max(0, Math.min(1, hsl.l + variation)));
              }
@@ -522,7 +559,7 @@ export function Terrain() {
      }
 
      if (needsUpdate) colorAttr.needsUpdate = true;
-  }, [terrainData, grassHealth, weather, season, biome, assets, healthyGrass, deadGrass, sandColor, stoneColor, pathColor, rainyGrassTint, types]);
+  }, [terrainData, grassHealth, weather, season, biome, assets, terrainColors, types]);
 
   useEffect(() => {
      refreshTerrainColors();
@@ -563,13 +600,13 @@ export function Terrain() {
 
   const applyBrush = (point: THREE.Vector3, isDragEvent: boolean, e?: any) => {
     // Continuous brushing allowed for structural tools and plants/rocks
-    if (isDragEvent && !['terrainUp', 'terrainDown', 'eraser', 'pave', 'treeA', 'treeB', 'rock', 'pond', 'spring'].includes(selectedTool)) {
+    if (isDragEvent && !CONTINUOUS_DRAG_TOOLS.has(selectedTool)) {
         return;
     }
 
     if (isDragEvent) {
         const isWater = selectedTool === 'pond' || selectedTool === 'spring';
-        const isObjectPlacement = ['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'].includes(selectedTool);
+        const isObjectPlacement = OBJECT_DRAG_TOOLS.has(selectedTool);
         const minDistance = isWater ? 1.2 : isObjectPlacement ? 1.5 : 0.2;
         
         // Ensure distance before applying brush again
@@ -582,15 +619,15 @@ export function Terrain() {
     // Add interaction burst, less often if dragging
     if (!isDragEvent || Math.random() < 0.2) {
       let color = "#ffffff";
-      if (['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'].includes(selectedTool)) color = "#4ade80";
-      if (['terrainUp', 'terrainDown', 'rock', 'pave'].includes(selectedTool)) color = "#d1d5db";
+      if (GREEN_BURST_TOOLS.has(selectedTool)) color = "#4ade80";
+      if (GRAY_BURST_TOOLS.has(selectedTool)) color = "#d1d5db";
       if (selectedTool === 'spring') color = "#3b82f6";
       if (['deer', 'wolf'].includes(selectedTool)) color = "#fbbf24";
       if (selectedTool === 'eraser') color = "#ef4444";
       setClicks(prev => [...prev.slice(-9), { id: Date.now() + Math.random(), pos: point.clone(), color }]);
       
       if (!isDragEvent || Math.random() < 0.1) {
-          if (['terrainUp', 'terrainDown', 'pave', 'rock'].includes(selectedTool)) {
+          if (GRAY_BURST_TOOLS.has(selectedTool)) {
               AudioSystem.playDig();
           } else if (selectedTool !== 'eraser' && selectedTool !== 'none') {
               AudioSystem.playPop();
@@ -689,12 +726,10 @@ export function Terrain() {
     }
 
     // Add object tool (only on single clicks)
-    const placeableTools = ['treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'streetlamp', 'lantern_girl', 'house', 'windmill', 'lighthouse', 'platform', 'pier', 'boat', 'bridge_pillar', 'sub_island', 'birdhouse', 'balloon', 'balloon_ladder', 'balloon_bridge', 'tent', 'campfire', 'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel'];
-    if (!isDragEvent && placeableTools.includes(selectedTool)) {
+    if (!isDragEvent && PLACEABLE_TOOLS.has(selectedTool)) {
         
         let rx = 0, rz = 0;
-        const verticalTools = ['house', 'windmill', 'lighthouse', 'streetlamp', 'lantern_girl', 'sub_island', 'bridge_pillar', 'balloon', 'balloon_ladder', 'balloon_bridge', 'tent', 'campfire', 'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat', 'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush'];
-        if (e && e.face && e.face.normal && !verticalTools.includes(selectedTool)) {
+        if (e && e.face && e.face.normal && !VERTICAL_TOOLS.has(selectedTool)) {
             const normal = e.face.normal.clone();
             const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
             const euler = new THREE.Euler().setFromQuaternion(quaternion, 'YXZ');
@@ -705,7 +740,7 @@ export function Terrain() {
         let targetScale = 0.8 + Math.random() * 0.4;
         let targetRotY = Math.random() * Math.PI * 2;
         
-        if (selectedTool === 'bridge_pillar' || selectedTool === 'tent' || selectedTool === 'campfire' || selectedTool === 'well' || selectedTool === 'bench' || selectedTool === 'sign' || selectedTool === 'mailbox' || selectedTool === 'hoe' || selectedTool === 'seed_wheat' || selectedTool === 'seed_carrot' || selectedTool === 'observatory' || selectedTool === 'ruins_arch' || selectedTool === 'waterwheel') {
+        if (FIXED_ROTATION_TOOLS.has(selectedTool)) {
             targetScale = 1.0;
             targetRotY = 0;
         } else if (selectedTool === 'platform' || selectedTool === 'pier') {
@@ -844,7 +879,7 @@ export function Terrain() {
     cursorActive.current = true;
 
     // Custom cursor handling
-    const isBuildPreviewTool = ['platform', 'pier', 'sub_island', 'bridge'].includes(selectedTool);
+    const isBuildPreviewTool = BUILD_PREVIEW_TOOLS.has(selectedTool);
     if (selectedTool !== 'none' && cursorRef.current && !isBuildPreviewTool) {
       e.stopPropagation();
       cursorRef.current.visible = true;

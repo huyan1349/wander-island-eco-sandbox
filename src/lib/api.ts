@@ -3,11 +3,6 @@
 // In development, Vite proxy handles /api and /socket.io forwarding.
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
-interface ApiResponse<T = any> {
-  data?: T;
-  error?: string;
-}
-
 class ApiClient {
   private token: string | null = null;
 
@@ -27,6 +22,26 @@ class ApiClient {
     return this.token;
   }
 
+  private async readResponse<T>(res: Response, fallbackMessage = '请求失败'): Promise<T> {
+    const text = await res.text();
+    let data: any = {};
+
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        if (!res.ok) throw new Error(text || fallbackMessage);
+        throw new Error('服务器返回了无法解析的数据');
+      }
+    }
+
+    if (!res.ok) {
+      throw new Error(data?.error || fallbackMessage);
+    }
+
+    return data as T;
+  }
+
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -42,13 +57,7 @@ class ApiClient {
       headers
     });
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.error || '请求失败');
-    }
-
-    return data;
+    return this.readResponse<T>(res);
   }
 
   // Auth
@@ -203,9 +212,7 @@ class ApiClient {
       body: formData
     });
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Update failed');
-    return data as { user: any };
+    return this.readResponse<{ user: any }>(res, 'Update failed');
   }
 
   // Mailbox
