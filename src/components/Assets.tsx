@@ -4,7 +4,6 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { AudioSystem } from '../lib/audio';
 import { SpotLight, Html, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { createNoise2D } from 'simplex-noise';
 import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
 import { applyTerrainBrush, paintSurface } from '../utils/terrainBrush';
 import { getWaterHeight as getOceanHeight, getWaveAmplitude } from '../game/water/oceanModel';
@@ -19,6 +18,11 @@ import {
   computeLegAngles,
   applyLocomotionToGroup,
 } from '../game/creatures/locomotion';
+import { isWalkable } from '../game/creatures/walkability';
+import {
+  generateSubIslandTerrain,
+  normalizeSubIslandTerrainData,
+} from '../game/terrain/subIslandTerrain';
 import {
   Balloon as MarineBalloon,
   Boat as MarineBoat,
@@ -31,13 +35,8 @@ import {
 } from './assets/marine';
 import { usePopIn } from './assets/shared';
 import { TreeA, TreeB, Rock, CherryTree, Bamboo, PineTree, WillowTree, Bush } from './assets/Plants';
+import { ParticleBurst } from './effects/ParticleBurst';
 
-const subIslandNoise = createNoise2D();
-const MAIN_ISLAND_SIZE = 40;
-const SUB_ISLAND_SIZE = MAIN_ISLAND_SIZE * (2 / 3);
-const SUB_ISLAND_SEGMENTS = 32;
-const LEGACY_SUB_ISLAND_SIZE = 20;
-const STRUCTURE_WALK_RADIUS_SQ = 1.8 * 1.8;
 const CROP_GROWTH_DURATION = 40;
 
 export function useHoverInteraction() {
@@ -183,194 +182,6 @@ function SelectableAssetWrapper({
       {children}
     </group>
   );
-}
-
-function normalizeSubIslandTerrainData(terrain: {
-  positions: number[];
-  types: number[];
-  size: number;
-  segments: number;
-}, seedX: number, seedZ: number) {
-  const hasEditedTypes = terrain.types.some((type) => type !== 0);
-  if (terrain.size === LEGACY_SUB_ISLAND_SIZE && !hasEditedTypes) {
-    return generateSubIslandTerrain(seedX, seedZ);
-  }
-
-  const expectedGridLength = (terrain.segments + 1) * (terrain.segments + 1) * 3;
-  if (terrain.positions.length !== expectedGridLength) {
-    return terrain;
-  }
-
-  const gridPos: number[][][] = [];
-  const vertsPerRow = terrain.segments + 1;
-  for (let row = 0; row <= terrain.segments; row++) {
-    const line = [];
-    for (let col = 0; col <= terrain.segments; col++) {
-      const idx = (row * vertsPerRow + col) * 3;
-      line.push([
-        terrain.positions[idx],
-        terrain.positions[idx + 1],
-        terrain.positions[idx + 2]
-      ]);
-    }
-    gridPos.push(line);
-  }
-
-  const positions: number[] = [];
-  const types: number[] = [];
-  const halfSize = terrain.size / 2;
-  const segmentSize = terrain.size / terrain.segments;
-  const islandRadius = terrain.size * 0.46 * 1.06;
-
-  const pushVertex = (r: number, c: number) => {
-    const [x, y, z] = gridPos[r][c];
-    positions.push(x, y, z);
-    const typeIdx = r * vertsPerRow + c;
-    types.push(terrain.types[typeIdx] ?? 0);
-  };
-
-  for (let row = 0; row < terrain.segments; row++) {
-    for (let col = 0; col < terrain.segments; col++) {
-      const x = (col + 0.5) * segmentSize - halfSize;
-      const z = (row + 0.5) * segmentSize - halfSize;
-      if (Math.sqrt(x * x + z * z) > islandRadius) continue;
-
-      pushVertex(row, col + 1);
-      pushVertex(row, col);
-      pushVertex(row + 1, col + 1);
-
-      pushVertex(row, col);
-      pushVertex(row + 1, col);
-      pushVertex(row + 1, col + 1);
-    }
-  }
-
-  return {
-    positions,
-    types,
-    size: terrain.size,
-    segments: terrain.segments
-  };
-}
-
-function ParticleBurst({ position, color }: { position: THREE.Vector3, color: string }) {
-  const meshRef = useRef<THREE.InstancedMesh>(null);
-  const count = 12;
-  const dummy = useMemo(() => new THREE.Object3D(), []);
-  
-  const particles = useMemo(() => {
-    return Array.from({ length: count }).map(() => ({
-       x: position.x,
-       y: position.y + 0.2,
-       z: position.z,
-       vx: (Math.random() - 0.5) * 0.15,
-       vy: Math.random() * 0.15 + 0.05,
-       vz: (Math.random() - 0.5) * 0.15,
-       scale: Math.random() * 0.4 + 0.1
-    }));
-  }, [position]);
-
-  const age = useRef(0);
-
-  useFrame((_, delta) => {
-     if (!meshRef.current) return;
-     age.current += delta;
-     
-     particles.forEach((p, i) => {
-         p.vy -= delta * 0.5;
-         p.x += p.vx;
-         p.y += p.vy;
-         p.z += p.vz;
-         p.scale = Math.max(0, p.scale - delta * 0.8);
-         
-         dummy.position.set(p.x, p.y, p.z);
-         dummy.scale.setScalar(p.scale);
-         dummy.updateMatrix();
-         meshRef.current?.setMatrixAt(i, dummy.matrix);
-     });
-     meshRef.current.instanceMatrix.needsUpdate = true;
-     
-     if (age.current > 1 && meshRef.current) {
-         meshRef.current.visible = false;
-     }
-  });
-
-  return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, count]} castShadow>
-        <dodecahedronGeometry args={[0.3, 0]} />
-        <meshStandardMaterial color={color} flatShading />
-    </instancedMesh>
-  );
-}
-
-function generateSubIslandTerrain(seedX: number, seedZ: number) {
-  const gridPos: number[][][] = [];
-  const halfSize = SUB_ISLAND_SIZE / 2;
-  const segmentSize = SUB_ISLAND_SIZE / SUB_ISLAND_SEGMENTS;
-  const maxDist = SUB_ISLAND_SIZE / 2;
-  const hardEdge = maxDist * 0.9;
-  const softEdge = maxDist * 0.8;
-
-  for (let row = 0; row <= SUB_ISLAND_SEGMENTS; row++) {
-    const line = [];
-    const z = row * segmentSize - halfSize;
-    for (let col = 0; col <= SUB_ISLAND_SEGMENTS; col++) {
-      const x = col * segmentSize - halfSize;
-      const dist = Math.sqrt(x * x + z * z);
-
-      let height = (maxDist - dist) * 0.5;
-      if (dist > hardEdge) {
-        height = -20;
-      } else if (dist > softEdge) {
-        height -= (dist - softEdge) * 1.5;
-      }
-
-      if (height > 0) {
-        // Keep the same overall island logic as the main island, but add milder
-        // low-frequency variation so the silhouette feels related rather than noisy.
-        height += subIslandNoise(seedX * 0.08 + x * 0.1, seedZ * 0.08 + z * 0.1) * 0.9;
-        height += subIslandNoise(seedX * 0.19 + x * 0.2, seedZ * 0.19 + z * 0.2) * 0.35;
-           if (height < 0.5) height = 0.2;
-      } else {
-        height = -2;
-      }
-
-      line.push([x, height, z]);
-    }
-    gridPos.push(line);
-  }
-
-  const positions: number[] = [];
-  const types: number[] = [];
-
-  const pushVertex = (r: number, c: number) => {
-    const [x, y, z] = gridPos[r][c];
-    positions.push(x, y, z);
-    types.push(0);
-  };
-
-  for (let row = 0; row < SUB_ISLAND_SEGMENTS; row++) {
-    for (let col = 0; col < SUB_ISLAND_SEGMENTS; col++) {
-      const x = (col + 0.5) * segmentSize - halfSize;
-      const z = (row + 0.5) * segmentSize - halfSize;
-      if (Math.sqrt(x * x + z * z) > maxDist * 0.925) continue;
-
-      pushVertex(row, col + 1);
-      pushVertex(row, col);
-      pushVertex(row + 1, col + 1);
-
-      pushVertex(row, col);
-      pushVertex(row + 1, col);
-      pushVertex(row + 1, col + 1);
-    }
-  }
-
-  return {
-    positions,
-    types,
-    size: SUB_ISLAND_SIZE,
-    segments: SUB_ISLAND_SEGMENTS
-  };
 }
 
 // Pop-in hook for assets
@@ -740,44 +551,6 @@ function LanternGirl(props: any) {
       />
     </group>
   );
-}
-
-export function isWalkable(x: number, z: number, assets: any[]) {
-    const groundY = getTerrainHeight(x, z);
-    if (groundY > -0.1) return true; // Land
-
-    const state = useGameStore.getState();
-    if (state.biome === 'tundra' || state.season === 'winter') {
-        return true; // Ocean is frozen, can walk anywhere!
-    }
-
-    for (const a of assets) {
-        if (a.type === 'platform' || a.type === 'pier' || a.type === 'bridge') {
-            const dx = a.position.x - x;
-            const dz = a.position.z - z;
-            if (dx * dx + dz * dz < STRUCTURE_WALK_RADIUS_SQ) return true;
-        }
-    }
-    return false;
-}
-
-export function getWalkableHeight(x: number, z: number, time: number, weather: string, assets: any[]) {
-    const groundY = getTerrainHeight(x, z);
-    let surfaceY = groundY;
-    let onStructure = false;
-    for (const a of assets) {
-        if (a.type === 'platform' || a.type === 'pier' || a.type === 'bridge') {
-            const dx = a.position.x - x;
-            const dz = a.position.z - z;
-            if (dx * dx + dz * dz < STRUCTURE_WALK_RADIUS_SQ) {
-                if (a.type === 'platform') surfaceY = getWaterHeight(x, z, time, weather);
-                else surfaceY = a.position.y;
-                onStructure = true;
-                break;
-            }
-        }
-    }
-    return { y: surfaceY, onStructure };
 }
 
 function Deer({ position, scale = 1, id }: { position: any, scale?: number, id: string }) {

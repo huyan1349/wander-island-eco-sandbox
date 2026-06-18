@@ -19,7 +19,7 @@
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { getTerrainHeight, getTerrainGradient } from '../../utils/terrain';
-import { isWalkable, getWalkableHeight } from '../../components/Assets';
+import { isWalkable, getWalkableHeight } from './walkability';
 
 // ─── 类型定义 ───────────────────────────────────────────
 
