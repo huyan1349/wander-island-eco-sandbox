@@ -2,7 +2,7 @@ import { createNoise2D } from 'simplex-noise';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useGameStore, ToolType } from '../store';
+import { useGameStore } from '../store';
 import { AudioSystem } from '../lib/audio';
 import { emitHermitPlace } from '../lib/socket';
 import { applyTerrainBrush, paintSurface } from '../utils/terrainBrush';
@@ -10,6 +10,17 @@ import { encodePondState } from '../game/water/pondFit';
 import { encodeStreamState } from '../game/water/streamPath';
 import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
 import { getFloatingPlatformSnap } from '../utils/platformPlacement';
+import {
+  BUILD_PREVIEW_TOOLS,
+  CONTINUOUS_DRAG_TOOLS,
+  FIXED_ROTATION_TOOLS,
+  GRAY_BURST_TOOLS,
+  GREEN_BURST_TOOLS,
+  OBJECT_DRAG_TOOLS,
+  PLACEABLE_TOOLS,
+  VERTICAL_TOOLS,
+} from '../config/toolRules';
+import { BuildPreview, ParticleBurst, ShockwaveRing } from './terrain/TerrainEffects';
 
 const noise2D = createNoise2D();
 
@@ -17,298 +28,6 @@ const noise2D = createNoise2D();
 // Generate a static heightmap for the island
 const ISAND_SIZE = 40;
 const SEGMENTS = 64;
-const CONTINUOUS_DRAG_TOOLS = new Set<ToolType>([
-  'terrainUp', 'terrainDown', 'eraser', 'pave', 'treeA', 'treeB', 'rock', 'pond', 'spring',
-]);
-const OBJECT_DRAG_TOOLS = new Set<ToolType>([
-  'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock',
-  'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot',
-  'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel',
-]);
-const GREEN_BURST_TOOLS = new Set<ToolType>([
-  'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush',
-  'tent', 'campfire', 'fence', 'well', 'bench', 'hoe', 'seed_wheat', 'seed_carrot',
-  'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel',
-]);
-const GRAY_BURST_TOOLS = new Set<ToolType>(['terrainUp', 'terrainDown', 'rock', 'pave']);
-const PLACEABLE_TOOLS = new Set<ToolType>([
-  'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock',
-  'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'streetlamp',
-  'lantern_girl', 'house', 'windmill', 'lighthouse', 'platform', 'pier', 'boat',
-  'bridge_pillar', 'sub_island', 'birdhouse', 'balloon', 'balloon_ladder', 'balloon_bridge',
-  'tent', 'campfire', 'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat',
-  'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel',
-]);
-const VERTICAL_TOOLS = new Set<ToolType>([
-  'house', 'windmill', 'lighthouse', 'streetlamp', 'lantern_girl', 'sub_island',
-  'bridge_pillar', 'balloon', 'balloon_ladder', 'balloon_bridge', 'tent', 'campfire',
-  'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat', 'seed_carrot',
-  'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'treeA', 'treeB',
-  'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush',
-]);
-const FIXED_ROTATION_TOOLS = new Set<ToolType>([
-  'bridge_pillar', 'tent', 'campfire', 'well', 'bench', 'sign', 'mailbox', 'hoe',
-  'seed_wheat', 'seed_carrot', 'observatory', 'ruins_arch', 'waterwheel',
-]);
-const BUILD_PREVIEW_TOOLS = new Set<ToolType>(['platform', 'pier', 'sub_island', 'bridge']);
-
-function ParticleBurst({ position, color }: { position: THREE.Vector3, color: string }) {
-  const meshRef = useRef<THREE.InstancedMesh>(null);
-  const count = 12;
-  const dummy = useMemo(() => new THREE.Object3D(), []);
-  
-  const particles = useMemo(() => {
-    return Array.from({ length: count }).map(() => ({
-       x: position.x,
-       y: position.y + 0.2,
-       z: position.z,
-       vx: (Math.random() - 0.5) * 0.15,
-       vy: Math.random() * 0.15 + 0.05,
-       vz: (Math.random() - 0.5) * 0.15,
-       scale: Math.random() * 0.4 + 0.1
-    }));
-  }, [position]);
-
-  const age = useRef(0);
-
-  useFrame((_, delta) => {
-     if (!meshRef.current) return;
-     age.current += delta;
-     
-     particles.forEach((p, i) => {
-         p.vy -= delta * 0.5; // Gravity
-         p.x += p.vx;
-         p.y += p.vy;
-         p.z += p.vz;
-         p.scale = Math.max(0, p.scale - delta * 0.8);
-         
-         dummy.position.set(p.x, p.y, p.z);
-         dummy.scale.setScalar(p.scale);
-         dummy.updateMatrix();
-         meshRef.current?.setMatrixAt(i, dummy.matrix);
-     });
-     meshRef.current.instanceMatrix.needsUpdate = true;
-     
-     if (age.current > 1 && meshRef.current) {
-         meshRef.current.visible = false;
-     }
-  });
-
-  return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, count]} castShadow>
-        <dodecahedronGeometry args={[0.3, 0]} />
-        <meshStandardMaterial color={color} flatShading />
-    </instancedMesh>
-  );
-}
-
-function ShockwaveRing() {
-   const synergy = useGameStore(state => state.lastPlacedSynergy);
-   const meshRef = useRef<THREE.Mesh>(null);
-   const matRef = useRef<THREE.MeshBasicMaterial>(null);
-   const scaleRef = useRef(0);
-   const [activeId, setActiveId] = useState<number | null>(null);
-   const [color, setColor] = useState('#ffffff');
-   const [pos, setPos] = useState<THREE.Vector3>(new THREE.Vector3());
-
-   useEffect(() => {
-       if (synergy) {
-           setActiveId(synergy.id);
-           scaleRef.current = 0;
-           setPos(new THREE.Vector3(synergy.position.x, synergy.position.y + 0.2, synergy.position.z));
-           if (synergy.type === 'spring') setColor('#4ade80'); // Green healing wave
-           else if (synergy.type === 'windmill') setColor('#93c5fd'); // Wind wave
-           else setColor('#fcd34d'); // Forest connection wave
-       }
-   }, [synergy]);
-
-   useFrame((_, delta) => {
-       if (!meshRef.current || !matRef.current) return;
-       if (activeId !== null) {
-           scaleRef.current += delta * 15;
-           meshRef.current.scale.setScalar(scaleRef.current);
-           matRef.current.opacity = Math.max(0, 1 - (scaleRef.current / 12));
-           if (scaleRef.current > 12) {
-               setActiveId(null);
-               matRef.current.opacity = 0;
-           }
-       }
-   });
-
-   return (
-       <mesh ref={meshRef} position={pos} rotation={[-Math.PI / 2, 0, 0]}>
-           <ringGeometry args={[0.8, 1, 32]} />
-           <meshBasicMaterial ref={matRef} color={color} transparent opacity={0} depthTest={false} side={THREE.DoubleSide} toneMapped={false} />
-       </mesh>
-   );
-}
-
-function BuildPreview({ cursorWorldPos, cursorActive }: { cursorWorldPos: React.MutableRefObject<THREE.Vector3>, cursorActive: React.MutableRefObject<boolean> }) {
-    const selectedTool = useGameStore(state => state.selectedTool);
-    const assets = useGameStore(state => state.assets);
-    const buildAnchors = useMemo(
-        () =>
-            assets
-                .filter(a => a.type === 'platform' || a.type === 'pier' || a.type === 'sub_island')
-                .map(a => ({
-                    x: a.position.x,
-                    z: a.position.z,
-                    y: a.type === 'sub_island' ? a.position.y : Math.max(a.position.y, 0),
-                })),
-        [assets],
-    );
-    
-    const ghostGroup = useRef<THREE.Group>(null);
-    const matRef = useRef<THREE.MeshBasicMaterial>(null);
-    const bridgeGroup = useRef<THREE.Group>(null);
-    
-    // InstancedMesh for dotted line particles
-    const dotsCount = 25;
-    const dotsRef = useRef<THREE.InstancedMesh>(null);
-    const dummy = useMemo(() => new THREE.Object3D(), []);
-
-    useFrame((state) => {
-        if (!ghostGroup.current || !bridgeGroup.current || !dotsRef.current || !matRef.current) return;
-        
-        if (!cursorActive.current || !['platform', 'pier', 'sub_island', 'bridge'].includes(selectedTool)) {
-            ghostGroup.current.visible = false;
-            bridgeGroup.current.visible = false;
-            dotsRef.current.visible = false;
-            return;
-        }
-
-        const point = cursorWorldPos.current;
-        const time = state.clock.elapsedTime;
-        
-        // --- PLATFORM / SUB_ISLAND GHOST ---
-        if (selectedTool === 'platform' || selectedTool === 'pier' || selectedTool === 'sub_island') {
-            bridgeGroup.current.visible = false;
-            dotsRef.current.visible = false;
-            ghostGroup.current.visible = true;
-            
-            ghostGroup.current.position.set(point.x, Math.max(point.y, 0), point.z);
-            ghostGroup.current.position.y += Math.sin(time * 4) * 0.05; // Gentle float
-            
-            // Validity Check
-            let isValid = false;
-            if (selectedTool === 'sub_island') {
-                isValid = true; // Can place anywhere in water
-            } else {
-                if (point.y > -0.6) isValid = true;
-                if (!isValid) {
-                    for (const anchor of buildAnchors) {
-                        const dx = anchor.x - point.x;
-                        const dz = anchor.z - point.z;
-                        if (dx * dx + dz * dz < 4.5 * 4.5) { isValid = true; break; }
-                    }
-                }
-            }
-            
-            matRef.current.color.setHex(isValid ? 0x4ade80 : 0xef4444); // Green / Red
-            
-            const platformMesh = ghostGroup.current.children[0] as THREE.Mesh;
-            const islandMesh = ghostGroup.current.children[1] as THREE.Mesh;
-            platformMesh.visible = (selectedTool === 'platform' || selectedTool === 'pier');
-            islandMesh.visible = (selectedTool === 'sub_island');
-        }
-        
-        // --- BRIDGE PREVIEW ---
-        if (selectedTool === 'bridge') {
-            ghostGroup.current.visible = false;
-            
-            // Find valid anchors
-            let firstAnchor: { pos: THREE.Vector3; distSq: number } | null = null;
-            let secondAnchor: { pos: THREE.Vector3; distSq: number } | null = null;
-            for (const anchor of buildAnchors) {
-                const dx = anchor.x - point.x;
-                const dz = anchor.z - point.z;
-                const distSq = dx * dx + dz * dz;
-                if (distSq >= 12 * 12) continue;
-
-                const candidate = {
-                    pos: new THREE.Vector3(anchor.x, anchor.y, anchor.z),
-                    distSq,
-                };
-
-                if (!firstAnchor || distSq < firstAnchor.distSq) {
-                    secondAnchor = firstAnchor;
-                    firstAnchor = candidate;
-                } else if (!secondAnchor || distSq < secondAnchor.distSq) {
-                    secondAnchor = candidate;
-                }
-            }
-                                
-            if (firstAnchor && secondAnchor) {
-                // Two anchors in range: Show solid bridge placement preview
-                dotsRef.current.visible = false;
-                bridgeGroup.current.visible = true;
-                
-                const p1 = firstAnchor.pos;
-                const p2 = secondAnchor.pos;
-                const center = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
-                bridgeGroup.current.position.copy(center);
-                bridgeGroup.current.lookAt(p2);
-                bridgeGroup.current.scale.set(1, 1, p1.distanceTo(p2));
-                
-                const mesh = bridgeGroup.current.children[0] as THREE.Mesh;
-                if (mesh.material) (mesh.material as THREE.Material).opacity = 0.5 + Math.sin(time * 6) * 0.2;
-                
-            } else if (firstAnchor) {
-                // One anchor in range: Show leading dotted line to cursor
-                bridgeGroup.current.visible = false;
-                dotsRef.current.visible = true;
-                
-                const p1 = firstAnchor.pos;
-                const p2 = new THREE.Vector3(point.x, Math.max(point.y, 0) + 1.0, point.z); 
-                
-                for (let i = 0; i < dotsCount; i++) {
-                    const t = i / (dotsCount - 1);
-                    const offsetT = (t + time * 1.5) % 1.0; // Flowing animation
-                    dummy.position.copy(p1).lerp(p2, offsetT);
-                    
-                    // Add an arc to the line
-                    dummy.position.y += Math.sin(offsetT * Math.PI) * 1.5;
-                    
-                    dummy.scale.setScalar(0.6 * (1 - offsetT * 0.5)); // Shrink as it approaches cursor
-                    dummy.updateMatrix();
-                    dotsRef.current.setMatrixAt(i, dummy.matrix);
-                }
-                dotsRef.current.instanceMatrix.needsUpdate = true;
-                
-            } else {
-                bridgeGroup.current.visible = false;
-                dotsRef.current.visible = false;
-            }
-        }
-    });
-
-    return (
-        <group>
-            <group ref={ghostGroup} visible={false}>
-                <mesh position={[0, 0, 0]}>
-                   <boxGeometry args={[3.2, 0.4, 3.2]} />
-                   <meshBasicMaterial ref={matRef} color="#4ade80" transparent opacity={0.6} wireframe toneMapped={false} />
-                </mesh>
-                <mesh position={[0, 1.5, 0]}>
-                   <cylinderGeometry args={[2.5, 3.5, 3.0, 8]} />
-                   <meshBasicMaterial color="#ffffff" transparent opacity={0.4} wireframe toneMapped={false} />
-                </mesh>
-            </group>
-            
-            <group ref={bridgeGroup} visible={false}>
-                <mesh>
-                    <boxGeometry args={[1.6, 0.3, 1]} />
-                    <meshBasicMaterial color="#4ade80" transparent opacity={0.5} wireframe toneMapped={false} />
-                </mesh>
-            </group>
-            
-            <instancedMesh ref={dotsRef} args={[undefined, undefined, dotsCount]} visible={false}>
-                <sphereGeometry args={[0.15, 8, 8]} />
-                <meshBasicMaterial color="#fef08a" transparent opacity={0.8} toneMapped={false} />
-            </instancedMesh>
-        </group>
-    );
-}
 
 export function Terrain() {
   const meshRef = useRef<THREE.Mesh>(null);

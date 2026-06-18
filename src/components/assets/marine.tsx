@@ -5,7 +5,8 @@ import * as THREE from "three";
 import { AudioSystem } from "../../lib/audio";
 import { useGameStore, type PlacedAsset } from "../../store";
 import { getTerrainHeight } from "../../utils/terrain";
-import { getWaterHeight as getOceanHeight, getWaveAmplitude } from "../Water";
+import { globalBoatState } from "../../game/water/boatState";
+import { getWaterHeight, getWaveAmplitude } from "../../game/water/oceanModel";
 import { usePopIn } from "./shared";
 
 type MarineAssetIndex = {
@@ -52,15 +53,7 @@ function useMarineAssetIndex() {
   return useMemo(() => buildMarineAssetIndex(assets), [assets]);
 }
 
-// Delegates to the authoritative wave model in Water.tsx so floating
-// objects track the exact visual ocean surface (incl. the -0.4 base level)
-export function getWaterHeight(x: number, z: number, time: number, weather: string) {
-  return getOceanHeight(x, z, time, weather);
-}
-
-
-
-export function useMarinePhysics(ref: React.RefObject<any>, props: any, baseOffset: number = 0) {
+function useMarinePhysics(ref: React.RefObject<any>, props: any, baseOffset: number = 0) {
   const weather = useGameStore((state) => state.weather);
   const { platforms, anchors } = useMarineAssetIndex();
 
@@ -543,12 +536,6 @@ function DynamicSail({ position, width, height, color, baseBulge, windFactor, is
   );
 }
 
-export const globalBoatState = {
-    pos: new THREE.Vector2(0, 0),
-    dir: new THREE.Vector2(0, 1),
-    speed: 0
-};
-
 // --- Boat wake: stylized low-poly foam ribbon trailing the driven boat ---
 // Decoupled from the coarse ocean mesh so the wake stays crisp regardless of
 // water tessellation. Points are dropped along the boat's stern path, ride the
@@ -708,7 +695,7 @@ export function BoatWake() {
       const age = (t - p.born) / WAKE_LIFETIME;          // 0 fresh .. 1 gone
       const spread = 1.0 + age * 1.8;                     // Kelvin-style widening
       const hw = p.halfW * spread;
-      const y = getOceanHeight(p.x, p.z, t, weather) + 0.06;
+      const y = getWaterHeight(p.x, p.z, t, weather) + 0.06;
       const lx = p.x + p.px * hw, lz = p.z + p.pz * hw;
       const rx = p.x - p.px * hw, rz = p.z - p.pz * hw;
       const fade = (1.0 - age) * (1.0 - age);             // ease-out fade
@@ -730,7 +717,7 @@ export function BoatWake() {
       const count = speed > 9 ? 4 : speed > 5 ? 3 : 2;
       const bx = pos.x + dir.x * 1.1;   // bow
       const bz = pos.y + dir.y * 1.1;
-      const by = getOceanHeight(bx, bz, t, weather);
+      const by = getWaterHeight(bx, bz, t, weather);
       const px = dir.y, pz = -dir.x;    // perpendicular (sideways)
       for (let k = 0; k < count && sp.length < SPRAY_MAX; k++) {
         const side = Math.random() < 0.5 ? 1 : -1;
@@ -751,7 +738,7 @@ export function BoatWake() {
       if (age >= 1) continue;            // expired; compacted below
       s.vy -= 9.0 * dt;                  // gravity
       s.x += s.vx * dt; s.y += s.vy * dt; s.z += s.vz * dt;
-      if (s.y < getOceanHeight(s.x, s.z, t, weather)) continue; // splashed back down
+      if (s.y < getWaterHeight(s.x, s.z, t, weather)) continue; // splashed back down
       sprayPos[sn * 3 + 0] = s.x; sprayPos[sn * 3 + 1] = s.y; sprayPos[sn * 3 + 2] = s.z;
       sprayAlpha[sn] = (1.0 - age);
       sp[sn] = s;                        // compact in place
@@ -1353,7 +1340,7 @@ function DynamicBridge({ fromAsset, toAsset }: { fromAsset: any; toAsset: any })
       return new THREE.Vector3(asset.position.x, asset.position.y + 8.2, asset.position.z);
     }
     if (asset.type === "platform") {
-      const surf = getOceanHeight(asset.position.x, asset.position.z, time, weather);
+      const surf = getWaterHeight(asset.position.x, asset.position.z, time, weather);
       return new THREE.Vector3(
         asset.position.x,
         Math.max(asset.position.y, surf + getWaveAmplitude(weather) * 0.35 + 0.1),

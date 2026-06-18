@@ -5,81 +5,10 @@ import { useGameStore } from '../store';
 import { AudioSystem } from '../lib/audio';
 import { Edges } from '@react-three/drei';
 import { getFloatingPlatformSnap } from '../utils/platformPlacement';
+import { globalBoatState } from '../game/water/boatState';
+import { getWaterHeight, getWaveAmplitude, updateWaveFreezeScale } from '../game/water/oceanModel';
 
 const ISAND_SIZE = 40;
-
-// --- Shared ocean wave model ---
-// Single source of truth for the ocean surface: the visual mesh and all
-// floating objects sample the same function so they stay perfectly in sync.
-
-// Asymmetric wave profile: peaked crests, wide flat troughs (anime wave shape)
-function crestShape(p: number) {
-  return Math.sin(p) + 0.35 * Math.sin(2 * p + 0.6);
-}
-
-// (x, y) are ocean-plane local coords: y = -worldZ. Returns height above mesh.
-function sampleOceanWave(x: number, y: number, time: number, flowSpeed: number, baseAmp: number) {
-  const dist = Math.sqrt(x * x + y * y);
-  const flowTime = time * flowSpeed;
-
-  // Smooth fade under the island (smoothstep: no visible hinge ring)
-  let islandFade = 1.0;
-  if (dist < 18) {
-      const t = Math.max(0, (dist - 12) / 6.0);
-      islandFade = t * t * (3 - 2 * t);
-  }
-
-  // Broad drifting swells underneath
-  const wave1 = crestShape(x * 0.2 + y * 0.1 + flowTime) * baseAmp * 0.28 * islandFade;
-  const wave2 = crestShape(x * 0.1 - y * 0.2 + flowTime * 0.8) * baseAmp * 0.22 * islandFade;
-
-  // Billowing puffs: |sin·sin| products form rounded upward mounds, layered
-  // at three scales (big billows / puffs / fine fluff) for a cloud-like
-  // cauliflower surface. Mean is subtracted to keep the surface level.
-  const puffL = Math.abs(Math.sin(x * 0.13 - y * 0.08 + flowTime * 0.30) *
-                         Math.sin(x * 0.06 + y * 0.15 + flowTime * 0.25)) * baseAmp * 0.55;
-  const puffM = Math.abs(Math.sin(x * 0.33 + y * 0.21 + flowTime * 0.45) *
-                         Math.sin(y * 0.36 - x * 0.24 - flowTime * 0.35)) * baseAmp * 0.30;
-  const puffS = Math.abs(Math.sin(x * 0.68 + y * 0.55 + flowTime * 0.6) *
-                         Math.sin(x * 0.52 - y * 0.74 - flowTime * 0.5)) * baseAmp * 0.14;
-  const wave3 = (puffL + puffM + puffS - 0.405 * 0.99 * baseAmp) * islandFade;
-
-  // Shore-break waves: angular phase/amplitude variation so surf arrives in
-  // staggered patches around the island, never as one synchronized ring
-  let crashWave = 0;
-  if (dist < 30 && dist > 14) {
-      const angle = Math.atan2(y, x);
-      const phase = dist * 0.8 - time * 2.0 + Math.sin(angle * 3.0 + time * 0.4) * 1.6;
-      const sectorAmp = 0.65 + 0.35 * Math.sin(angle * 2.0 - time * 0.3);
-      crashWave = Math.pow(Math.sin(phase) * 0.5 + 0.5, 3.0) * baseAmp * 1.3 * sectorAmp;
-      const fade = Math.min(1.0, (dist - 14) / 4.0) * Math.min(1.0, (30 - dist) / 5.0);
-      crashWave *= fade * islandFade;
-  }
-
-  return wave1 + wave2 + wave3 + crashWave;
-}
-
-// Smoothed freeze factor (1 = animated, 0 = frozen flat), driven by Water's
-// frame loop so visuals and floating physics fade out together
-let freezeScale = 1;
-
-import { globalBoatState } from './assets/marine';
-
-// Current wave amplitude (weather + panel intensity + freeze ramp)
-export function getWaveAmplitude(weather: string) {
-  let mult = 1.8;
-  if (weather === 'rainy') mult = 3.0;
-  if (weather === 'stormy') mult = 4.5;
-  return mult * (useGameStore.getState().waveIntensity ?? 1) * freezeScale;
-}
-
-// World-space ocean surface height at (x, z). Includes the mesh base at y=-0.4.
-export function getWaterHeight(x: number, z: number, time: number, weather: string) {
-  let flowSpeed = 3.0;
-  if (weather === 'rainy') flowSpeed = 4.5;
-  if (weather === 'stormy') flowSpeed = 6.0;
-  return -0.4 + sampleOceanWave(x, -z, time, flowSpeed, getWaveAmplitude(weather));
-}
 
 export function Water() {
   const oceanMeshRef = useRef<THREE.Mesh>(null);
@@ -246,7 +175,7 @@ diffuseColor.a *= vUnder;`);
     const isFrozen = useGameStore.getState().biome === 'tundra' || useGameStore.getState().season === 'winter';
 
     // Smooth freeze: amplitude ramps down/up over ~2s instead of snapping
-    freezeScale += ((isFrozen ? 0 : 1) - freezeScale) * Math.min(1, delta * 1.2);
+    updateWaveFreezeScale(isFrozen, delta);
 
     // Smooth color transitions toward the current weather/biome palette
     if (oceanMeshRef.current) {

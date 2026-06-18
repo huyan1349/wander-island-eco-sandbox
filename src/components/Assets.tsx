@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
 import { applyTerrainBrush, paintSurface } from '../utils/terrainBrush';
-import { getWaterHeight as getOceanHeight, getWaveAmplitude } from './Water';
+import { getWaterHeight as getOceanHeight, getWaveAmplitude } from '../game/water/oceanModel';
 import { DepthWater, WaterfallSheet, FlowRibbon } from '../game/water/DepthWater';
 import { StylizedWater } from '../game/water/StylizedWater';
 import { decodePondState, carvePondAndEncode } from '../game/water/pondFit';
