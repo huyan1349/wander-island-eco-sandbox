@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+    <defs>
+      <pattern id="grid" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+        <circle cx="1.5" cy="1.5" r="1.2" fill="#dbe4f0"/>
+      </pattern>
+      <linearGradient id="river" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#eaf3ff"/>
+        <stop offset="1" stop-color="#bfd8ff"/>
+      </linearGradient>
+    </defs>
+    <rect width="1920" height="1080" fill="#f8fafd"/>
+    <rect width="1920" height="1080" fill="url(#grid)" opacity=".28"/>
+    <rect x="70" y="52" width="1780" height="976" rx="30" fill="#ffffff" stroke="#d7e1ee" stroke-width="1.4"/>
+    <text x="110" y="110" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="38" font-weight="850" fill="#101827">资料基础与引用说明</text>
+    <text x="1810" y="108" text-anchor="end" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#1e5bff">02 / 09</text>
+    <text x="112" y="154" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="21" font-weight="400" fill="#59657a" opacity="1">
+    <tspan x="112" dy="0">本页先说明材料来源，后续正文用 [1][2] 这类编号标注引用，避免把个人观察写成权威事实。</tspan>
+  </text>
+    <line x1="110" y1="184" x2="1810" y2="184" stroke="#dce5f1" stroke-width="2"/>
+    
+        <g>
+    <rect x="110" y="230" width="820" height="280" rx="18" fill="#ffffff" stroke="#dbe5f2" stroke-width="1.4"/>
+    <rect x="110" y="230" width="8" height="280" rx="4" fill="#1e5bff"/>
+    <text x="138" y="272" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="25" font-weight="800" fill="#101827" opacity="1">
+    <tspan x="138" dy="0">一、官方资料：用于确认事实</tspan>
+  </text>
+    <text x="138" y="318" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="24" font-weight="400" fill="#27364f" opacity="1">
+    <tspan x="138" dy="0">官方资料主要用于确认项目身份、公布批次、项目编号、申报地区、保护单位和</tspan><tspan x="138" dy="34.08">地名资料。正文中涉及走马镇民间故事、广阳镇民间故事、川江号子、弹子石与</tspan><tspan x="138" dy="34.08">呼归石等事实，优先采用中国非遗网、文化和旅游部、重庆市民政局、重庆市渝</tspan><tspan x="138" dy="34.08">中区人民政府的公开资料。</tspan>
+  </text>
+    
+  </g>
+        <g>
+    <rect x="990" y="230" width="820" height="280" rx="18" fill="#ffffff" stroke="#dbe5f2" stroke-width="1.4"/>
+    <rect x="990" y="230" width="8" height="280" rx="4" fill="#1e5bff"/>
+    <text x="1018" y="272" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="25" font-weight="800" fill="#101827" opacity="1">
+    <tspan x="1018" dy="0">二、著作与论文：用于解释意义</tspan>
+  </text>
+    <text x="1018" y="318" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="24" font-weight="400" fill="#27364f" opacity="1">
+    <tspan x="1018" dy="0">著作和论文不主要承担项目身份认定，而用于解释民间故事的类型、讲述机制、</tspan><tspan x="1018" dy="34.08">艺术价值和保护意义。相关资料包括《走马民间故事》《中国民间文学大系·故</tspan><tspan x="1018" dy="34.08">事·重庆卷（一）》、刘守华民间故事研究以及周佳桔关于广阳镇民间故事文学</tspan><tspan x="1018" dy="34.08">性的文章。</tspan>
+  </text>
+    
+  </g>
+        <g>
+    <rect x="110" y="550" width="820" height="300" rx="18" fill="#ffffff" stroke="#dbe5f2" stroke-width="1.4"/>
+    <rect x="110" y="550" width="8" height="300" rx="4" fill="#e77732"/>
+    <text x="138" y="592" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="25" font-weight="800" fill="#101827" opacity="1">
+    <tspan x="138" dy="0">三、个人调查：用于补充当代生活观察</tspan>
+  </text>
+    <text x="138" y="638" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="24" font-weight="400" fill="#27364f" opacity="1">
+    <tspan x="138" dy="0">个人调查采用家庭访谈、同乡交流和日常观察的方式。它不作为统计结论，而用</tspan><tspan x="138" dy="34.08">于说明：许多民间文学内容今天并不一定以完整故事保存，而是以地名来历、重</tspan><tspan x="138" dy="34.08">庆言子、吓人故事、因果报应故事、饭桌闲谈等碎片形式继续存在。</tspan>
+  </text>
+    
+  </g>
+        <g>
+    <rect x="990" y="550" width="820" height="300" rx="18" fill="#ffffff" stroke="#dbe5f2" stroke-width="1.4"/>
+    <rect x="990" y="550" width="8" height="300" rx="4" fill="#e77732"/>
+    <text x="1018" y="592" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="25" font-weight="800" fill="#101827" opacity="1">
+    <tspan x="1018" dy="0">四、写作原则：区分“事实”与“解释”</tspan>
+  </text>
+    
+    <circle cx="1023" cy="634" r="4.5" fill="#e77732"/>
+      <text x="1045" y="642" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="23" fill="#26344d">
+      <tspan x="1045" dy="0">项目批次、编号、采录数字等使用权威来源。</tspan>
+      </text><circle cx="1023" cy="676.82" r="4.5" fill="#e77732"/>
+      <text x="1045" y="684.82" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="23" fill="#26344d">
+      <tspan x="1045" dy="0">地名传说和故事类型使用官方或地方公开资料。</tspan>
+      </text><circle cx="1023" cy="719.6400000000001" r="4.5" fill="#e77732"/>
+      <text x="1045" y="727.6400000000001" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="23" fill="#26344d">
+      <tspan x="1045" dy="0">“亏到唐家沱”等方言解释标注为个人访谈中的口头解释。</tspan>
+      </text><circle cx="1023" cy="762.4600000000002" r="4.5" fill="#e77732"/>
+      <text x="1045" y="770.4600000000002" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="23" fill="#26344d">
+      <tspan x="1045" dy="0">每页结论只从本页证据推出，不额外夸大。</tspan>
+      </text>
+  </g>
+      
+    <text x="110" y="1004" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#667085">本页为资料说明页；完整参考文献见第 9 页。</text>
+  </svg>

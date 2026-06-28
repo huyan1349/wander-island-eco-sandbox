@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+    <defs>
+      <pattern id="grid" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+        <circle cx="1.5" cy="1.5" r="1.2" fill="#dbe4f0"/>
+      </pattern>
+      <linearGradient id="river" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#eaf3ff"/>
+        <stop offset="1" stop-color="#bfd8ff"/>
+      </linearGradient>
+    </defs>
+    <rect width="1920" height="1080" fill="#f8fafd"/>
+    <rect width="1920" height="1080" fill="url(#grid)" opacity=".28"/>
+    <rect x="70" y="52" width="1780" height="976" rx="30" fill="#ffffff" stroke="#d7e1ee" stroke-width="1.4"/>
+    <text x="110" y="110" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="38" font-weight="850" fill="#101827">参考文献</text>
+    <text x="1810" y="108" text-anchor="end" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#1e5bff">09 / 09</text>
+    <text x="112" y="154" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="21" font-weight="400" fill="#59657a" opacity="1">
+    <tspan x="112" dy="0">正文页脚采用编号引用；以下列出本 PPT 使用的主要资料来源。</tspan>
+  </text>
+    <line x1="110" y1="184" x2="1810" y2="184" stroke="#dce5f1" stroke-width="2"/>
+    
+        <text x="120" y="245" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="22" font-weight="400" fill="#172033" opacity="1">
+    <tspan x="120" dy="0">[1] 中国非物质文化遗产网. 走马镇民间故事[EB/OL]. https://www.ihchina.cn/project_details/12215</tspan>
+  </text>
+        <text x="120" y="300" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="22" font-weight="400" fill="#172033" opacity="1">
+    <tspan x="120" dy="0">[2] 中华人民共和国文化和旅游部. 国务院关于公布第一批国家级非物质文化遗产名录的通知[EB/OL]. https://zwgk.mct.gov.cn/zfxxgkml/fwzwhyc/202012/t20201206_916788.html</tspan>
+  </text>
+        <text x="120" y="370" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="22" font-weight="400" fill="#172033" opacity="1">
+    <tspan x="120" dy="0">[3] 中国非物质文化遗产网. 广阳镇民间故事[EB/OL]. https://www.ihchina.cn/project_details/12401.html</tspan>
+  </text>
+        <text x="120" y="425" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="22" font-weight="400" fill="#172033" opacity="1">
+    <tspan x="120" dy="0">[4] 重庆市渝中区人民政府. 川江号子[EB/OL]. https://www.cqyz.gov.cn/zjyz/lyyz/lswh/fywh/202210/t20221008_11168061.html</tspan>
+  </text>
+        <text x="120" y="495" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="22" font-weight="400" fill="#172033" opacity="1">
+    <tspan x="120" dy="0">[5] 重庆市民政局. 地名里的重庆：弹子石也玩谐音梗？[EB/OL]. https://mzj.cq.gov.cn/sy_218/bmdt/mzyw/t_14162746.html</tspan>
+  </text>
+        <text x="120" y="565" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="22" font-weight="400" fill="#172033" opacity="1">
+    <tspan x="120" dy="0">[6] 重庆市民政局. 新重庆·老地名丨重庆高新区——走马[EB/OL]. https://mzj.cq.gov.cn/sy_218/bmdt/mzyw/202405/t20240523_13229472.html</tspan>
+  </text>
+        <text x="120" y="635" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="22" font-weight="400" fill="#172033" opacity="1">
+    <tspan x="120" dy="0">[7] 重庆市民政局. 新重庆·老地名丨呼归石[EB/OL]. https://mzj.cq.gov.cn/sy_218/bmdt/mzyw/202401/t20240126_12868804.html</tspan>
+  </text>
+        <text x="120" y="705" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="22" font-weight="400" fill="#172033" opacity="1">
+    <tspan x="120" dy="0">[8] 重庆市九龙坡区文化馆编. 走马民间故事[M]. 重庆：重庆出版社，2022.</tspan>
+  </text>
+        <text x="120" y="760" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="22" font-weight="400" fill="#172033" opacity="1">
+    <tspan x="120" dy="0">[9] 刘守华. 中国民间故事的艺术世界[J]. 华中师范大学学报，相关版本可据学校数据库核对。</tspan>
+  </text>
+        <text x="120" y="815" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="22" font-weight="400" fill="#172033" opacity="1">
+    <tspan x="120" dy="0">[10] 周佳桔. 从故事文本浅析广阳镇民间故事的文学性[EB/OL]. 中国民俗学网. https://www.chinesefolklore.org.cn/web/index.php?NewsID=19461</tspan>
+  </text>
+        <rect x="120" y="900" width="1680" height="54" rx="15" fill="#eef5ff"/>
+        <text x="150" y="934" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="24" font-weight="750" fill="#10223d" opacity="1">
+    <tspan x="150" dy="0">结论：重庆民间文学可以从“环境生成讲述—非遗确认案例—现代空间变迁—个人日常记忆”这一线索来理解。</tspan>
+  </text>
+      
+    <text x="110" y="1004" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#667085">参考文献页。</text>
+  </svg>

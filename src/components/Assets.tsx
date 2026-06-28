@@ -4,13 +4,15 @@ import { useFrame } from '@react-three/fiber';
 import { AudioSystem } from '../lib/audio';
 import { SpotLight, Html, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
+import { getTerrainHeight, getTerrainGradient, buildHeightSampler } from '../utils/terrain';
+import { getFragmentById } from '../game/fragments';
 import { applyTerrainBrush, paintSurface } from '../utils/terrainBrush';
 import { getWaterHeight as getOceanHeight, getWaveAmplitude } from '../game/water/oceanModel';
-import { DepthWater, WaterfallSheet, FlowRibbon } from '../game/water/DepthWater';
+import { DepthWater, WaterfallSheet } from '../game/water/DepthWater';
 import { StylizedWater } from '../game/water/StylizedWater';
 import { decodePondState, carvePondAndEncode } from '../game/water/pondFit';
-import { buildStream, decodeStreamState } from '../game/water/streamPath';
+import { buildStream, decodeStreamState, decodeWaterfall } from '../game/water/streamPath';
+import { Waterfall } from '../game/water/Waterfall';
 import {
   createLocomotionState,
   stepCreature,
@@ -253,31 +255,56 @@ function Pond({ position, rotation, scale = 1, customState }: { position: any, r
   );
 }
 
-// 溪流 / 瀑布：从 customState 解析折线，构建贴地水带 + 落差处竖直水帘。
-// 几何已是世界坐标，外层 wrapper group 位于原点，故本组件不再做位移。
+// 河流：一条连续的低多边形流动水带——平缓处沉进河床，陡峭处自然贴崖垂下成瀑布，
+// 由同一张几何/着色器统一表现，不再用独立飘片水帘（避免穿帮）。
 function Stream({ customState }: { customState?: string }) {
   const build = useMemo(() => {
     const pts = decodeStreamState(customState);
     if (!pts) return null;
-    return buildStream(pts, 1.5);
+    return buildStream(pts, 2.4);
   }, [customState]);
 
   if (!build || !build.ribbon) return null;
 
+  // 河流：只渲染流动河面（瀑布已拆为独立工具）
+  return (
+    <StylizedWater geometry={build.ribbon} foamMode="ribbon" flow={[0, 0.22]} lieFlat={false}
+      shallow="#aee6fa" deep="#2a6690" opacity={0.88} waveAmp={1.5} renderOrder={1} />
+  );
+}
+
+// 瀑布（连线放置）：解析系统整形后的崖口/落潭，挂一道直落水帘 + 跌水潭水面。
+function WaterfallStroke({ customState }: { customState?: string }) {
+  const built = useMemo(() => {
+    const spec = decodeWaterfall(customState);
+    if (!spec) return null;
+    const { lip, base, width } = spec;
+    const height = Math.max(0.6, lip.y - base.y);
+    let dx = base.x - lip.x, dz = base.z - lip.z;
+    const hl = Math.hypot(dx, dz) || 1; dx /= hl; dz /= hl;
+    const bow = height * 0.1; // 出崖向外弓
+    const M = Math.min(40, Math.max(8, Math.round(height * 2)));
+    const poly: { x: number; y: number; z: number }[] = [];
+    for (let m = 0; m <= M; m++) {
+      const t = m / M;
+      poly.push({
+        x: lip.x + (base.x - lip.x) * t + dx * Math.sin(t * Math.PI) * bow,
+        y: lip.y + (base.y - lip.y) * t,
+        z: lip.z + (base.z - lip.z) * t + dz * Math.sin(t * Math.PI) * bow,
+      });
+    }
+    const fall = { x: (lip.x + base.x) / 2, z: (lip.z + base.z) / 2, topY: lip.y, bottomY: base.y, dir: { x: dx, z: dz }, width, poly };
+    return { fall, base, width };
+  }, [customState]);
+  if (!built) return null;
+  const { fall, base, width } = built;
   return (
     <group>
-      {/* 贴地流动水带：复用海面波形 + 沿流向滚动水纹 + 两侧岸沫 */}
-      <FlowRibbon geometry={build.ribbon} />
-      {/* 瀑布：落差处真实流动的竖直水帘（复用海面配色，UV 下滚 + 顶/底白沫） */}
-      {build.falls.map((f, i) => {
-        const h = Math.max(0.3, f.topY - f.bottomY);
-        const yaw = Math.atan2(f.dir.x, f.dir.z);
-        return (
-          <group key={i} position={[f.x, (f.topY + f.bottomY) / 2, f.z]} rotation={[0, yaw, 0]}>
-            <WaterfallSheet width={f.width} height={h} />
-          </group>
-        );
-      })}
+      <Waterfall {...fall} />
+      {/* 跌水潭：圆形水面，吃高度场体积着色 → 像真水潭 */}
+      <group position={[base.x, base.y, base.z]}>
+        <StylizedWater radius={width * 1.25} segments={28} shallow="#aee6fa" deep="#2a6690" opacity={0.88} waveAmp={0.6} />
+      </group>
     </group>
   );
 }
@@ -3693,11 +3720,130 @@ export function Bench(props: any) {
     </group>
   );
 }
+
+function SpiritSeed({ fragId, position }: { fragId: string, position: [number, number, number] }) {
+  const meshRef = useRef<THREE.Group>(null);
+  const glowRef = useRef<THREE.PointLight>(null);
+  const [hovered, setHovered] = useState(false);
+  const [picked, setPicked] = useState(false);
+  const frag = useMemo(() => getFragmentById(fragId), [fragId]);
+  const dismiss = useGameStore(s => s.dismissFragment);
+  const setCameraFocus = useGameStore(s => s.setCameraFocus);
+
+  // Focus camera when seed appears
+  useEffect(() => {
+    setCameraFocus(position);
+    return () => setCameraFocus(null); // Return camera when unmounted
+  }, [position, setCameraFocus]);
+
+  useFrame((state, delta) => {
+    if (!meshRef.current) return;
+    const t = state.clock.getElapsedTime();
+    
+    if (picked) {
+      // 选中后爆闪
+      meshRef.current.scale.setScalar(THREE.MathUtils.damp(meshRef.current.scale.x, 3, 4, delta));
+      if (glowRef.current) glowRef.current.intensity = THREE.MathUtils.damp(glowRef.current.intensity, 15, 6, delta);
+      return;
+    }
+
+    // 唯美的飘落曲线
+    const startY = 6;
+    const endY = 1.5;
+    const fallDuration = 3;
+    const fallProgress = Math.min(t / fallDuration, 1);
+    
+    // Ease out cubic
+    const easeProgress = 1 - Math.pow(1 - fallProgress, 3);
+    const targetY = startY - (startY - endY) * easeProgress;
+    
+    const bob = Math.sin(t * 2) * 0.1;
+    meshRef.current.position.y = targetY + bob + (hovered ? 0.2 : 0);
+    
+    meshRef.current.rotation.y = t * 0.5;
+    meshRef.current.rotation.x = Math.sin(t) * 0.2;
+    
+    const targetScale = hovered ? 1.3 : 1.0;
+    meshRef.current.scale.setScalar(THREE.MathUtils.damp(meshRef.current.scale.x, targetScale, 6, delta));
+    
+    if (glowRef.current) {
+      glowRef.current.intensity = THREE.MathUtils.damp(glowRef.current.intensity, hovered ? 5 : (fallProgress > 0.8 ? 2.5 : 0.5), 4, delta);
+    }
+  });
+
+  if (!frag) return null;
+
+  return (
+    <group 
+      ref={meshRef} 
+      position={[0, 6, 0]}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (picked) return;
+        setPicked(true);
+        AudioSystem.playClick();
+        setTimeout(() => AudioSystem.playTap(), 500);
+      }}
+      onPointerOver={(e) => { e.stopPropagation(); if (!picked) setHovered(true); document.body.style.cursor = 'pointer'; }}
+      onPointerOut={(e) => { document.body.style.cursor = 'auto'; if (!picked) setHovered(false); }}
+    >
+      {/* 灵之种本体 */}
+      <mesh>
+        <sphereGeometry args={[0.2, 32, 32]} />
+        <meshPhysicalMaterial 
+          color={hovered ? '#ffffff' : frag.tierColor} 
+          emissive={frag.tierColor}
+          emissiveIntensity={hovered ? 4 : 2}
+          roughness={0.1}
+          metalness={0.8}
+          clearcoat={1}
+          clearcoatRoughness={0.1}
+        />
+      </mesh>
+      
+      {/* 外部光环 */}
+      <mesh>
+        <sphereGeometry args={[0.3, 32, 32]} />
+        <meshBasicMaterial color={frag.tierColor} transparent opacity={hovered ? 0.4 : 0.2} depthWrite={false} side={THREE.BackSide} />
+      </mesh>
+
+      {/* 悬停呼吸光环 */}
+      {hovered && !picked && (
+        <mesh>
+          <sphereGeometry args={[0.45, 32, 32]} />
+          <meshBasicMaterial color={frag.tierColor} transparent opacity={0.15} depthWrite={false} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+      <pointLight ref={glowRef} color={frag.tierColor} intensity={0} distance={15} decay={2} />
+
+      {/* 卡牌揭晓 UI */}
+      {picked && (
+        <Html position={[0, 1.2, 0]} center zIndexRange={[100, 0]}>
+          <div className="hand-drawn-panel p-8 w-[320px] flex flex-col items-center animate-in fade-in zoom-in duration-500">
+            <h3 className="text-2xl font-black text-slate-800 mb-2 tracking-widest">{frag.title}</h3>
+            <span className="px-3 py-1 text-xs font-bold rounded-full mb-4" style={{ backgroundColor: frag.tierColor + '40', color: frag.tierColor }}>
+              {frag.tier}
+            </span>
+            <p className="text-sm text-slate-600 font-bold mb-6 text-center leading-relaxed whitespace-pre-wrap">{frag.oracle}</p>
+            <button 
+              className="hand-drawn-btn px-8 py-2 text-slate-800 font-bold tracking-widest"
+              onClick={(e) => { e.stopPropagation(); dismiss(); }}
+            >
+              收下
+            </button>
+          </div>
+        </Html>
+      )}
+    </group>
+  );
+}
+
 export function SpiritTree(props: any) {
   const ref = usePopIn(props.scale || 1.5);
   const leavesRef = useRef<any>(null);
   const particleMeshRef = useRef<THREE.InstancedMesh>(null);
   const grassHealth = useGameStore(state => state.grassHealth);
+  const pendingFragment = useGameStore(state => state.pendingFragment);
   const { showHover, isHoverLeaving, keepHoverAlive, forceClose } = useHoverInteraction();
   const pray = () => {
     // 神树不摇动，祈愿的回应交给：辞语 + 苏醒度 + 叙事碎片揭示
@@ -3770,31 +3916,42 @@ export function SpiritTree(props: any) {
       scale={0}
       ref={ref}
       onPointerOver={(e: any) => {
-        if (useGameStore.getState().selectedTool === 'none') { e.stopPropagation(); document.body.style.cursor = 'pointer'; keepHoverAlive(); }
+        if (useGameStore.getState().selectedTool === 'none' && !pendingFragment) { e.stopPropagation(); document.body.style.cursor = 'pointer'; keepHoverAlive(); }
       }}
       onPointerOut={() => { document.body.style.cursor = 'auto'; }}
-    >
-      {/* 祈愿按钮 —— 悬停浮现的高级气泡 */}
-      <HoverButton
-        showHover={showHover} isHoverLeaving={isHoverLeaving} keepHoverAlive={keepHoverAlive} yOffset={6.0}
-        iconSvg={
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            {/* 双手合十：左手 */}
-            <path d="M12 3.8C9.5 6.2 7.5 9.6 8 14.4c.2 2 1.6 3.4 4 3.4" style={{ animation: 'seatDropIn 0.6s 0.1s both cubic-bezier(0.34,1.56,0.64,1)' }} />
-            {/* 右手（镜像） */}
-            <path d="M12 3.8C14.5 6.2 16.5 9.6 16 14.4c-.2 2-1.6 3.4-4 3.4" style={{ animation: 'seatDropIn 0.6s 0.22s both cubic-bezier(0.34,1.56,0.64,1)' }} />
-            {/* 两掌相贴的中缝 */}
-            <path d="M12 4.8v13" />
-            {/* 拇指交叠 */}
-            <path d="M8.7 12.4c2.2.5 4.4.5 6.6 0" />
-            {/* 手腕收拢 */}
-            <path d="M9.2 17.6c.6 1.7 1.7 2.8 2.8 2.8s2.2-1.1 2.8-2.8" />
-            {/* 祈愿光点 */}
-            <path d="M12 2.1v.7M9.7 3.1l.3.6M14.3 3.1l-.3.6" style={{ animation: 'sparkPop 0.5s 0.3s both', transformOrigin: 'center' }} />
-          </svg>
+      onClick={(e: any) => {
+        if (useGameStore.getState().selectedTool === 'none' && !pendingFragment) {
+          e.stopPropagation();
+          pray();
         }
-        onClick={(e: any) => { e.stopPropagation(); AudioSystem.playClick(); pray(); }}
-      />
+      }}
+    >
+      {/* 灵之种降临 */}
+      {pendingFragment ? (
+        <SpiritSeed fragId={pendingFragment} position={[props.position.x, props.position.y, props.position.z]} />
+      ) : (
+        /* 祈愿按钮 —— 悬停浮现的高级气泡 */
+        <HoverButton
+          showHover={showHover} isHoverLeaving={isHoverLeaving} keepHoverAlive={keepHoverAlive} yOffset={6.0}
+          iconSvg={
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {/* 双手合十：左手 */}
+              <path d="M12 3.8C9.5 6.2 7.5 9.6 8 14.4c.2 2 1.6 3.4 4 3.4" style={{ animation: 'seatDropIn 0.6s 0.1s both cubic-bezier(0.34,1.56,0.64,1)' }} />
+              {/* 右手（镜像） */}
+              <path d="M12 3.8C14.5 6.2 16.5 9.6 16 14.4c-.2 2-1.6 3.4-4 3.4" style={{ animation: 'seatDropIn 0.6s 0.22s both cubic-bezier(0.34,1.56,0.64,1)' }} />
+              {/* 两掌相贴的中缝 */}
+              <path d="M12 4.8v13" />
+              {/* 拇指交叠 */}
+              <path d="M8.7 12.4c2.2.5 4.4.5 6.6 0" />
+              {/* 手腕收拢 */}
+              <path d="M9.2 17.6c.6 1.7 1.7 2.8 2.8 2.8s2.2-1.1 2.8-2.8" />
+              {/* 祈愿光点 */}
+              <path d="M12 2.1v.7M9.7 3.1l.3.6M14.3 3.1l-.3.6" style={{ animation: 'sparkPop 0.5s 0.3s both', transformOrigin: 'center' }} />
+            </svg>
+          }
+          onClick={(e: any) => { e.stopPropagation(); AudioSystem.playClick(); pray(); }}
+        />
+      )}
 
       {/* Massive Trunk */}
       <mesh position={[0, 1.5, 0]} castShadow>
@@ -3834,6 +3991,11 @@ export function SpiritTree(props: any) {
 export function Observatory(props: any) {
   const ref = usePopIn(props.scale || 1.2);
   const telescopeRef = useRef<any>(null);
+  const timeOfDay = useGameStore(s => s.timeOfDay);
+  const setObservatoryMode = useGameStore(s => s.setObservatoryMode);
+  
+  const isNight = timeOfDay < 0.25 || timeOfDay > 0.75;
+  const { showHover, isHoverLeaving, keepHoverAlive } = useHoverInteraction();
   
   useFrame(({ clock }) => {
     if (!useGameStore.getState().isSplashDone) return;
@@ -3844,7 +4006,30 @@ export function Observatory(props: any) {
   });
 
   return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
+    <group 
+      position={[props.position.x, props.position.y, props.position.z]} 
+      rotation={[0, props.rotation.y, 0]} 
+      scale={0} 
+      ref={ref}
+      onPointerEnter={() => keepHoverAlive()}
+      onPointerLeave={() => keepHoverAlive()}
+    >
+      <HoverButton 
+        showHover={showHover} 
+        isHoverLeaving={isHoverLeaving} 
+        keepHoverAlive={keepHoverAlive}
+        yOffset={3.5}
+        onClick={(e: any) => {
+          e.stopPropagation();
+          AudioSystem.playToggle();
+          // Premium transition to night
+          useGameStore.getState().setTimeOfDay(22);
+          useGameStore.getState().setObservatoryPos([props.position.x, props.position.y, props.position.z]);
+          setObservatoryMode(true);
+        }}
+        iconSvg={<TelescopeIcon />}
+      />
+
       {/* Main Wooden Base Tower */}
       <mesh position={[0, 1.5, 0]} castShadow>
         <cylinderGeometry args={[0.8, 1.2, 3, 6]} />
@@ -4058,6 +4243,7 @@ const AssetInstance = memo(function AssetInstance({ asset }: { asset: PlacedAsse
     case 'spring': content = <Spring {...asset} />; break;
     case 'pond': content = <Pond {...asset} />; break;
     case 'water_flow': content = <Stream {...asset} />; break;
+    case 'waterfall': content = <WaterfallStroke {...asset} />; break;
     case 'streetlamp': content = <Streetlamp {...asset} />; break;
     case 'lantern_girl': content = <LanternGirl {...asset} />; break;
     case 'house': content = <House {...asset} />; break;
@@ -4113,5 +4299,33 @@ export function Assets() {
       <MarineBridgeRenderer />
       {assets.map(asset => <AssetInstance key={asset.id} asset={asset} />)}
     </MarineAssetIndexProvider>
+  );
+}
+
+export function TelescopeIcon() {
+  return (
+    <svg viewBox="0 0 100 100" className="w-8 h-8 overflow-visible text-slate-800">
+      <style>{`
+        @keyframes basePop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+        @keyframes scopeUp { 0% { transform: rotate(20deg) scale(0.5); opacity: 0; } 100% { transform: rotate(-30deg) scale(1); opacity: 1; } }
+        @keyframes starsTwinkle { 0%, 100% { opacity: 0; transform: scale(0) translate(0, 0); } 50% { opacity: 1; transform: scale(1) translate(4px, -4px); } }
+        .base { animation: basePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; transform-origin: center bottom; }
+        .scope { animation: scopeUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both; transform-origin: 30% 70%; }
+        .star1 { animation: starsTwinkle 1.5s ease-in-out infinite 0.4s; transform-origin: center; }
+        .star2 { animation: starsTwinkle 2s ease-in-out infinite 0.6s; transform-origin: center; }
+      `}</style>
+      <g className="base" fill="currentColor">
+        <path d="M40 85 L60 85 L55 60 L45 60 Z" />
+        <circle cx="50" cy="60" r="8" />
+      </g>
+      <g className="scope" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="30" y1="70" x2="70" y2="30" />
+        <line x1="60" y1="20" x2="80" y2="40" strokeWidth="12" />
+      </g>
+      <g fill="#facc15">
+        <circle cx="85" cy="15" r="4" className="star1" />
+        <circle cx="75" cy="5" r="3" className="star2" />
+      </g>
+    </svg>
   );
 }

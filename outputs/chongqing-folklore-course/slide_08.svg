@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+    <defs>
+      <pattern id="grid" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+        <circle cx="1.5" cy="1.5" r="1.2" fill="#dbe4f0"/>
+      </pattern>
+      <linearGradient id="river" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#eaf3ff"/>
+        <stop offset="1" stop-color="#bfd8ff"/>
+      </linearGradient>
+    </defs>
+    <rect width="1920" height="1080" fill="#f8fafd"/>
+    <rect width="1920" height="1080" fill="url(#grid)" opacity=".28"/>
+    <rect x="70" y="52" width="1780" height="976" rx="30" fill="#ffffff" stroke="#d7e1ee" stroke-width="1.4"/>
+    <text x="110" y="110" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="38" font-weight="850" fill="#101827">个人调查：从非遗资料回到日常语言和生活记忆</text>
+    <text x="1810" y="108" text-anchor="end" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#1e5bff">08 / 09</text>
+    <text x="112" y="154" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="21" font-weight="400" fill="#59657a" opacity="1">
+    <tspan x="112" dy="0">官方资料回答“哪些项目被保护”，个人调查补充“这些内容今天如何被记住”。</tspan>
+  </text>
+    <line x1="110" y1="184" x2="1810" y2="184" stroke="#dce5f1" stroke-width="2"/>
+    
+        <text x="120" y="238" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="25" font-weight="400" fill="#253149" opacity="1">
+    <tspan x="120" dy="0">本次作业采用“权威资料查阅 + 小范围口头访谈 + 个人生活观察”的方式展开。调查中我发现，许多人不一定能完整复述一个民间故事，但更容易记住地名来历、吓人</tspan><tspan x="120" dy="36.25">故事、因果报应故事、重庆言子和歇后语。这说明民间文学并没有简单消失，而是以更碎片化、方言化、场景化的方式留在日常生活中。</tspan>
+  </text>
+        <rect x="120" y="402" width="1680" height="440" rx="18" fill="#ffffff" stroke="#dbe5f2"/>
+        <text x="150" y="450" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="28" font-weight="850" fill="#101827" opacity="1">
+    <tspan x="150" dy="0">个人调查表</tspan>
+  </text>
+        <text x="150" y="506" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="23" font-weight="400" fill="#172033" opacity="1">
+    <tspan x="150" dy="0">1. 家庭长辈访谈：小时候听过哪些重庆本地故事？记录到江边老地名、吓人故事、因果报应故事更容易被想起。用于说明民间文学常留在家庭记忆中。</tspan>
+  </text>
+        <text x="150" y="585" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="23" font-weight="400" fill="#172033" opacity="1">
+    <tspan x="150" dy="0">2. 同乡交流：家里常说哪些重庆言子、俗语或歇后语？记录到方言短句比完整故事更容易被保存。用于说明方言是民间文学的重要载体。</tspan>
+  </text>
+        <text x="150" y="664" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="23" font-weight="400" fill="#172033" opacity="1">
+    <tspan x="150" dy="0">3. 方言案例记录：重庆人怎样形容亏本或输惨？记录到“亏到唐家沱”一类说法。它在访谈中常被解释为与江湾、水流、码头经验相关。</tspan>
+  </text>
+        <text x="150" y="743" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="23" font-weight="400" fill="#172033" opacity="1">
+    <tspan x="150" dy="0">4. 文献对照：个人经验能否与权威资料互相印证？走马故事、广阳故事、川江号子、弹子石传说提供了可查证的非遗和地名案例。</tspan>
+  </text>
+        <rect x="120" y="876" width="1680" height="54" rx="15" fill="#eef5ff"/>
+        <text x="150" y="910" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="24" font-weight="750" fill="#10223d" opacity="1">
+    <tspan x="150" dy="0">写作原则：个人访谈用于补充生活观察，项目身份和历史事实仍以权威资料为准。</tspan>
+  </text>
+      
+    <text x="110" y="1004" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#667085">说明：个人调查为家庭与同乡小范围非正式交流，不作为统计性调查结论；“亏到唐家沱”为访谈中的地方口头解释。</text>
+  </svg>

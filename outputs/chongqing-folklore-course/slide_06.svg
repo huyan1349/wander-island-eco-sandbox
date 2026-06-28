@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+    <defs>
+      <pattern id="grid" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+        <circle cx="1.5" cy="1.5" r="1.2" fill="#dbe4f0"/>
+      </pattern>
+      <linearGradient id="river" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#eaf3ff"/>
+        <stop offset="1" stop-color="#bfd8ff"/>
+      </linearGradient>
+    </defs>
+    <rect width="1920" height="1080" fill="#f8fafd"/>
+    <rect width="1920" height="1080" fill="url(#grid)" opacity=".28"/>
+    <rect x="70" y="52" width="1780" height="976" rx="30" fill="#ffffff" stroke="#d7e1ee" stroke-width="1.4"/>
+    <text x="110" y="110" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="38" font-weight="850" fill="#101827">从“有人会讲”到“可以查证”：民间文学如何被保存</text>
+    <text x="1810" y="108" text-anchor="end" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#1e5bff">06 / 09</text>
+    <text x="112" y="154" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="21" font-weight="400" fill="#59657a" opacity="1">
+    <tspan x="112" dy="0">前两页讲故事如何产生；这一页说明口头传统如何进入非遗、文献和课堂。</tspan>
+  </text>
+    <line x1="110" y1="184" x2="1810" y2="184" stroke="#dce5f1" stroke-width="2"/>
+    
+        <text x="120" y="242" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="26" font-weight="400" fill="#253149" opacity="1">
+    <tspan x="120" dy="0">民间文学的保护，不只是把故事写成文字，还要尽量保存讲述者、讲述场景、方言表达和采录背景。走马故事和广阳故事被列入国家级非遗名录后，地方文化馆、传</tspan><tspan x="120" dy="37.699999999999996">承人、研究者和出版机构共同参与整理，使原本流动的口头传统进入公共文化体系。</tspan>
+  </text>
+        <g>
+    <rect x="120" y="405" width="400" height="390" rx="18" fill="#ffffff" stroke="#dbe5f2" stroke-width="1.4"/>
+    <rect x="120" y="405" width="8" height="390" rx="4" fill="#1e5bff"/>
+    <text x="148" y="447" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="25" font-weight="800" fill="#101827" opacity="1">
+    <tspan x="148" dy="0">讲述者</tspan>
+  </text>
+    <text x="148" y="493" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="23" font-weight="400" fill="#27364f" opacity="1">
+    <tspan x="148" dy="0">传承人让故事从“文本”重新回到“人”</tspan><tspan x="148" dy="32.66">的身上。民间文学不是匿名材料的堆积，</tspan><tspan x="148" dy="32.66">而依赖具体讲述者的记忆、经验和表达能</tspan><tspan x="148" dy="32.66">力。</tspan>
+  </text>
+    
+  </g>
+        <g>
+    <rect x="555" y="405" width="400" height="390" rx="18" fill="#ffffff" stroke="#dbe5f2" stroke-width="1.4"/>
+    <rect x="555" y="405" width="8" height="390" rx="4" fill="#e77732"/>
+    <text x="583" y="447" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="25" font-weight="800" fill="#101827" opacity="1">
+    <tspan x="583" dy="0">保护机构</tspan>
+  </text>
+    <text x="583" y="493" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="23" font-weight="400" fill="#27364f" opacity="1">
+    <tspan x="583" dy="0">地方文化馆承担采录、整理、保护和传播</tspan><tspan x="583" dy="32.66">工作。非遗名录确认项目身份，但不能替</tspan><tspan x="583" dy="32.66">代日常讲述。</tspan>
+  </text>
+    
+  </g>
+        <g>
+    <rect x="990" y="405" width="400" height="390" rx="18" fill="#ffffff" stroke="#dbe5f2" stroke-width="1.4"/>
+    <rect x="990" y="405" width="8" height="390" rx="4" fill="#1e5bff"/>
+    <text x="1018" y="447" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="25" font-weight="800" fill="#101827" opacity="1">
+    <tspan x="1018" dy="0">文献整理</tspan>
+  </text>
+    <text x="1018" y="493" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="23" font-weight="400" fill="#27364f" opacity="1">
+    <tspan x="1018" dy="0">《走马民间故事》《中国民间文学大系·</tspan><tspan x="1018" dy="32.66">故事·重庆卷（一）》等资料，让口头材</tspan><tspan x="1018" dy="32.66">料可以被引用、比较和研究。</tspan>
+  </text>
+    
+  </g>
+        <g>
+    <rect x="1425" y="405" width="375" height="390" rx="18" fill="#ffffff" stroke="#dbe5f2" stroke-width="1.4"/>
+    <rect x="1425" y="405" width="8" height="390" rx="4" fill="#e77732"/>
+    <text x="1453" y="447" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="25" font-weight="800" fill="#101827" opacity="1">
+    <tspan x="1453" dy="0">课堂传播</tspan>
+  </text>
+    <text x="1453" y="493" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="23" font-weight="400" fill="#27364f" opacity="1">
+    <tspan x="1453" dy="0">课堂展示需要同时说明官方资料和个人</tspan><tspan x="1453" dy="32.66">观察的关系：前者确认事实，后者补充</tspan><tspan x="1453" dy="32.66">当代生活中的微观经验。</tspan>
+  </text>
+    
+  </g>
+        <rect x="120" y="848" width="1680" height="72" rx="16" fill="#eef5ff"/>
+        <text x="150" y="890" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="26" font-weight="750" fill="#10223d" opacity="1">
+    <tspan x="150" dy="0">本页结论：非遗保护不是把民间故事封存，而是让口耳相传的材料获得新的传播路径。</tspan>
+  </text>
+      
+    <text x="110" y="1004" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#667085">资料来源：[1] 中国非遗网《走马镇民间故事》；[3] 中国非遗网《广阳镇民间故事》；[8][9] 相关著作与研究。</text>
+  </svg>

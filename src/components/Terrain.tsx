@@ -7,7 +7,7 @@ import { AudioSystem } from '../lib/audio';
 import { emitHermitPlace } from '../lib/socket';
 import { applyTerrainBrush, paintSurface } from '../utils/terrainBrush';
 import { encodePondState } from '../game/water/pondFit';
-import { encodeStreamState } from '../game/water/streamPath';
+import { carveRiverAndEncode, shapeWaterfallAndEncode, buildStream } from '../game/water/streamPath';
 import { getTerrainHeight, getTerrainGradient } from '../utils/terrain';
 import { getFloatingPlatformSnap } from '../utils/platformPlacement';
 import {
@@ -28,6 +28,32 @@ const noise2D = createNoise2D();
 // Generate a static heightmap for the island
 const ISAND_SIZE = 40;
 const SEGMENTS = 64;
+
+// 河流/瀑布拖绘时的实时预览：读取进行中的折线，按当前点重建一条半透明河带，拖到哪显示到哪。
+function RiverPreview({ pointsRef }: { pointsRef: React.MutableRefObject<{ x: number; z: number }[]> }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const lastLen = useRef(-1);
+  useFrame(() => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+    const st = useGameStore.getState();
+    const drawing = st.isDrawing && (st.selectedTool === 'water_flow' || st.selectedTool === 'waterfall');
+    const pts = pointsRef.current;
+    if (!drawing || pts.length < 2) { mesh.visible = false; lastLen.current = -1; return; }
+    if (pts.length !== lastLen.current) {
+      lastLen.current = pts.length;
+      const build = buildStream(pts, st.selectedTool === 'water_flow' ? 2.4 : 2.0);
+      if (build.ribbon) { mesh.geometry.dispose(); mesh.geometry = build.ribbon; }
+    }
+    mesh.visible = true;
+  });
+  return (
+    <mesh ref={meshRef} visible={false} renderOrder={6}>
+      <bufferGeometry />
+      <meshBasicMaterial color="#aee6fa" transparent opacity={0.45} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
 
 export function Terrain() {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -518,8 +544,8 @@ export function Terrain() {
         return;
     }
 
-    // 溪流：落笔开始记录折线，不走笔刷。
-    if (selectedTool === 'water_flow') {
+    // 河流 / 瀑布：落笔开始记录折线，不走笔刷。
+    if (selectedTool === 'water_flow' || selectedTool === 'waterfall') {
         streamPoints.current = [{ x: e.point.x, z: e.point.z }];
         useGameStore.getState().setIsDrawing(true);
         if (e.target && e.pointerId !== undefined) {
@@ -540,11 +566,11 @@ export function Terrain() {
     if (useGameStore.getState().isDrawing) {
        useGameStore.getState().setIsDrawing(false);
 
-       // 溪流：松手把折线提交为一个 water_flow 物件。
-       if (selectedTool === 'water_flow') {
+       // 河流 / 瀑布：松手把折线提交为对应物件。
+       if (selectedTool === 'water_flow' || selectedTool === 'waterfall') {
+          const tool = selectedTool;
           let pts = streamPoints.current;
-          // 点击放置瀑布：没拖出折线时，按落点坡度合成一段「顺坡而下」的短折线，
-          // buildStream 检测到陡降即生成竖直水帘 → 点一下就是一道瀑布。
+          // 单击（没拖出折线）：按坡度合成一段「顺坡而下」的短折线。
           if (pts.length < 2) {
              const c = pts[0] || { x: lastBrushPoint.current.x, z: lastBrushPoint.current.z };
              const g = getTerrainGradient(c.x, c.z); // 指向上坡
@@ -560,12 +586,15 @@ export function Terrain() {
           if (pts.length >= 2) {
              const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
              const cz = pts.reduce((s, p) => s + p.z, 0) / pts.length;
+             // 河流：挖河床的流动河面；瀑布：连线两端，系统自动整形地形（崖+潭）再挂水帘
              const placed = {
-                type: 'water_flow' as any,
+                type: tool as any,
                 position: { x: cx, y: 0, z: cz },
                 rotation: { x: 0, y: 0, z: 0 },
                 scale: 1,
-                customState: encodeStreamState(pts),
+                customState: tool === 'water_flow'
+                  ? carveRiverAndEncode(pts, 2.4)
+                  : shapeWaterfallAndEncode(pts[0], pts[pts.length - 1], 2.4),
              };
              addAsset(placed);
              if (useGameStore.getState().online) emitHermitPlace(placed);
@@ -618,7 +647,7 @@ export function Terrain() {
 
     if (useGameStore.getState().isDrawing) {
         e.stopPropagation();
-        if (selectedTool === 'water_flow') {
+        if (selectedTool === 'water_flow' || selectedTool === 'waterfall') {
             const pts = streamPoints.current;
             const last = pts[pts.length - 1];
             if (!last || Math.hypot(e.point.x - last.x, e.point.z - last.z) > 0.6) {
@@ -680,6 +709,9 @@ export function Terrain() {
         <ringGeometry args={[0.8, 1, 16]} />
         <meshBasicMaterial color="#ffffff" transparent opacity={0.6} side={THREE.DoubleSide} />
       </mesh>
+
+      {/* 河流/瀑布拖绘实时预览：拖到哪显示到哪 */}
+      <RiverPreview pointsRef={streamPoints} />
 
       <ShockwaveRing />
 

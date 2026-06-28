@@ -1,6 +1,11 @@
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { getHeightField } from './heightField';
+
+// 无高度场时的占位贴图（1×1）
+const DUMMY_TEX = new THREE.DataTexture(new Uint16Array([0, 0, 0, 0]), 1, 1, THREE.RGBAFormat, THREE.HalfFloatType);
+DUMMY_TEX.needsUpdate = true;
 
 /**
  * StylizedWater — 全岛通用的「低多边形风格化水面」。
@@ -64,6 +69,15 @@ export function StylizedWater({
     uWaveAmp: { value: waveAmp },
     uFoamMode: { value: foamMode === 'ribbon' ? 1.0 : 0.0 },
     uFlow: { value: new THREE.Vector2(flow[0], flow[1]) },
+    // 体积水：水深来自地形高度场
+    uHeightTex: { value: DUMMY_TEX as THREE.Texture },
+    uIslandSize: { value: 1 },
+    uUseDepth: { value: 0 },
+    uAbsorb: { value: 1.9 },       // 深度吸收系数（越大越快变深）
+    uFoamWidth: { value: 0.14 },   // 岸线白沫的水深带宽
+    uFresnelP: { value: 4.0 },
+    uMinA: { value: 0.16 },        // 浅水透明
+    uMaxA: { value: 0.92 },        // 深水不透
   });
 
   // 保持 uniforms 与 props 同步（颜色/不透明度可被场景实时调）。
@@ -88,43 +102,93 @@ export function StylizedWater({
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>
 uniform float uTime; uniform float uWaveAmp; uniform float uFoamMode;
-varying float vShore; varying vec2 vWUv;`)
+varying float vShore; varying float vSteep; varying vec2 vWUv;
+varying vec3 vWorldPos; varying vec3 vViewDir;`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
 {
   vWUv = uv;
-  // 岸缘因子：圆形按到中心距离，带状按横向 uv.y。
-  vShore = uFoamMode > 0.5 ? abs(uv.y - 0.5) * 2.0 : clamp(length(uv - 0.5) * 2.0, 0.0, 1.0);
-  // 轻波动：中心强、近岸收敛为 0（岸边贴地不穿帮）。
+  vec3 wp = (modelMatrix * vec4(position, 1.0)).xyz; // 未起伏的水面世界坐标（算水深用，稳定不闪）
+  vWorldPos = wp;
+  vViewDir = cameraPosition - wp;
+  // 岸缘因子：圆形按到中心距离，带状按横向 uv.x（两岸）。
+  vShore = uFoamMode > 0.5 ? abs(uv.x - 0.5) * 2.0 : clamp(length(uv - 0.5) * 2.0, 0.0, 1.0);
+  // 陡峭因子：法线越偏离朝上越陡（崖面/瀑布段）。
+  vSteep = 1.0 - clamp(normal.y, 0.0, 1.0);
   float damp = 1.0 - vShore * vShore;
-  float w = sin((position.x * 2.1 + position.y * 1.3) + uTime * 1.6)
-          + sin((position.x * 1.3 - position.y * 2.4) - uTime * 1.1) * 0.6;
-  transformed.z += w * 0.05 * uWaveAmp * damp;
+  if (uFoamMode > 0.5) {
+    // 河流：顺流而下的行进波，沿世界 Y 起伏（uv.y = 弧长米数 → 波长恒定）。
+    float tw = sin(uv.y * 2.3 - uTime * 3.2)
+             + sin(uv.y * 5.1 + uv.x * 4.0 - uTime * 4.6) * 0.4;
+    transformed.y += tw * 0.06 * uWaveAmp * damp;
+  } else {
+    float w = sin((position.x * 2.1 + position.y * 1.3) + uTime * 1.6)
+            + sin((position.x * 1.3 - position.y * 2.4) - uTime * 1.1) * 0.6;
+    transformed.z += w * 0.05 * uWaveAmp * damp;
+  }
 }`);
 
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
 uniform float uTime; uniform vec3 uShallow; uniform vec3 uDeep; uniform vec3 uFoam;
 uniform float uOpacity; uniform float uFoamMode; uniform vec2 uFlow;
-varying float vShore; varying vec2 vWUv;`)
+uniform sampler2D uHeightTex; uniform float uIslandSize; uniform float uUseDepth;
+uniform float uAbsorb; uniform float uFoamWidth; uniform float uFresnelP; uniform float uMinA; uniform float uMaxA;
+varying float vShore; varying float vSteep; varying vec2 vWUv;
+varying vec3 vWorldPos; varying vec3 vViewDir;
+float wHash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float wNoise(vec2 p){ vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.0-2.0*f);
+  return mix(mix(wHash(i),wHash(i+vec2(1,0)),u.x), mix(wHash(i+vec2(0,1)),wHash(i+vec2(1,1)),u.x), u.y); }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
 {
-  // 深浅：水心深、岸边浅。
-  vec3 water = mix(uDeep, uShallow, smoothstep(0.0, 1.0, vShore));
-  // 流动 UV（溪流/瀑布）叠一层细纹理感。
-  vec2 fuv = vWUv + uFlow * uTime;
-  float ripple = sin(fuv.x * 26.0 + fuv.y * 10.0) * 0.5 + 0.5;
-  water += (ripple - 0.5) * 0.05;
-  // 交界泡沫：靠岸一圈白带，随时间起伏，带状水体在两侧成沫。
-  float band = uFoamMode > 0.5 ? smoothstep(0.62, 0.96, vShore) : smoothstep(0.74, 1.0, vShore);
-  float flick = 0.6 + 0.4 * sin(uTime * 3.0 + (vWUv.x + vWUv.y) * 22.0);
-  float foamAmt = band * flick;
+  float t;       // 深度暗化：0 浅 → 1 深
+  float shoreF;  // 岸线白沫因子：1 在水线、0 深处
+  float alpha;
+  if (uUseDepth > 0.5) {
+    // —— 体积水：按「水面 Y − 地形 Y」的水柱厚度着色（Beer–Lambert）——
+    vec2 huv = vWorldPos.xz / uIslandSize + 0.5;
+    float bottomY = texture2D(uHeightTex, huv).r;
+    float depth = max(0.0, vWorldPos.y - bottomY);
+    t = 1.0 - exp(-depth * uAbsorb);
+    shoreF = 1.0 - smoothstep(0.0, uFoamWidth, depth);
+    alpha = mix(uMinA, uMaxA, t);
+  } else {
+    // 回退：无高度场（如副岛）时按 uv 岸缘。
+    t = smoothstep(0.0, 1.0, 1.0 - vShore);
+    shoreF = uFoamMode > 0.5 ? smoothstep(0.6, 0.96, vShore) : smoothstep(0.74, 1.0, vShore);
+    alpha = uOpacity;
+  }
+  vec3 water = mix(uShallow, uDeep, t);
+  float centerFast = clamp(1.0 - vShore, 0.0, 1.0); // 河心快、近岸慢
+
+  // 顺流而下的水花丝：沿流向(uv.y 弧长)漂移的两层噪声，组织成细丝（河心更急更密）
+  vec2 f1 = vec2(vWUv.x * 3.2, vWUv.y * 0.9 - uTime * (0.7 + centerFast * 1.2));
+  vec2 f2 = vec2(vWUv.x * 6.1, vWUv.y * 1.7 - uTime * (1.1 + centerFast * 1.6));
+  float fn = wNoise(f1) * 0.62 + wNoise(f2) * 0.38;
+  float threads = smoothstep(0.60, 0.93, fn) * (0.25 + 0.75 * centerFast);
+
+  // 岸线白沫：贴水线一圈，慢噪声起伏（不再高频闪烁）
+  float shoreFoam = shoreF * (0.45 + 0.55 * wNoise(vec2(vWUv.x * 5.0, vWUv.y * 1.3 - uTime * 0.9)));
+
+  // 陡处白水（瀑布段，本期先保留弱化，待第二期单独打磨）
+  float fall = uFoamMode > 0.5 ? smoothstep(0.35, 0.8, vSteep) * 0.55 : 0.0;
+
+  // 菲涅尔：掠角微泛白（俯视通透）
+  float fres = pow(1.0 - clamp(normalize(vViewDir).y, 0.0, 1.0), uFresnelP);
+  water = mix(water, uShallow, fres * 0.12);
+
+  float riverFoam = uFoamMode > 0.5 ? threads * 0.5 : 0.0;
+  float foamAmt = clamp(shoreFoam + riverFoam + fall, 0.0, 1.0);
   diffuseColor.rgb = mix(water, uFoam, foamAmt);
-  diffuseColor.a = mix(uOpacity, 0.95, foamAmt);
+  diffuseColor.a = max(alpha, foamAmt * 0.9);
 }`);
   }, []);
 
   useFrame((s) => {
-    uniforms.current.uTime.value = s.clock.elapsedTime;
+    const u = uniforms.current;
+    u.uTime.value = s.clock.elapsedTime;
+    const hf = getHeightField();
+    if (hf) { u.uHeightTex.value = hf.tex; u.uIslandSize.value = hf.size; u.uUseDepth.value = 1; }
+    else { u.uUseDepth.value = 0; }
   });
 
   const rot: [number, number, number] = lieFlat ? [-Math.PI / 2, 0, 0] : [0, 0, 0];
@@ -136,8 +200,8 @@ varying float vShore; varying vec2 vWUv;`)
         ref={matRef}
         transparent
         opacity={opacity}
-        roughness={0.18}
-        metalness={0.1}
+        roughness={0.62}
+        metalness={0.0}
         depthWrite={false}
         flatShading
         side={THREE.DoubleSide}

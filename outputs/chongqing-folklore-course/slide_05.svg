@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+    <defs>
+      <pattern id="grid" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+        <circle cx="1.5" cy="1.5" r="1.2" fill="#dbe4f0"/>
+      </pattern>
+      <linearGradient id="river" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#eaf3ff"/>
+        <stop offset="1" stop-color="#bfd8ff"/>
+      </linearGradient>
+    </defs>
+    <rect width="1920" height="1080" fill="#f8fafd"/>
+    <rect width="1920" height="1080" fill="url(#grid)" opacity=".28"/>
+    <rect x="70" y="52" width="1780" height="976" rx="30" fill="#ffffff" stroke="#d7e1ee" stroke-width="1.4"/>
+    <text x="110" y="110" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="38" font-weight="850" fill="#101827">广阳镇民间故事：长江水岸上的地名与生活记忆</text>
+    <text x="1810" y="108" text-anchor="end" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#1e5bff">05 / 09</text>
+    <text x="112" y="154" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="21" font-weight="400" fill="#59657a" opacity="1">
+    <tspan x="112" dy="0">走马故事说明“山路和场镇”如何产生故事；广阳故事则说明“江水和地名”如何保存故事。</tspan>
+  </text>
+    <line x1="110" y1="184" x2="1810" y2="184" stroke="#dce5f1" stroke-width="2"/>
+    
+        <text x="120" y="242" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="26" font-weight="400" fill="#253149" opacity="1">
+    <tspan x="120" dy="0">广阳镇民间故事是在重庆市南岸区广阳镇广泛流传的民间传说和故事总称。中国非遗网介绍，广阳镇拥有约 12 公里长的长江水岸线，早期居民多临水而居、顺水</tspan><tspan x="120" dy="37.699999999999996">迁移，因此广阳镇民间故事也传播到邻近沿江村镇。这里的神话传说、地方风物故事、历史人物故事、生活故事和笑话，把江水、船只、码头、地名与日常经验组织</tspan><tspan x="120" dy="37.699999999999996">成一张“口头地图”。</tspan>
+  </text>
+        <g>
+    <rect x="120" y="430" width="530" height="360" rx="18" fill="#ffffff" stroke="#dbe5f2" stroke-width="1.4"/>
+    <rect x="120" y="430" width="8" height="360" rx="4" fill="#1e5bff"/>
+    <text x="148" y="472" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="25" font-weight="800" fill="#101827" opacity="1">
+    <tspan x="148" dy="0">项目身份</tspan>
+  </text>
+    
+    <circle cx="153" cy="514" r="4.5" fill="#e77732"/>
+      <text x="175" y="522" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="24" fill="#26344d">
+      <tspan x="175" dy="0">2014 年列入第四批国家级非物质文化遗产代表性项目名</tspan><tspan x="175" dy="32.160000000000004">录。</tspan>
+      </text><circle cx="153" cy="590.32" r="4.5" fill="#e77732"/>
+      <text x="175" y="598.32" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="24" fill="#26344d">
+      <tspan x="175" dy="0">项目序号：1243；项目编号：Ⅰ-149。</tspan>
+      </text><circle cx="153" cy="634.48" r="4.5" fill="#e77732"/>
+      <text x="175" y="642.48" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="24" fill="#26344d">
+      <tspan x="175" dy="0">类别：民间文学；申报地区：重庆市南岸区。</tspan>
+      </text>
+  </g>
+        <g>
+    <rect x="695" y="430" width="530" height="360" rx="18" fill="#ffffff" stroke="#dbe5f2" stroke-width="1.4"/>
+    <rect x="695" y="430" width="8" height="360" rx="4" fill="#e77732"/>
+    <text x="723" y="472" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="25" font-weight="800" fill="#101827" opacity="1">
+    <tspan x="723" dy="0">故事内容</tspan>
+  </text>
+    
+    <circle cx="728" cy="514" r="4.5" fill="#e77732"/>
+      <text x="750" y="522" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="24" fill="#26344d">
+      <tspan x="750" dy="0">包括神话传说、地方风物故事、历史人物故事、生活故事</tspan><tspan x="750" dy="32.160000000000004">和笑话等。</tspan>
+      </text><circle cx="728" cy="590.32" r="4.5" fill="#e77732"/>
+      <text x="750" y="598.32" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="24" fill="#26344d">
+      <tspan x="750" dy="0">本土传说和本土地名来历尤其突出。</tspan>
+      </text><circle cx="728" cy="634.48" r="4.5" fill="#e77732"/>
+      <text x="750" y="642.48" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="24" fill="#26344d">
+      <tspan x="750" dy="0">当地人把“摆龙门阵”看作日常生活习惯。</tspan>
+      </text>
+  </g>
+        <g>
+    <rect x="1270" y="430" width="530" height="360" rx="18" fill="#ffffff" stroke="#dbe5f2" stroke-width="1.4"/>
+    <rect x="1270" y="430" width="8" height="360" rx="4" fill="#1e5bff"/>
+    <text x="1298" y="472" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="25" font-weight="800" fill="#101827" opacity="1">
+    <tspan x="1298" dy="0">解释价值</tspan>
+  </text>
+    
+    <circle cx="1303" cy="514" r="4.5" fill="#e77732"/>
+      <text x="1325" y="522" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="24" fill="#26344d">
+      <tspan x="1325" dy="0">江水提供传播线路。</tspan>
+      </text><circle cx="1303" cy="558.16" r="4.5" fill="#e77732"/>
+      <text x="1325" y="566.16" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="24" fill="#26344d">
+      <tspan x="1325" dy="0">码头与迁徙提供讲述人群。</tspan>
+      </text><circle cx="1303" cy="602.3199999999999" r="4.5" fill="#e77732"/>
+      <text x="1325" y="610.3199999999999" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="24" fill="#26344d">
+      <tspan x="1325" dy="0">地名把抽象传说固定在可指认的地方空间中。</tspan>
+      </text>
+  </g>
+        <rect x="120" y="842" width="1680" height="72" rx="16" fill="#eef5ff"/>
+        <text x="150" y="884" text-anchor="start" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="26" font-weight="750" fill="#10223d" opacity="1">
+    <tspan x="150" dy="0">本页结论：广阳故事像一张长江水岸上的口头地图，把地方空间变成了可以反复讲述的记忆。</tspan>
+  </text>
+      
+    <text x="110" y="1004" font-family="PingFang SC, Hiragino Sans GB, Microsoft YaHei, Noto Sans CJK SC, Arial, sans-serif" font-size="17" fill="#667085">资料来源：[3] 中国非遗网《广阳镇民间故事》。</text>
+  </svg>

@@ -77,6 +77,11 @@ export function SkySystem() {
         else if (w === 'snowy') { fogTarget = _wFog.set('#e2e8f0'); densityTarget = 0.02; }
         else if (w === 'cloudy') { densityTarget = 0.016; }
 
+        if (g.isObservatoryMode) {
+            fogTarget = _wFog.set('#000000');
+            densityTarget = 0.0;
+        }
+
         // 阻尼系数：约 0.4s 收敛，既跟手又丝滑（帧率无关）
         const k = 1 - Math.exp(-2.5 * delta);
         cur.amb.lerp(target.amb, k);

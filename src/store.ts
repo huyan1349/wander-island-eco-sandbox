@@ -6,9 +6,10 @@ import type { BrushMode, BrushFalloff, SurfaceType } from './utils/terrainBrush'
 import { FlourishCardId, FLOURISH_CARDS, STARTING_DECK, HAND_SIZE, SEASON_BASE_ECO, evaluateSymbiosis, shuffle } from './game/flourish';
 import { getTerrainHeight } from './utils/terrain';
 import { pickFragment } from './game/fragments';
+import { loadUnlocked, saveUnlocked } from './game/constellations';
 import { snapFloatingPlatformPlacement } from './utils/platformPlacement';
 
-export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'water_flow' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox' | 'lantern_girl';
+export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'water_flow' | 'waterfall' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox' | 'lantern_girl';
 export type WeatherType = 'sunny' | 'cloudy' | 'rainy' | 'foggy' | 'snowy' | 'stormy';
 
 // 辞向玩家播报天气时的诗意文案（每种天气随机取一句）
@@ -33,7 +34,7 @@ export interface Vector3Data {
 
 export interface PlacedAsset {
   id: string;
-  type: 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'water_flow' | 'streetlamp' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'sub_island' | 'birdhouse' | 'hoe' | 'farmland' | 'crop_wheat' | 'crop_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox' | 'lantern_girl';
+  type: 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'water_flow' | 'waterfall' | 'streetlamp' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'sub_island' | 'birdhouse' | 'hoe' | 'farmland' | 'crop_wheat' | 'crop_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox' | 'lantern_girl';
   position: Vector3Data;
   rotation: Vector3Data;
   scale?: number;
@@ -297,10 +298,24 @@ interface GameState {
 
   // 叙事碎片：向神树祈愿偶得的小卡片
   collectedFragments: string[];
-  pendingFragment: string | null; // 正在「起源」揭示中的碎片 id
+  pendingFragment: string | null; // 正在「起源」揭示中的碎片 id (触发 3D 树叶)
+  setPendingFragment: (id: string | null) => void;
   awardFragment: () => void;
   dismissFragment: () => void;
   pray: () => void;
+  
+  cameraFocus: [number, number, number] | null;
+  setCameraFocus: (target: [number, number, number] | null) => void;
+
+  isObservatoryMode: boolean;
+  setObservatoryMode: (active: boolean) => void;
+  observatoryPos: [number, number, number] | null; // 当前观测的观星台世界坐标
+  setObservatoryPos: (p: [number, number, number]) => void;
+  // 星图：已连成解锁的星座 id（持久化），连成时弹出对应星卡
+  unlockedConstellations: string[];
+  revealedStarCardId: string | null; // 正在揭晓的星卡（星座 id），null=无
+  unlockConstellation: (id: string) => void;
+  dismissStarCard: () => void;
 
   lastPlacedSynergy: { type: string, position: Vector3Data, id: number } | null;
   setLastPlacedSynergy: (synergy: { type: string, position: Vector3Data, id: number } | null) => void;
@@ -504,7 +519,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   unlockedAssets: [
     'treeA', 'treeB', 'rock', 'terrainUp', 'terrainDown', 'eraser',
-    'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'water_flow', 'streetlamp', 'house', 'windmill',
+    'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'water_flow', 'waterfall', 'streetlamp', 'house', 'windmill',
     'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
     'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'lantern_girl'
   ],
@@ -586,17 +601,20 @@ export const useGameStore = create<GameState>((set, get) => ({
   // ===== 叙事碎片 =====
   collectedFragments: [],
   pendingFragment: null,
+  setPendingFragment: (id) => set({ pendingFragment: id }),
   awardFragment: () => {
-    const frag = pickFragment(get().collectedFragments);
-    set({ pendingFragment: frag.id });
+    import('./game/fragments').then(({ pickFragment }) => {
+      const frag = pickFragment(get().collectedFragments);
+      set({ pendingFragment: frag.id });
+    });
   },
   dismissFragment: () => {
     const id = get().pendingFragment;
-    set((s) => ({
+    set(state => ({
       pendingFragment: null,
-      collectedFragments: id && !s.collectedFragments.includes(id)
-        ? [...s.collectedFragments, id]
-        : s.collectedFragments,
+      collectedFragments: id && !state.collectedFragments.includes(id)
+        ? [...state.collectedFragments, id]
+        : state.collectedFragments,
     }));
   },
   pray: () => {
@@ -621,6 +639,24 @@ export const useGameStore = create<GameState>((set, get) => ({
   clearCiBubble: () => {
     set((state) => ({ ci: { ...state.ci, bubble: null } }));
   },
+
+  cameraFocus: null,
+  setCameraFocus: (target) => set({ cameraFocus: target }),
+
+  isObservatoryMode: false,
+  // 开镜时从 localStorage 刷新已解锁星座，保证跨地图/存档不丢进度
+  setObservatoryMode: (active) => set(active ? { isObservatoryMode: true, unlockedConstellations: loadUnlocked() } : { isObservatoryMode: false }),
+  observatoryPos: null,
+  setObservatoryPos: (p) => set({ observatoryPos: p }),
+  unlockedConstellations: loadUnlocked(),
+  revealedStarCardId: null,
+  unlockConstellation: (id) => {
+    if (get().unlockedConstellations.includes(id)) return; // 已解锁不重复发卡
+    const next = [...get().unlockedConstellations, id];
+    saveUnlocked(next);
+    set({ unlockedConstellations: next, revealedStarCardId: id });
+  },
+  dismissStarCard: () => set({ revealedStarCardId: null }),
 
   lastPlacedSynergy: null,
   setLastPlacedSynergy: (synergy) => set({ lastPlacedSynergy: synergy }),
@@ -960,7 +996,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           unlockedAssets: Array.from(new Set([
             ...(data.unlockedAssets || []),
             'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'terrainUp', 'terrainDown', 'eraser',
-            'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'water_flow', 'streetlamp', 'house', 'windmill',
+            'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'water_flow', 'waterfall', 'streetlamp', 'house', 'windmill',
             'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
             'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'lantern_girl'
           ])),
@@ -989,7 +1025,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       stats: { playtime: 0, itemsPlaced: 0 },
       unlockedAssets: [
           'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'terrainUp', 'terrainDown', 'eraser',
-          'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'water_flow', 'streetlamp', 'house', 'windmill',
+          'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'water_flow', 'waterfall', 'streetlamp', 'house', 'windmill',
           'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
           'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'lantern_girl'
       ],

@@ -27,7 +27,7 @@ import { OnboardingFlow } from "./components/OnboardingFlow";
 import { WelcomeGuide } from "./components/WelcomeGuide";
 import { SoundLayer } from "./components/SoundLayer";
 import { SignEditorModal } from "./components/SignEditorModal";
-import { FragmentRevealModal } from "./components/FragmentRevealModal";
+import { TelescopeOverlay } from "./components/game/TelescopeOverlay";
 import { AchievementSystem } from "./components/AchievementSystem";
 import { HermitOnline } from "./components/HermitOnline";
 import { MailboxModal } from "./components/MailboxModal";
@@ -65,6 +65,8 @@ import { WeatherForecast } from "./components/ui/WeatherForecast";
 import { AudioSystem } from "./lib/audio";
 import { BRUSH_MODES, SURFACE_LABELS } from "./utils/terrainBrush";
 import type { BrushFalloff, SurfaceType } from "./utils/terrainBrush";
+import { SkySystem } from './components/SkySystem';
+import { TelescopeIcon } from './components/Assets';
 
 export default function App() {
   const screen = useGameStore(state => state.screen);
@@ -98,6 +100,7 @@ export default function App() {
   const selectedEntityId = useGameStore(state => state.selectedEntityId);
   const setSelectedEntityId = useGameStore(state => state.setSelectedEntityId);
   const removeAsset = useGameStore(state => state.removeAsset);
+  const isObservatoryMode = useGameStore(state => state.isObservatoryMode);
   const grassHealth = useGameStore(state => state.grassHealth);
   const deerCount = useGameStore(state => state.deerCount);
   const wolfCount = useGameStore(state => state.wolfCount);
@@ -339,7 +342,7 @@ export default function App() {
         </div>
       )}
 
-      {screen === 'PLAYING' && (
+      {screen === 'PLAYING' && !isObservatoryMode && (
         <>
           {/* Top Left Header & HUD */}
       {!isImmersive && (
@@ -508,7 +511,7 @@ export default function App() {
       )}
 
       {/* Liquid Glass Bottom Dock - Tools & Categories */}
-      {!isImmersive && (
+      {!isImmersive && !isObservatoryMode && (
         <div id="tool-dock" className={`absolute left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-3 pointer-events-none ${isTouch ? 'bottom-3 touch-safe-bottom' : 'bottom-8 gap-4'}`}>
 
           {/* Touch tooltip banner */}
@@ -661,8 +664,8 @@ export default function App() {
         </div>
       )}
 
-      {/* Right Panel - Ecology Menu Content */}
-      {!isImmersive && (
+      {/* Right Side Tools - Save, Settings, etc */}
+      {!isImmersive && !isObservatoryMode && (
         <div className={`absolute flex flex-col items-end z-50 pointer-events-none ${isTouch ? 'touch-panel-full touch-safe-bottom touch-safe-right inset-0' : 'right-6 top-6 bottom-6 w-80'}`}>
           {/* Collapsible Ecology Menu */}
           {envMenuOpen && (
@@ -833,7 +836,6 @@ export default function App() {
       {screen === 'PLAYING' && !isImmersive && <CiSpirit />}
       {screen === 'PLAYING' && !isImmersive && <CiForecastAlert />}
       {screen === 'PLAYING' && <SignEditorModal />}
-      {screen === 'PLAYING' && <FragmentRevealModal />}
       {screen === 'PLAYING' && <AchievementSystem />}
       {screen === 'PLAYING' && online && <HermitOnline />}
       {screen === 'PLAYING' && mailboxOpen && (
@@ -845,7 +847,7 @@ export default function App() {
       )}
 
       {/* --- Driving Overlay UI --- */}
-      {drivingBoatId && screen === 'PLAYING' && !showSailingTutorial && (
+      {drivingBoatId && screen === 'PLAYING' && !showSailingTutorial && !isObservatoryMode && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 flex items-center justify-center z-50">
            <button 
              className="group relative bg-[#fcf8ec] hover:bg-[#ff7675] border-[3px] border-slate-800 p-2.5 rounded-full shadow-[4px_4px_0_rgba(30,41,59,1)] hover:shadow-[2px_2px_0_rgba(30,41,59,1)] hover:translate-x-[2px] hover:translate-y-[2px] rotate-[-2deg] hover:rotate-[0deg] transition-all pointer-events-auto cursor-pointer"
@@ -859,6 +861,24 @@ export default function App() {
            </button>
         </div>
       )}
+
+      {/* --- Observatory Overlay UI --- */}
+      {isObservatoryMode && screen === 'PLAYING' && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center z-50 pointer-events-none">
+           <button
+             className="group relative bg-[#fcf8ec] hover:bg-[#ff7675] border-[3px] border-slate-800 p-2.5 rounded-full shadow-[4px_4px_0_rgba(30,41,59,1)] hover:shadow-[2px_2px_0_rgba(30,41,59,1)] hover:translate-x-[2px] hover:translate-y-[2px] rotate-[-2deg] hover:rotate-[0deg] transition-all pointer-events-auto cursor-pointer"
+             onClick={() => { useGameStore.getState().setObservatoryMode(false); AudioSystem.playPop(); }}
+             title="点击退出观测 (Esc)"
+           >
+             <div className="group-hover:hidden text-slate-800"><TelescopeIcon /></div>
+             {/* Hover Exit Icon */}
+             <svg className="text-slate-900 hidden group-hover:block transition-colors" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+           </button>
+        </div>
+      )}
+
+      {/* 望远镜目镜覆层：镜筒 / 准星 / 变焦 / 星图进度 / 揭晓星卡 */}
+      <TelescopeOverlay />
 
       {/* --- Sailing Tutorial Dialog (First Time Only) --- */}
       {showSailingTutorial && (

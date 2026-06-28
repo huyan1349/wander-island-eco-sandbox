@@ -7,6 +7,9 @@ import { Terrain } from './Terrain';
 import { Water } from './Water';
 import { BoatWake } from './assets/marine';
 import { SkySystem, WeatherSystem, FirefliesSystem } from './SkySystem';
+import { ConstellationGame } from './game/ConstellationGame';
+import { TelescopeControls } from './game/TelescopeControls';
+import { updateHeightField } from '../game/water/heightField';
 import { Assets } from './Assets';
 import * as THREE from 'three';
 import { EffectComposer, Bloom, Vignette, HueSaturation } from '@react-three/postprocessing';
@@ -233,21 +236,101 @@ function SmoothZoom({ controlsRef, minDistance, maxDistance }: {
     mountedRef.current = true;
   });
 
+  const isReturningFromSky = useRef(false);
+  const isEnteringSky = useRef(false);
+  const wasObservatoryMode = useRef(false);
+
   useFrame((_, delta) => {
-    if (targetRef.current === null) return;
     const controls = controlsRef.current;
     if (!controls) return;
-
     const camera = controls.object as THREE.PerspectiveCamera;
-    const current = camera.position.distanceTo(controls.target);
-    const next = THREE.MathUtils.damp(current, targetRef.current, 8, delta);
+    
+    const focusTarget = useGameStore.getState().cameraFocus;
+    const isObservatoryMode = useGameStore.getState().isObservatoryMode;
 
-    offset.current.copy(camera.position).sub(controls.target);
-    if (offset.current.lengthSq() === 0) return;
-    offset.current.setLength(next);
-    camera.position.copy(controls.target).add(offset.current);
+    if (focusTarget) {
+      // Cinematic focus on a specific point (e.g. Spirit Seed)
+      const targetVec = new THREE.Vector3(...focusTarget);
+      controls.target.lerp(targetVec, delta * 4);
+      controls.update();
+      // Keep distance logic active so it zooms nicely
+      if (targetRef.current !== null) {
+        const current = camera.position.distanceTo(controls.target);
+        const next = THREE.MathUtils.damp(current, targetRef.current, 8, delta);
+        offset.current.copy(camera.position).sub(controls.target);
+        if (offset.current.lengthSq() > 0) {
+          offset.current.setLength(next);
+          camera.position.copy(controls.target).add(offset.current);
+        }
+      }
+      return;
+    }
+
+    // 观星模式由 TelescopeControls 接管相机，旧的仰视平移逻辑全部跳过
+    if (isObservatoryMode) { wasObservatoryMode.current = true; return; }
+    if (wasObservatoryMode.current) { wasObservatoryMode.current = false; }
+
+    if (isEnteringSky.current) {
+      controls.target.lerp(new THREE.Vector3(0, 110, -40), delta * 5);
+      camera.position.lerp(new THREE.Vector3(0, 5, -39.9), delta * 5);
+      controls.update();
+      if (targetRef.current !== null) {
+        targetRef.current = camera.position.distanceTo(controls.target);
+      }
+      if (controls.target.y > 105 && camera.position.y < 10) {
+        isEnteringSky.current = false;
+      }
+      return;
+    }
+
+    if (isReturningFromSky.current) {
+      controls.target.lerp(new THREE.Vector3(0, 0, 0), delta * 3);
+      camera.position.lerp(new THREE.Vector3(0, 40, 80), delta * 3);
+      controls.update();
+      if (targetRef.current !== null) {
+        targetRef.current = camera.position.distanceTo(controls.target);
+      }
+      if (controls.target.lengthSq() < 1) {
+        isReturningFromSky.current = false;
+      }
+      return;
+    }
+    if (isObservatoryMode) {
+      // 允许缩放和平移，但强制摄像机永远处于目标正下方，实现完美的 2D 俯视/仰视效果
+      controls.target.y = 110;
+      controls.target.x = THREE.MathUtils.clamp(controls.target.x, -50, 50);
+      controls.target.z = THREE.MathUtils.clamp(controls.target.z, -80, 0);
+      camera.position.x = controls.target.x;
+      camera.position.z = controls.target.z + 0.1; // 极小的偏移避免 OrbitControls 的万向节死锁
+      controls.update();
+      if (targetRef.current !== null) {
+        targetRef.current = camera.position.distanceTo(controls.target);
+      }
+      return;
+    }
+
+    // 限制正常海岛模式下的平移范围
+    controls.target.x = THREE.MathUtils.clamp(controls.target.x, -60, 60);
+    controls.target.z = THREE.MathUtils.clamp(controls.target.z, -60, 60);
+
+    if (targetRef.current !== null) {
+      const current = camera.position.distanceTo(controls.target);
+      const next = THREE.MathUtils.damp(current, targetRef.current, 8, delta);
+      offset.current.copy(camera.position).sub(controls.target);
+      if (offset.current.lengthSq() > 0) {
+        offset.current.setLength(next);
+        camera.position.copy(controls.target).add(offset.current);
+      }
+    }
   });
 
+  return null;
+}
+
+// 地形高度场：terrainData 变更时重建一次，供体积水着色器采样水深
+function HeightFieldSync() {
+  const terrainData = useGameStore(state => state.terrainData);
+  useEffect(() => { updateHeightField(); }, [terrainData]);
   return null;
 }
 
@@ -256,6 +339,7 @@ export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = 
   const screen = useGameStore(state => state.screen);
   const assetCount = useGameStore(state => state.assets.length);
   const drivingBoatId = useGameStore(state => state.drivingBoatId);
+  const isObservatoryMode = useGameStore(s => s.isObservatoryMode);
   const isTouch = useIsTouchDevice();
   
   const enableOrbitControls = !isDrawing;
@@ -280,10 +364,15 @@ export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = 
           <WeatherSystem />
           <FirefliesSystem />
           
+          <HeightFieldSync />
           <Terrain />
           <Water />
-          <BoatWake />
+          {/* Interactive Objects */}
           <Assets />
+          <ConstellationGame />
+          <TelescopeControls active={isObservatoryMode} />
+          
+          <BoatWake />
 
           {assetCount === 0 && (
              <group position={[15, -0.1, 15]}>
@@ -310,13 +399,13 @@ export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = 
              <Vignette eskil={false} offset={0.15} darkness={0.8} />
           </EffectComposer>
         </Suspense>
-        {!isTouch && !drivingBoatId && <WASDControls controlsRef={orbitRef} />}
-        {!isTouch && <SmoothZoom controlsRef={orbitRef} minDistance={5} maxDistance={120} />}
+        {!isTouch && !drivingBoatId && !isObservatoryMode && <WASDControls controlsRef={orbitRef} />}
+        {!isTouch && !isObservatoryMode && <SmoothZoom controlsRef={orbitRef} minDistance={5} maxDistance={120} />}
         <CameraFocusPan controlsRef={orbitRef} />
         <BoatCameraFollow controlsRef={orbitRef} />
         <OrbitControls
           ref={orbitRef}
-          enabled={enableOrbitControls}
+          enabled={enableOrbitControls && !isObservatoryMode}
           onChange={() => {
             const state = useGameStore.getState();
             const controls = orbitRef.current;
@@ -337,9 +426,10 @@ export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = 
           }}
           autoRotate={screen !== 'PLAYING' || (immersive && autoRotateOn)}
           autoRotateSpeed={0.8}
-          maxPolarAngle={Math.PI / 2 - 0.05}
-          minDistance={5}
-          maxDistance={120}
+          maxPolarAngle={isObservatoryMode ? Math.PI : Math.PI / 2 - 0.05}
+          minPolarAngle={isObservatoryMode ? 0 : Math.PI / 6}
+          minDistance={1}
+          maxDistance={isObservatoryMode ? 60 : 120}
           target={[0, 0, 0]}
           touches={{
             ONE: THREE.TOUCH.ROTATE,
