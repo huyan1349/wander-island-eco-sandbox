@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { AudioSystem } from '../lib/audio';
@@ -162,32 +163,56 @@ export const SocialPanel: React.FC = () => {
     setScreen('LOGIN');
   };
 
-  // Mini widget button (when panel is closed)
-  if (!isOpen) {
-    return (
-      <button
-        onClick={() => { AudioSystem.playClick(); setIsOpen(true); }}
-        className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 ${isTouch ? 'w-11 h-11' : 'w-12 h-12'}`}
-        title="社交"
-      >
-        <Users size={isTouch ? 20 : 24} className="text-slate-800" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-slate-950">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
-      </button>
-    );
-  }
-
+  // Mini widget button and Modal structure
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-500">
-      <div className={`hand-drawn-panel flex relative bg-[#fdfcf8] shadow-[16px_16px_0_rgba(0,0,0,0.4)] animate-slide-up ${isTouch ? 'touch-modal-full touch-safe-bottom flex-col' : 'w-[900px] h-[640px]'}`}>
-        <div className="absolute inset-0 bg-grid-paper opacity-40 mix-blend-multiply pointer-events-none" style={{ borderRadius: 'inherit' }} />
-        
-        <button onClick={() => { AudioSystem.playClose(); setIsOpen(false); }} className="hand-drawn-close-btn" title="关闭">
-          <X size={26} strokeWidth={3} />
-        </button>
+    <>
+      <AnimatePresence>
+      {!isOpen && (
+        <motion.button
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          exit={{ scale: 0 }}
+          onClick={() => { AudioSystem.playClick(); setIsOpen(true); }}
+          className={`group relative flex items-center justify-center hand-drawn-btn shrink-0 ${isTouch ? 'w-11 h-11' : 'w-12 h-12'}`}
+          title="社交"
+        >
+          <Users size={isTouch ? 20 : 24} className="text-slate-800" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full border-2 border-slate-950">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </motion.button>
+      )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+      {isOpen && (
+        <motion.div 
+          className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-slate-900/40 backdrop-blur-md"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <motion.div 
+            className={`hand-drawn-panel flex relative shadow-[0_20px_50px_rgba(15,23,42,0.3)] bg-[#fbf7ec] border-[3px] border-slate-800 p-0 ${isTouch ? 'touch-modal-full touch-safe-bottom flex-col rounded-none' : 'w-[900px] h-[640px] max-w-[95vw] max-h-[90vh] rounded-[32px]'}`}
+            initial={isTouch ? { y: '100%' } : { opacity: 0, scale: 0.95, y: 20 }}
+            animate={isTouch ? { y: 0 } : { opacity: 1, scale: 1, y: 0 }}
+            exit={isTouch ? { y: '100%' } : { opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ type: "spring", stiffness: 350, damping: 25 }}
+          >
+            <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, black 1px, transparent 0)', backgroundSize: '24px 24px', borderRadius: 'inherit' }} />
+            
+            <motion.button 
+              whileHover={{ scale: 1.15, rotate: 90 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => { AudioSystem.playClose(); setIsOpen(false); }} 
+              className={`absolute z-50 p-2.5 rounded-full bg-white text-slate-800 border-2 border-slate-800 shadow-[3px_3px_0_rgba(15,23,42,1)] hover:shadow-[1px_1px_0_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center justify-center ${isTouch ? 'top-4 right-4' : 'top-6 right-6'}`}
+              title="关闭"
+            >
+              <X size={20} strokeWidth={3} />
+            </motion.button>
 
         <div className="relative z-10 flex w-full h-full overflow-hidden" style={{ borderRadius: 'inherit' }}>
 
@@ -461,7 +486,10 @@ export const SocialPanel: React.FC = () => {
           )}
         </div>
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+      </AnimatePresence>
+    </>
   );
 };

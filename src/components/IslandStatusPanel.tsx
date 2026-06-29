@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { X, Feather, Compass, Sprout, Wind, PawPrint, Calendar, BookOpen, Star, Users, Gift, Heart } from 'lucide-react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
@@ -119,17 +120,35 @@ export const IslandStatusPanel: React.FC<{ onClose: () => void }> = ({ onClose }
   }, [authUser, islandId, islandName, serverIslandMap]);
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 cinematic-vignette p-4 overflow-hidden pointer-events-auto" onClick={onClose}>
+    <AnimatePresence>
+    <motion.div 
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 cinematic-vignette p-4 overflow-hidden pointer-events-auto" 
+      onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
       
-      <section
-        className="hand-drawn-panel relative w-[1000px] h-[640px] max-w-[96vw] max-h-[90vh] flex flex-col bg-[#fdfcf8] shadow-[16px_16px_0_rgba(0,0,0,0.4)] animate-slide-up"
+      <motion.section
+        className="hand-drawn-panel relative w-[1000px] h-[640px] max-w-[96vw] max-h-[90vh] flex flex-col shadow-[0_20px_50px_rgba(15,23,42,0.3)] bg-[#fbf7ec] border-[3px] border-slate-800 rounded-[32px] p-0"
         onClick={(event) => event.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ type: "spring", stiffness: 350, damping: 25 }}
       >
         <div className="absolute inset-0 bg-grid-paper opacity-40 mix-blend-multiply pointer-events-none" style={{ borderRadius: 'inherit' }} />
         
-        <button onClick={() => { AudioSystem.playClose(); onClose(); }} className="hand-drawn-close-btn" title="合上笔记">
-           <X size={26} strokeWidth={3} />
-        </button>
+        <motion.button 
+          whileHover={{ scale: 1.15, rotate: 90 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => { AudioSystem.playClose(); onClose(); }} 
+          className="absolute z-50 p-2.5 rounded-full bg-white text-slate-800 border-2 border-slate-800 shadow-[3px_3px_0_rgba(15,23,42,1)] hover:shadow-[1px_1px_0_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center justify-center top-6 right-6"
+          title="合上笔记"
+        >
+           <X size={20} strokeWidth={3} />
+        </motion.button>
 
         <div className="relative z-10 flex w-full h-full max-lg:flex-col overflow-hidden" style={{ borderRadius: 'inherit' }}>
           
@@ -313,7 +332,7 @@ export const IslandStatusPanel: React.FC<{ onClose: () => void }> = ({ onClose }
           </div>
 
         </div>
-      </section>
+      </motion.section>
       
       {showGift && (
         <GiftModal
@@ -323,7 +342,8 @@ export const IslandStatusPanel: React.FC<{ onClose: () => void }> = ({ onClose }
           onClose={() => setShowGift(false)}
         />
       )}
-    </div>
+    </motion.div>
+    </AnimatePresence>
   );
 };
 

@@ -347,7 +347,7 @@ export const PlayerPanel: React.FC = () => {
             <div className="relative z-10 flex w-full h-full max-lg:flex-col overflow-hidden" style={{ borderRadius: 'inherit' }}>
             {/* Sidebar - Desktop: left column / Touch: bottom tab bar */}
             {!isTouch ? (
-              <div className="w-56 border-r-2 border-slate-800 p-6 flex flex-col gap-2">
+              <div className="w-64 border-r-[3px] border-slate-800 bg-[#fdfcf8] p-8 flex flex-col gap-3 relative z-20 shadow-[4px_0_0_rgba(15,23,42,0.1)]">
                 {/* Avatar */}
                 <div className="flex items-center gap-3 mb-8">
                   {authUser ? (
@@ -433,97 +433,174 @@ export const PlayerPanel: React.FC = () => {
                 <PlayerStatsTab handleAvatarUpload={handleAvatarUpload} setActiveTab={setActiveTab} />
               )}
 
-              {/* ====== Resident Card Tab (居民证 · 明信片，并入自小岛面板) ====== */}
+              {/* ====== Resident Card Tab (居民证 · 明信片) ====== */}
               {activeTab === 'card' && (
-                <div className="flex-1 p-10 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto custom-scrollbar">
-                  <div className="mb-8 border-b-2 border-slate-800 pb-6"><h2 className="text-4xl hand-drawn-title -rotate-1 inline-block">居民证</h2></div>
+                <div className="flex-1 p-10 lg:p-12 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto custom-scrollbar bg-[#fbf7ec]">
+                  <div className="absolute inset-0 bg-grid-paper opacity-30 mix-blend-multiply pointer-events-none" />
+                  <div className="relative z-10 mb-10 flex items-center justify-between border-b-[3px] border-dashed border-slate-800/30 pb-6">
+                    <div>
+                      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-slate-600 mb-2">
+                        <IdCard size={16} strokeWidth={2.5} />
+                        Wander Island ID
+                      </p>
+                      <h2 className="text-4xl hand-drawn-title -rotate-1 inline-block text-slate-800">居民证</h2>
+                    </div>
+                  </div>
 
-                  <div className="flex flex-col items-center gap-4" style={{ perspective: 1200 }}>
-                    <div onClick={() => { AudioSystem.playTap(); setCardFlipped(f => !f); }} className="relative w-[360px] max-w-full h-[227px] cursor-pointer" style={{ transformStyle: 'preserve-3d', transform: cardFlipped ? 'rotateY(180deg)' : 'rotateY(0)', transition: 'transform .6s cubic-bezier(.4,.2,.2,1)' }}>
+                  <motion.div 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    className="flex flex-col items-center gap-8 relative z-10" style={{ perspective: 1200 }}
+                  >
+                    <motion.div 
+                      whileHover={{ scale: 1.02 }}
+                      onClick={() => { AudioSystem.playTap(); setCardFlipped(f => !f); }} 
+                      className="relative w-[420px] max-w-full h-[260px] cursor-pointer shadow-[12px_12px_0_rgba(15,23,42,0.6)] rounded-3xl" 
+                      style={{ transformStyle: 'preserve-3d', transform: cardFlipped ? 'rotateY(180deg)' : 'rotateY(0)', transition: 'transform .6s cubic-bezier(.4,.2,.2,1)' }}
+                    >
                       {/* 正面 */}
-                      <div className="absolute inset-0 rounded-2xl overflow-hidden border-[3px] border-slate-900 shadow-[8px_10px_0_rgba(15,23,42,0.4)]" style={{ background: cardTheme.bg, backfaceVisibility: 'hidden' }}>
-                        <div className="flex items-center justify-between px-4 pt-3">
-                          <p className="text-[12px] font-black tracking-[0.15em] text-slate-900">WANDER ISLAND</p>
-                          <Sparkles size={14} style={{ color: cardTheme.accent }} />
+                      <div className="absolute inset-0 rounded-3xl overflow-hidden border-[4px] border-slate-900" style={{ background: cardTheme.bg, backfaceVisibility: 'hidden' }}>
+                        <div className="flex items-center justify-between px-6 pt-5">
+                          <p className="text-xs font-black tracking-[0.25em] text-slate-900 uppercase">Wander Island</p>
+                          <Sparkles size={18} style={{ color: cardTheme.accent }} />
                         </div>
-                        <div className="flex items-center gap-3 px-4 mt-2">
-                          <div className="w-16 h-16 rounded-lg overflow-hidden border-2 border-slate-900 bg-white shrink-0">
-                            {authUser?.avatar ? <img src={authUser.avatar} alt="" className="w-full h-full object-cover" /> : <User size={28} className="text-slate-500 m-auto mt-4" />}
+                        <div className="flex items-center gap-5 px-6 mt-4">
+                          <div className="w-20 h-20 rounded-xl overflow-hidden border-[3px] border-slate-900 bg-white shrink-0 shadow-[4px_4px_0_rgba(15,23,42,0.3)] rotate-[-2deg]">
+                            {authUser?.avatar ? <img src={authUser.avatar} alt="" className="w-full h-full object-cover" /> : <User size={36} className="text-slate-500 m-auto mt-5" />}
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-[8px] font-bold tracking-[0.3em] uppercase text-slate-500">Resident</p>
-                            <p className="text-xl font-black text-slate-900 truncate">{residentCard.name}</p>
-                            {residentCard.islandName && <p className="text-[11px] font-bold truncate" style={{ color: cardTheme.ink }}>{residentCard.islandName}</p>}
+                          <div className="min-w-0 mt-2">
+                            <p className="text-[9px] font-black tracking-[0.35em] uppercase text-slate-500 mb-1">Resident</p>
+                            <p className="text-2xl font-black text-slate-900 truncate tracking-wide">{residentCard.name}</p>
+                            {residentCard.islandName && <p className="text-[12px] font-bold truncate mt-1" style={{ color: cardTheme.ink }}>{residentCard.islandName}</p>}
                           </div>
                         </div>
-                        <div className="absolute bottom-0 inset-x-0 px-4 py-2 flex items-end justify-between border-t-2 border-slate-900/15 bg-white/30">
-                          <div><p className="text-[8px] uppercase tracking-widest text-slate-500">第 {residentCard.memberNo} 位</p><p className="text-base font-black font-mono" style={{ color: cardTheme.accent }}>NO.{String(residentCard.residentNo ?? residentCard.memberNo).padStart(5, '0')}</p></div>
-                          <p className="text-xs font-bold text-slate-700 font-mono">{residentCard.joinDate}</p>
+                        <div className="absolute bottom-0 inset-x-0 px-6 py-4 flex items-end justify-between border-t-[3px] border-slate-900/15 bg-white/40">
+                          <div><p className="text-[9px] uppercase tracking-[0.3em] font-black text-slate-500 mb-1">第 {residentCard.memberNo} 位</p><p className="text-lg font-black font-mono" style={{ color: cardTheme.accent }}>NO.{String(residentCard.residentNo ?? residentCard.memberNo).padStart(5, '0')}</p></div>
+                          <p className="text-sm font-bold text-slate-700 font-mono">{residentCard.joinDate}</p>
                         </div>
                       </div>
                       {/* 背面 */}
-                      <div className="absolute inset-0 rounded-2xl overflow-hidden border-[3px] border-slate-900 shadow-[8px_10px_0_rgba(15,23,42,0.4)] flex flex-col" style={{ background: cardTheme.bg, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-                        <div className="flex-1 flex items-center px-5"><p className="text-lg text-slate-800" style={{ fontFamily: "'ZCOOL KuaiLe', cursive" }}>{residentCard.motto ? `「${residentCard.motto}」` : ''}</p></div>
-                        <div className="flex items-end justify-between px-4 py-2 border-t-2 border-slate-900/15 bg-white/30">
-                          <div><p className="text-[8px] uppercase tracking-widest text-slate-500">专属编号</p><p className="text-sm font-black font-mono" style={{ color: cardTheme.ink }}>{residentCard.uid}</p></div>
-                          <div className="w-12 h-12 rounded border-2 border-slate-900 bg-white p-0.5">{qrUrl ? <img src={qrUrl} alt="" className="w-full h-full" /> : <div className="w-full h-full bg-slate-100 animate-pulse" />}</div>
+                      <div className="absolute inset-0 rounded-3xl overflow-hidden border-[4px] border-slate-900 flex flex-col" style={{ background: cardTheme.bg, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+                        <div className="flex-1 flex items-center px-8"><p className="text-xl text-slate-800 leading-relaxed font-bold" style={{ fontFamily: "'ZCOOL KuaiLe', cursive" }}>{residentCard.motto ? `「${residentCard.motto}」` : '海风会记住每一个停靠的灵魂。'}</p></div>
+                        <div className="flex items-end justify-between px-6 py-4 border-t-[3px] border-slate-900/15 bg-white/40">
+                          <div><p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 mb-1">专属编号</p><p className="text-base font-black font-mono" style={{ color: cardTheme.ink }}>{residentCard.uid}</p></div>
+                          <div className="w-16 h-16 rounded-lg border-[3px] border-slate-900 bg-white p-1 shadow-[2px_2px_0_rgba(15,23,42,0.3)]">{qrUrl ? <img src={qrUrl} alt="" className="w-full h-full" /> : <div className="w-full h-full bg-slate-100 animate-pulse" />}</div>
                         </div>
                       </div>
-                    </div>
-                    <p className="text-slate-400 text-xs">点击卡片 · 翻面</p>
-                  </div>
+                    </motion.div>
+                    <p className="text-slate-500 text-xs font-bold tracking-widest mt-2 uppercase flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-slate-400 animate-pulse" /> 点击卡片翻面</p>
+                  </motion.div>
 
                   {/* 明信片 / 礼物 */}
-                  <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mt-8">
-                    <button onClick={() => { AudioSystem.playClick(); downloadPostcard(); }} disabled={postcardBusy} className="hand-drawn-btn px-4 py-4 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50"><ImageIcon size={18} className="text-sky-600" /> {postcardBusy ? '生成中…' : '生成明信片'}</button>
-                    <button onClick={() => { AudioSystem.playClick(); setShowGift(true); }} className="hand-drawn-btn px-4 py-4 text-sm font-bold flex items-center justify-center gap-2"><Gift size={18} className="text-rose-500" /> 赠送礼物</button>
-                  </div>
+                  <motion.div 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.1 }}
+                    className="grid grid-cols-2 gap-6 max-w-lg mx-auto mt-12 relative z-10"
+                  >
+                    <button onClick={() => { AudioSystem.playClick(); downloadPostcard(); }} disabled={postcardBusy} className="hand-drawn-btn bg-white px-5 py-4 text-sm font-black flex items-center justify-center gap-3 disabled:opacity-50"><ImageIcon size={20} className="text-sky-600" /> {postcardBusy ? '摄影师冲洗底片中…' : '生成实体明信片'}</button>
+                    <button onClick={() => { AudioSystem.playClick(); setShowGift(true); }} className="hand-drawn-btn bg-[#fdfcf8] px-5 py-4 text-sm font-black flex items-center justify-center gap-3"><Gift size={20} className="text-rose-500" /> 赠送礼物盒</button>
+                  </motion.div>
                 </div>
               )}
 
               {/* ====== Ecology Tab ====== */}
               {activeTab === 'ecology' && (
-                <div className="flex-1 p-10 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto custom-scrollbar">
-                  <div className="mb-10 border-b-2 border-slate-800 pb-6"><h2 className="text-4xl hand-drawn-title -rotate-1 inline-block">岛屿生态</h2></div>
-                  <div className="hand-drawn-panel p-8 mb-8" style={{ borderWidth: '2px' }}>
-                    <div className="flex justify-between items-center mb-4">
-                      <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase">草地健康度</p>
-                      <span className="font-light tracking-widest text-2xl text-slate-800">{Math.floor(grassHealth)}%</span>
-                    </div>
-                    <div className="w-full h-2 bg-black/40 rounded-full overflow-hidden shadow-inner">
-                      <div className={`h-full transition-all duration-1000 ${grassHealth > 50 ? "bg-gradient-to-r from-emerald-500 to-green-400" : grassHealth > 20 ? "bg-gradient-to-r from-amber-500 to-yellow-400" : "bg-gradient-to-r from-red-600 to-red-400"}`} style={{ width: `${grassHealth}%` }} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="hand-drawn-panel p-8" style={{ borderWidth: '2px' }}>
-                      <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-2">天气</p>
-                      <p className="text-3xl font-light text-slate-800 tracking-widest capitalize">{weather}</p>
-                    </div>
-                    <div className="hand-drawn-panel p-8" style={{ borderWidth: '2px' }}>
-                      <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase mb-2">时间</p>
-                      <p className="text-3xl font-light text-slate-800 tracking-widest">{Math.floor(timeOfDay).toString().padStart(2, '0')}:00</p>
+                <div className="flex-1 p-10 lg:p-12 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto custom-scrollbar bg-[#f4ebd0]">
+                  <div className="absolute inset-0 bg-grid-paper opacity-30 mix-blend-multiply pointer-events-none" />
+                  
+                  <div className="relative z-10 mb-10 flex items-center justify-between border-b-[3px] border-dashed border-slate-800/30 pb-6">
+                    <div>
+                      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-slate-600 mb-2">
+                        <Leaf size={16} strokeWidth={2.5} />
+                        Island Ecology
+                      </p>
+                      <h2 className="text-4xl hand-drawn-title -rotate-1 inline-block text-slate-800">岛屿生态</h2>
                     </div>
                   </div>
 
+                  <motion.div 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    className="hand-drawn-panel bg-white p-8 lg:p-10 mb-10 shadow-[6px_6px_0_rgba(15,23,42,1)] relative z-10"
+                  >
+                    <div className="flex justify-between items-center mb-6">
+                      <p className="flex items-center gap-3 text-[11px] font-black tracking-[0.3em] uppercase text-slate-500">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center border-2 border-slate-800 shadow-[2px_2px_0_rgba(15,23,42,1)] rotate-2"><TreePine size={14} className="text-emerald-700" strokeWidth={3} /></div>
+                        草地健康度
+                      </p>
+                      <span className="font-black font-mono text-3xl text-slate-800">{Math.floor(grassHealth)}%</span>
+                    </div>
+                    <div className="w-full h-4 bg-slate-100 border-[3px] border-slate-800 p-0.5 rounded-xl overflow-hidden shadow-inner" style={{ borderRadius: '12px 4px 12px 4px' }}>
+                      <div className={`h-full transition-all duration-1000 border-r-[3px] border-slate-800 rounded-sm relative ${grassHealth > 50 ? "bg-emerald-400" : grassHealth > 20 ? "bg-amber-400" : "bg-red-500"}`} style={{ width: `${grassHealth}%`, borderRadius: '6px 2px 6px 2px' }}>
+                        <div className="absolute top-0.5 left-1 right-1 h-1 bg-white/40 rounded-full" />
+                      </div>
+                    </div>
+                  </motion.div>
+                  
+                  <motion.div 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.1 }}
+                    className="grid grid-cols-2 gap-8 relative z-10"
+                  >
+                    <div className="hand-drawn-panel bg-sky-50 p-8 shadow-[6px_6px_0_rgba(15,23,42,1)]">
+                      <p className="text-[10px] font-black text-slate-500 tracking-[0.3em] uppercase mb-3 flex items-center gap-2"><Waves size={14} strokeWidth={3} /> 天气</p>
+                      <p className="text-4xl font-black text-slate-800 tracking-wider capitalize">{weather}</p>
+                    </div>
+                    <div className="hand-drawn-panel bg-amber-50 p-8 shadow-[6px_6px_0_rgba(15,23,42,1)]">
+                      <p className="text-[10px] font-black text-slate-500 tracking-[0.3em] uppercase mb-3 flex items-center gap-2"><Clock size={14} strokeWidth={3} /> 时间</p>
+                      <p className="text-4xl font-black text-slate-800 font-mono tracking-wider">{Math.floor(timeOfDay).toString().padStart(2, '0')}:00</p>
+                    </div>
+                  </motion.div>
+
                   {/* 分享你的小岛 */}
-                  <div className="mt-8 flex flex-col gap-4 max-w-md">
-                    <p className="text-[10px] font-mono text-slate-500 tracking-[0.3em] uppercase">分享你的小岛</p>
-                    <button onClick={() => { AudioSystem.playClick(); exportIslandFile(); }} className="hand-drawn-btn px-6 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Download size={18} /> 导出小岛文件</button>
-                    <button onClick={() => { AudioSystem.playClick(); setShowGift(true); }} className="hand-drawn-btn px-6 py-4 text-base font-bold w-full flex items-center justify-center gap-3"><Gift size={18} /> 生成礼物链接</button>
-                  </div>
+                  <motion.div 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.2 }}
+                    className="mt-12 flex flex-col gap-4 max-w-md relative z-10"
+                  >
+                    <p className="text-[10px] font-black text-slate-500 tracking-[0.3em] uppercase flex items-center gap-2 mb-2"><Globe size={14} strokeWidth={3} /> 分享你的小岛</p>
+                    <button onClick={() => { AudioSystem.playClick(); exportIslandFile(); }} className="hand-drawn-btn bg-white px-6 py-4 text-sm font-black w-full flex items-center justify-center gap-3"><Download size={18} strokeWidth={2.5} /> 导出小岛文件</button>
+                    <button onClick={() => { AudioSystem.playClick(); setShowGift(true); }} className="hand-drawn-btn bg-[#fdfcf8] px-6 py-4 text-sm font-black w-full flex items-center justify-center gap-3"><Gift size={18} strokeWidth={2.5} className="text-rose-500" /> 生成礼物链接</button>
+                  </motion.div>
                 </div>
               )}
 
               {/* ====== Unlocks Tab ====== */}
               {activeTab === 'unlocks' && (
-                <div className="flex-1 p-10 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto custom-scrollbar">
-                  <div className="mb-10 border-b-2 border-slate-800 pb-6"><h2 className="text-4xl hand-drawn-title -rotate-1 inline-block">已解锁蓝图</h2></div>
-                  <div className="grid grid-cols-2 gap-4">
-                    {unlockedAssets.map(asset => (
-                      <div key={asset} className="hand-drawn-panel px-6 py-4 flex items-center justify-between group transition-colors cursor-default" style={{ borderWidth: '2px' }}>
-                        <span className="font-light tracking-widest text-slate-600 group-hover:text-slate-900 capitalize">{asset.replace(/([A-Z])/g, ' $1').trim()}</span>
-                        <div className="w-2 h-2 rounded-full bg-emerald-500/50 group-hover:bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
-                      </div>
+                <div className="flex-1 p-10 lg:p-12 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto custom-scrollbar bg-[#f4ebd0]">
+                  <div className="absolute inset-0 bg-grid-paper opacity-30 mix-blend-multiply pointer-events-none" />
+                  
+                  <div className="relative z-10 mb-10 flex items-center justify-between border-b-[3px] border-dashed border-slate-800/30 pb-6">
+                    <div>
+                      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-slate-600 mb-2">
+                        <Unlock size={16} strokeWidth={2.5} />
+                        Blueprint Archive
+                      </p>
+                      <h2 className="text-4xl hand-drawn-title -rotate-1 inline-block text-slate-800">已解锁蓝图</h2>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-5 relative z-10">
+                    {unlockedAssets.map((asset, idx) => (
+                      <motion.div 
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 25, delay: idx * 0.05 }}
+                        whileHover={{ y: -4, scale: 1.02 }}
+                        key={asset} 
+                        className="hand-drawn-panel bg-white px-6 py-5 flex items-center justify-between group cursor-default shadow-[4px_4px_0_rgba(15,23,42,1)]"
+                      >
+                        <span className="font-black tracking-widest text-slate-700 group-hover:text-slate-900 capitalize text-lg flex items-center gap-3">
+                           <div className="w-2 h-2 rounded-full bg-slate-300 group-hover:bg-emerald-400 group-hover:shadow-[0_0_8px_rgba(52,211,153,0.8)] transition-all" />
+                           {asset.replace(/([A-Z])/g, ' $1').trim()}
+                        </span>
+                        <Unlock size={18} className="text-slate-300 group-hover:text-slate-800 transition-colors" strokeWidth={2.5} />
+                      </motion.div>
                     ))}
                   </div>
                 </div>

@@ -27,7 +27,9 @@ import { AudioSystem } from '../lib/audio';
 import { api } from '../lib/api';
 import { disconnectSocket } from '../lib/socket';
 import { PlayerPanel } from './PlayerPanel';
+import { SettingsModal } from './SettingsModal';
 import { PrivacyPolicyModal } from './PrivacyPolicyModal';
+import { CreditsModal } from './CreditsModal';
 
 type ModalType = 'NONE' | 'SETTINGS' | 'CREDITS' | 'PROFILE' | 'MAILBOX' | 'VISITORS' | 'PLAZA' | 'PRIVACY';
 type QualityPreset = 'performance' | 'balanced' | 'cinematic';
@@ -373,7 +375,7 @@ export const TitleScreen: React.FC = () => {
             <div className={`absolute inset-0 z-50 flex pointer-events-none transition-opacity duration-1000 delay-1000 ${splashPhase === 'DONE' ? 'opacity-100' : 'opacity-0'} ${isTouch ? 'p-6' : 'p-16'}`}>
 
             {/* Top Right Version / Info */}
-            <div className={`absolute flex flex-col items-end gap-1 ${isTouch ? 'top-6 right-6 touch-safe-top touch-safe-right' : 'top-16 right-16'}`}>
+            <div className={`absolute flex flex-col items-end gap-1 ${isTouch ? 'top-8 right-12 touch-safe-top touch-safe-right' : 'top-16 right-24'}`}>
                 <span className="text-sm font-bold hand-drawn-title text-slate-700">Wander Island</span>
                 <span className="text-xs font-bold text-slate-600">流浪岛 . v2.2.0 Touch</span>
                 {authUser && (
@@ -474,220 +476,37 @@ export const TitleScreen: React.FC = () => {
 
                     {/* SETTINGS MODAL */}
                     {activeModal === 'SETTINGS' && (
-                        <div className={`hand-drawn-panel relative animate-slide-up shadow-[16px_16px_0_rgba(0,0,0,0.4)] bg-[#fdfcf8] ${isTouch ? 'touch-modal-full touch-safe-bottom p-6' : 'w-[920px] h-[75vh]'}`} onClick={(e) => e.stopPropagation()}>
-                            <div className="absolute inset-0 bg-grid-paper opacity-40 mix-blend-multiply pointer-events-none" style={{ borderRadius: 'inherit' }} />
-                            
-                            <button onClick={() => { AudioSystem.playClose(); setActiveModal('NONE'); }} className="hand-drawn-close-btn" title="合上设置">
-                                <X size={26} strokeWidth={3} />
-                            </button>
-
-                            <div className="relative z-10 w-full h-full flex flex-col overflow-hidden" style={{ borderRadius: 'inherit' }}>
-                                <div className="flex justify-between items-start gap-6 border-b-[3px] border-slate-800 px-8 py-6 bg-[#fbf7ec] shrink-0 relative">
-                                    <div className="absolute -bottom-2 right-12 w-24 h-6 bg-amber-500/20 rotate-[-2deg] mix-blend-multiply pointer-events-none" />
-                                    <div>
-                                        <div className="flex items-center gap-2 text-[10px] font-black tracking-[0.35em] uppercase text-emerald-700 mb-2">
-                                            <Sparkles size={14} className="animate-pulse" />
-                                            System Atelier
-                                        </div>
-                                        <h2 className="text-4xl hand-drawn-title text-slate-900">游戏设置</h2>
-                                        <p className="text-sm font-bold text-slate-500 mt-2">标题页、声音、画面和本地数据都在这里整理。</p>
-                                    </div>
-                                </div>
-
-                                <div className={`flex-1 grid gap-6 overflow-y-auto custom-scrollbar p-8 ${isTouch ? 'grid-cols-1' : 'grid-cols-[1.25fr_0.75fr]'}`}>
-                                <div className="flex flex-col gap-6">
-                                    <section className="hand-drawn-panel relative bg-[#fdfcf8] p-6 shadow-[4px_4px_0_#2d3436] border-[2px] border-slate-800" style={{ transform: 'rotate(-0.5deg)' }}>
-                                        <div className="absolute -top-3 left-6 w-10 h-4 bg-sky-400/30 rotate-[3deg] pointer-events-none" />
-                                        <div className="flex items-center gap-2 mb-5 opacity-80">
-                                            <Volume2 size={18} className="text-slate-800" />
-                                            <h3 className="text-lg font-black tracking-widest text-slate-900">声音</h3>
-                                        </div>
-                                        <div className="flex flex-col gap-5">
-                                            <SettingSlider icon={<Volume2 size={16} />} label="主音量" value={masterVol} color="#fdcb6e" onChange={handleMasterVol} />
-                                            <SettingSlider icon={<Music2 size={16} />} label="音乐音量" value={bgmVol} color="#74b9ff" onChange={handleBgmVol} />
-                                        </div>
-                                    </section>
-
-                                    <section className="hand-drawn-panel relative bg-[#fdfcf8] p-6 shadow-[4px_4px_0_#2d3436] border-[2px] border-slate-800" style={{ transform: 'rotate(0.5deg)' }}>
-                                        <div className="absolute -top-2 right-10 w-8 h-3 bg-amber-400/30 rotate-[-4deg] pointer-events-none" />
-                                        <div className="flex items-center gap-2 mb-5 opacity-80">
-                                            <Monitor size={18} className="text-slate-800" />
-                                            <h3 className="text-lg font-black tracking-widest text-slate-900">画面</h3>
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-3 max-sm:grid-cols-1">
-                                            {([
-                                                ['performance', '性能优先', '减少压力，适合发热或卡顿时'],
-                                                ['balanced', '平衡', '推荐，保留大部分氛围效果'],
-                                                ['cinematic', '电影感', '更浓的标题氛围与视觉层次'],
-                                            ] as const).map(([id, label, desc]) => (
-                                                <button
-                                                    key={id}
-                                                    onClick={() => { AudioSystem.playTap(); setQuality(id); }}
-                                                    className={`relative border-[2px] p-4 text-left transition-transform hover:-translate-y-1 ${qualityPreset === id ? 'border-slate-800 bg-[#fff0bd] shadow-[3px_3px_0_#2d3436]' : 'border-slate-300 bg-white hover:border-slate-800'}`} style={{ borderRadius: '8px 2px 8px 2px' }}
-                                                >
-                                                    {qualityPreset === id && <Check size={16} className="absolute right-3 top-3 text-emerald-700 stroke-[3]" />}
-                                                    <p className="text-sm font-black text-slate-900 tracking-wide">{label}</p>
-                                                    <p className="mt-2 text-[11px] leading-relaxed font-bold text-slate-500">{desc}</p>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </section>
-
-                                    <section className="hand-drawn-panel relative bg-[#fdfcf8] p-6 shadow-[4px_4px_0_#2d3436] border-[2px] border-slate-800" style={{ transform: 'rotate(-0.3deg)' }}>
-                                        <div className="absolute top-10 left-1 w-2 h-10 bg-emerald-400/20 rotate-[12deg] pointer-events-none" />
-                                        <div className="flex items-center gap-2 mb-5 opacity-80">
-                                            <Palette size={18} className="text-slate-800" />
-                                            <h3 className="text-lg font-black tracking-widest text-slate-900">标题页偏好</h3>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
-                                            <button onClick={() => { AudioSystem.playTap(); setTitleTheme('white'); }} className={`border-[2px] p-4 text-left font-bold transition-transform hover:-translate-y-1 ${titleTheme === 'white' ? 'border-slate-800 bg-white shadow-[3px_3px_0_#2d3436]' : 'border-slate-300 bg-[#fdfcf8] hover:border-slate-800'}`} style={{ borderRadius: '3px 8px 3px 8px' }}>
-                                                <span className="block text-sm font-black text-slate-900 tracking-wide">纸白标题</span>
-                                                <span className="mt-1 block text-[11px] text-slate-500">更轻、更干净</span>
-                                            </button>
-                                            <button onClick={() => { AudioSystem.playTap(); setTitleTheme('blue'); }} className={`border-[2px] p-4 text-left font-bold transition-transform hover:-translate-y-1 ${titleTheme === 'blue' ? 'border-slate-800 bg-slate-800 text-white shadow-[3px_3px_0_#2d3436]' : 'border-slate-300 bg-[#fdfcf8] hover:border-slate-800 text-slate-900'}`} style={{ borderRadius: '8px 3px 8px 3px' }}>
-                                                <span className="block text-sm font-black tracking-wide">深蓝标题</span>
-                                                <span className={`mt-1 block text-[11px] ${titleTheme === 'blue' ? 'text-slate-300' : 'text-slate-500'}`}>更沉静、更电影</span>
-                                            </button>
-                                            <SettingToggle icon={<Waves size={16} />} label="保留标题动态氛围" desc="控制标题页雾感、漂浮感等视觉细节偏好" checked={ambientDetail} onClick={toggleAmbientDetail} />
-                                            <SettingToggle icon={<Gauge size={16} />} label="降低动态效果" desc="适合晕动、低电量或录屏时使用" checked={reducedMotion} onClick={toggleReducedMotion} />
-                                            <SettingToggle icon={<Compass size={16} />} label="跳过开场署名" desc="之后打开标题页会直接进入主菜单" checked={skipIntro} onClick={toggleSkipIntro} />
-                                        </div>
-                                    </section>
-                                </div>
-
-                                <aside className="flex flex-col gap-6">
-                                    <section className="hand-drawn-panel relative bg-[#eef7f1] p-6 shadow-[4px_4px_0_#2d3436] border-[2px] border-slate-800" style={{ transform: 'rotate(1deg)' }}>
-                                        {/* Pushpin */}
-                                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-emerald-500 rounded-full border-[2px] border-slate-800 shadow-[1px_1px_0_rgba(0,0,0,0.5)] z-10" />
-                                        <div className="flex items-center gap-2 mb-4 opacity-80 mt-2">
-                                            <User size={18} className="text-slate-800" />
-                                            <h3 className="text-lg font-black tracking-widest text-slate-900">当前状态</h3>
-                                        </div>
-                                        <div className="flex flex-col gap-3 text-[13px] font-bold text-slate-700">
-                                            <div className="flex justify-between gap-3 border-b-2 border-dashed border-slate-800/20 pb-2"><span>账号</span><span className="text-slate-900">{authUser?.username || '未登录'}</span></div>
-                                            <div className="flex justify-between gap-3 border-b-2 border-dashed border-slate-800/20 pb-2"><span>岛屿</span><span className="text-slate-900 truncate max-w-[160px]">{islandName}</span></div>
-                                            <div className="flex justify-between gap-3 border-b-2 border-dashed border-slate-800/20 pb-2"><span>等级</span><span className="font-mono text-slate-900">Lv.{playerLevel}</span></div>
-                                            <div className="flex justify-between gap-3 border-b-2 border-dashed border-slate-800/20 pb-2"><span>经验</span><span className="font-mono text-slate-900">{playerXP}</span></div>
-                                            <div className="flex justify-between gap-3"><span>游玩</span><span className="font-mono text-slate-900">{Math.floor(stats.playtime / 60)}m</span></div>
-                                        </div>
-                                    </section>
-
-                                    <section className="hand-drawn-panel relative bg-[#fffaf0] p-6 shadow-[4px_4px_0_#2d3436] border-[2px] border-slate-800" style={{ transform: 'rotate(-1deg)' }}>
-                                        <div className="flex items-center gap-2 mb-4 opacity-80">
-                                            <Shield size={18} className="text-slate-800" />
-                                            <h3 className="text-lg font-black tracking-widest text-slate-900">数据与隐私</h3>
-                                        </div>
-                                        <div className="flex flex-col gap-3">
-                                            <button
-                                                onClick={() => { AudioSystem.playClick(); setActiveModal('PRIVACY'); }}
-                                                className="hand-drawn-btn bg-white px-5 py-3 text-sm text-slate-700 font-bold flex items-center justify-center gap-2 border-[2px] border-slate-800"
-                                            >
-                                                <BookOpen size={16} />
-                                                查看隐私政策
-                                            </button>
-                                            <button
-                                                onClick={resetTitlePreferences}
-                                                className="hand-drawn-btn bg-white px-5 py-3 text-sm text-slate-700 font-bold flex items-center justify-center gap-2 border-[2px] border-slate-800"
-                                            >
-                                                <RotateCcw size={16} />
-                                                重置标题页设置
-                                            </button>
-                                            <button
-                                                disabled={isClearingData}
-                                                onClick={async () => {
-                                                    AudioSystem.playClick();
-                                                    if (!confirm('确定清除所有数据？将清空本地存档与进度，页面将自动刷新回到初始状态。')) return;
-                                                    await clearAllData();
-                                                }}
-                                                className="hand-drawn-btn px-5 py-3 text-sm text-red-700 font-bold bg-red-50 border-[2px] border-red-800 shadow-[3px_3px_0_#991b1b] hover:-translate-y-0.5 transition-transform disabled:opacity-60 disabled:cursor-wait flex items-center justify-center gap-2"
-                                            >
-                                                <Trash2 size={16} />
-                                                {isClearingData ? '正在清除...' : '清除本地数据'}
-                                            </button>
-                                        </div>
-                                    </section>
-
-                                    <section className="hand-drawn-panel relative bg-slate-900 p-6 text-white shadow-[4px_4px_0_#2d3436] border-[2px] border-slate-800" style={{ transform: 'rotate(0.5deg)' }}>
-                                        <p className="text-[10px] font-black tracking-[0.3em] uppercase text-emerald-300 mb-2">Current Profile</p>
-                                        <p className="text-2xl hand-drawn-title truncate">{authUser?.username || 'wander'}</p>
-                                        <p className="mt-3 text-[11px] font-bold leading-relaxed text-slate-400">这些设置会保存在本机浏览器里，不影响服务器账号数据。</p>
-                                    </section>
-                                </aside>
-                                </div>
-                            </div>
-                        </div>
+                        <SettingsModal
+                            onClose={() => setActiveModal('NONE')}
+                            masterVol={masterVol}
+                            bgmVol={bgmVol}
+                            handleMasterVol={handleMasterVol}
+                            handleBgmVol={handleBgmVol}
+                            qualityPreset={qualityPreset}
+                            setQuality={setQuality}
+                            titleTheme={titleTheme}
+                            setTitleTheme={setTitleTheme}
+                            ambientDetail={ambientDetail}
+                            toggleAmbientDetail={toggleAmbientDetail}
+                            reducedMotion={reducedMotion}
+                            toggleReducedMotion={toggleReducedMotion}
+                            skipIntro={skipIntro}
+                            toggleSkipIntro={toggleSkipIntro}
+                            authUser={authUser}
+                            islandName={islandName}
+                            playerLevel={playerLevel}
+                            playerXP={playerXP}
+                            stats={stats}
+                            resetTitlePreferences={resetTitlePreferences}
+                            isClearingData={isClearingData}
+                            clearAllData={clearAllData}
+                            setActiveModal={setActiveModal}
+                        />
                     )}
 
                     {/* CREDITS MODAL */}
                     {activeModal === 'CREDITS' && (
-                        <div className={`hand-drawn-panel relative p-12 flex flex-col items-center gap-10 animate-slide-up text-center shadow-[16px_16px_0_rgba(0,0,0,0.4)] bg-[#fdfcf8] ${isTouch ? 'touch-modal-full touch-safe-bottom overflow-y-auto' : 'w-[500px] h-[85vh] my-8'}`} onClick={(e) => e.stopPropagation()}>
-                            <div className="absolute inset-0 bg-grid-paper opacity-40 mix-blend-multiply pointer-events-none" style={{ borderRadius: 'inherit' }} />
-                            
-                            <button onClick={() => { AudioSystem.playClose(); setActiveModal('NONE'); }} className="hand-drawn-close-btn" title="合上制作人员名单">
-                                <X size={26} strokeWidth={3} />
-                            </button>
-                            
-                            <div className="relative z-10 w-full h-full overflow-y-auto custom-scrollbar flex flex-col items-center">
-                                <h2 className="text-5xl hand-drawn-title mb-4 -rotate-2 mt-8">WANDER ISLAND</h2>
-
-                            <div className="flex flex-col gap-8 w-full">
-                                <div className="flex flex-col gap-4 bg-[linear-gradient(135deg,#fff1b8_0%,#ffe08a_55%,#ffd66b_100%)] border-2 border-slate-800 p-5 -rotate-1 shadow-[6px_6px_0_#2d3436] relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-20 h-20 rounded-full bg-white/25 blur-2xl pointer-events-none" />
-                                    <div className="flex flex-col gap-1 relative">
-                                        <span className="text-[11px] font-black tracking-[0.28em] uppercase text-slate-500">Independent Creator</span>
-                                        <span className="text-sm font-bold text-slate-700">独立开发 / 游戏策划</span>
-                                    </div>
-                                    <div className="relative flex items-end justify-between gap-4 border-t-2 border-slate-800/20 pt-3">
-                                        <div className="flex flex-col">
-                                            <span className="text-3xl font-black tracking-wide text-slate-900 leading-none">huyan</span>
-                                            <span className="text-xs font-bold tracking-[0.22em] text-slate-600 mt-1">SOLO DEV</span>
-                                        </div>
-                                        <div className="w-11 h-11 rounded-full border-2 border-slate-800/60 bg-white/50 overflow-hidden shrink-0 shadow-sm">
-                                            <img
-                                                src="/title/huyan-avatar.png"
-                                                alt="huyan avatar"
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="relative flex flex-col gap-2 pt-1">
-                                        <span className="text-[10px] font-black tracking-[0.24em] uppercase text-slate-500">Links</span>
-                                    <a
-                                        href="https://github.com/huyan1349"
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-sm font-bold text-slate-800 hover:text-emerald-700 transition-colors break-all underline decoration-slate-500/40 underline-offset-4"
-                                    >
-                                        GitHub: github.com/huyan1349
-                                    </a>
-                                    <a
-                                        href="mailto:huyanxius@gmail.com"
-                                        className="text-sm font-bold text-slate-800 hover:text-emerald-700 transition-colors break-all underline decoration-slate-500/40 underline-offset-4"
-                                    >
-                                        Contact: huyanxius@gmail.com
-                                    </a>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col gap-2 bg-[#74b9ff] border-2 border-slate-800 p-4 rotate-1 shadow-[4px_4px_0_#2d3436]">
-                                    <span className="text-sm font-bold text-slate-800">特别鸣谢</span>
-                                    <span className="text-2xl font-bold text-slate-900">xyh</span>
-                                    <div className="flex flex-col gap-1 mt-1 border-t-2 border-slate-800/20 pt-3">
-                                        <span className="text-sm font-bold text-slate-900">Google AI Studio</span>
-                                        <span className="text-sm font-bold text-slate-900">Antigravity</span>
-                                        <span className="text-sm font-bold text-slate-900">Claude Code</span>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col gap-2 bg-emerald-100 border-2 border-slate-800 p-4 -rotate-1 shadow-[4px_4px_0_#2d3436]">
-                                    <span className="text-sm font-bold text-slate-600">启元开物</span>
-                                    <a href="https://qiyuankaiwu.com" target="_blank" rel="noreferrer" className="text-lg font-bold text-slate-800 hover:text-emerald-600 transition-colors">qiyuankaiwu.com</a>
-                                </div>
-                            </div>
-
-                            <div className="mt-4 pt-4 w-full">
-                                <span className="text-lg font-bold text-slate-800 underline decoration-wavy decoration-emerald-400">在孤岛中寻找生态的呼吸</span>
-                            </div>
-                            </div>
-                        </div>
+                        <CreditsModal onClose={() => setActiveModal('NONE')} isTouch={isTouch} />
                     )}
                     {/* PRIVACY POLICY MODAL */}
                     {activeModal === 'PRIVACY' && (
@@ -704,62 +523,4 @@ export const TitleScreen: React.FC = () => {
     );
 };
 
-function SettingSlider({
-    icon,
-    label,
-    value,
-    color,
-    onChange,
-}: {
-    icon: React.ReactNode;
-    label: string;
-    value: number;
-    color: string;
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}) {
-    return (
-        <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-2 text-sm font-black text-slate-800">{icon}{label}</span>
-                <span className="font-mono text-xs font-black text-slate-500">{Math.round(value * 100)}%</span>
-            </div>
-            <div className="relative w-full h-5 flex items-center">
-                <div className="absolute h-3 border-2 border-slate-800 bg-white rounded-full w-full pointer-events-none overflow-hidden">
-                    <div className="h-full border-r-2 border-slate-800" style={{ width: `${value * 100}%`, background: color }} />
-                </div>
-                <input type="range" min="0" max="1" step="0.05" value={value} onChange={onChange} className="w-full opacity-0 cursor-pointer absolute inset-0 h-full" />
-            </div>
-        </div>
-    );
-}
 
-function SettingToggle({
-    icon,
-    label,
-    desc,
-    checked,
-    onClick,
-}: {
-    icon: React.ReactNode;
-    label: string;
-    desc: string;
-    checked: boolean;
-    onClick: () => void;
-}) {
-    return (
-        <button
-            onClick={onClick}
-            className={`col-span-1 rounded-xl border-2 p-4 text-left transition-all ${checked ? 'border-slate-900 bg-[#dff7ef] shadow-[3px_3px_0_#2d3436]' : 'border-slate-300 bg-white/60 hover:border-slate-600'}`}
-        >
-            <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                    <p className="flex items-center gap-2 text-sm font-black text-slate-900">{icon}{label}</p>
-                    <p className="mt-1 text-[11px] leading-relaxed font-bold text-slate-500">{desc}</p>
-                </div>
-                <span className={`mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-slate-800 p-0.5 transition-colors ${checked ? 'bg-emerald-400' : 'bg-slate-200'}`}>
-                    <span className={`h-3 w-3 rounded-full bg-slate-900 transition-transform ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
-                </span>
-            </div>
-        </button>
-    );
-}

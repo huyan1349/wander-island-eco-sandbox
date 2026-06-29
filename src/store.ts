@@ -335,8 +335,21 @@ interface GameState {
   startFlourish: () => void;
   selectCard: (id: FlourishCardId) => void;
   cancelCard: () => void;
-  commitCardPlacement: (pos: { x: number; z: number }) => boolean;
   advanceSeason: () => void;
+
+  // 拍照模式
+  isPhotoMode: boolean;
+  setPhotoMode: (active: boolean) => void;
+  photoSettings: {
+    focalLength: number;
+    focusDistance: number;
+    focusTarget: [number, number, number] | null;
+    bokehScale: number;
+    filter: 'default' | 'cinematic' | 'vintage' | 'cyberpunk' | 'blackwhite';
+    watermark: boolean;
+    watermarkText: string;
+  };
+  setPhotoSettings: (settings: Partial<GameState['photoSettings']>) => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -657,6 +670,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ unlockedConstellations: next, revealedStarCardId: id });
   },
   dismissStarCard: () => set({ revealedStarCardId: null }),
+
+  isPhotoMode: false,
+  setPhotoMode: (active) => set({ isPhotoMode: active }),
+  photoSettings: {
+    focalLength: 0.02,
+    focusDistance: 0.05,
+    focusTarget: null,
+    bokehScale: 8.0,
+    filter: 'default',
+    watermark: true,
+    watermarkText: 'Wander Island',
+  },
+  setPhotoSettings: (settings) => set((state) => ({ photoSettings: { ...state.photoSettings, ...settings } })),
 
   lastPlacedSynergy: null,
   setLastPlacedSynergy: (synergy) => set({ lastPlacedSynergy: synergy }),

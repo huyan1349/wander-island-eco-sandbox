@@ -164,7 +164,12 @@ export const PlayerStatsTab: React.FC<PlayerStatsTabProps> = ({ handleAvatarUplo
         </div>
 
         {/* Identity dossier */}
-        <section className="hand-drawn-panel mb-8 bg-white p-7 lg:p-8">
+        <motion.section 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          className="hand-drawn-panel mb-10 bg-white p-8 lg:p-10 shadow-[6px_6px_0_rgba(15,23,42,1)]"
+        >
           <div className="grid gap-8 lg:grid-cols-[160px_1fr]">
             <div className="relative shrink-0 group">
               <div className="aspect-[4/5] w-[150px] overflow-hidden border-[3px] border-slate-800 bg-[#e8efe8] p-2 shadow-[4px_4px_0_#2d3436] rotate-[-2deg]">
@@ -235,11 +240,17 @@ export const PlayerStatsTab: React.FC<PlayerStatsTabProps> = ({ handleAvatarUplo
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* Island status */}
-        <section className="mb-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="hand-drawn-panel bg-white p-6">
+        <section className="mb-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.1 }}
+            whileHover={{ y: -4 }}
+            className="hand-drawn-panel bg-white p-8 shadow-[6px_6px_0_rgba(15,23,42,1)]"
+          >
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Star size={16} strokeWidth={2.5} /> Island Waking</p>
@@ -253,17 +264,29 @@ export const PlayerStatsTab: React.FC<PlayerStatsTabProps> = ({ handleAvatarUplo
               </div>
             </div>
             <p className="mt-5 max-w-2xl text-sm font-bold leading-relaxed text-slate-600">这不是生态评分，而是岛与你之间的关系记录。它醒得越深，回声和辞的表达就越接近完整。</p>
-          </div>
-          <div className="hand-drawn-panel bg-[#faf9f5] p-6">
+          </motion.div>
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.2 }}
+            whileHover={{ y: -4 }}
+            className="hand-drawn-panel bg-[#faf9f5] p-8 shadow-[6px_6px_0_rgba(15,23,42,1)]"
+          >
             <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Compass size={16} strokeWidth={2.5} /> Current Note</p>
             <p className="hand-drawn-title mt-3 text-2xl text-slate-800">当前旅程记录</p>
             <p className="mt-3 text-sm font-bold leading-relaxed text-slate-600">{journeyNote}</p>
-          </div>
+          </motion.div>
         </section>
 
         {/* Journey fields */}
-        <section className="mb-8 grid gap-6 lg:grid-cols-2">
-          <div className="hand-drawn-panel bg-white p-6">
+        <section className="mb-10 grid gap-8 lg:grid-cols-2">
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.3 }}
+            whileHover={{ y: -4 }}
+            className="hand-drawn-panel bg-white p-8 shadow-[6px_6px_0_rgba(15,23,42,1)]"
+          >
             <div className="mb-5 flex items-center justify-between border-b-[2px] border-dashed border-slate-300 pb-4">
               <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Clock size={16} strokeWidth={2.5} /> Journey Record</p>
               <span className="text-xs font-black text-slate-500">旅程摘要</span>
@@ -276,8 +299,14 @@ export const PlayerStatsTab: React.FC<PlayerStatsTabProps> = ({ handleAvatarUplo
                 </div>
               ))}
             </div>
-          </div>
-          <div className="hand-drawn-panel bg-white p-6">
+          </motion.div>
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.4 }}
+            whileHover={{ y: -4 }}
+            className="hand-drawn-panel bg-white p-8 shadow-[6px_6px_0_rgba(15,23,42,1)]"
+          >
             <div className="mb-5 flex items-center justify-between border-b-[2px] border-dashed border-slate-300 pb-4">
               <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500"><Layers size={16} strokeWidth={2.5} /> Island Notes</p>
               <span className="text-xs font-black text-slate-500">轻量记录</span>
@@ -290,40 +319,55 @@ export const PlayerStatsTab: React.FC<PlayerStatsTabProps> = ({ handleAvatarUplo
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
         </section>
 
-        {/* 成就陈列 */}
-        <section className="hand-drawn-panel bg-[#faf9f5] p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-                <Trophy size={20} className="text-slate-800" strokeWidth={2.5} />
-                <span className="hand-drawn-title text-2xl text-slate-800">成就记录</span>
-                <span className="hand-drawn-title text-xl text-slate-500">{achDone}/{ACHIEVEMENTS.length}</span>
+        {/* Achievements Section */}
+        <motion.section 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.5 }}
+          className="hand-drawn-panel bg-white p-8 lg:p-10 shadow-[6px_6px_0_rgba(15,23,42,1)]"
+        >
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+                <div className="w-12 h-12 flex items-center justify-center bg-amber-100 border-[3px] border-slate-800 rounded-xl shadow-[2px_2px_0_rgba(15,23,42,1)] rotate-[-2deg]">
+                  <Trophy size={24} className="text-amber-600" strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h3 className="hand-drawn-title text-2xl text-slate-800">成就勋章</h3>
+                  <p className="text-xs font-black text-slate-500 mt-1">已收集 {achDone} / {ACHIEVEMENTS.length}</p>
+                </div>
             </div>
-            <button onClick={() => { AudioSystem.playClick(); setActiveTab('card'); }} className="hand-drawn-btn flex items-center gap-1 bg-white px-4 py-2 text-sm font-black text-slate-800">
-               居民证 <ChevronRight size={16} strokeWidth={3} />
+            <button onClick={() => { AudioSystem.playClick(); setActiveTab('card'); }} className="hand-drawn-btn flex items-center gap-2 bg-[#faf9f5] px-5 py-3 text-sm font-black text-slate-800 transition-all hover:bg-slate-100">
+               查看居民证 <ChevronRight size={18} strokeWidth={3} />
             </button>
           </div>
-          <div className="mb-6 h-3 w-full border-[3px] border-slate-800 bg-slate-100 p-0.5" style={{ borderRadius: '15px 5px 15px 5px' }}>
-            <div className="h-full bg-slate-800 transition-all duration-700 relative" style={{ width: `${(achDone / ACHIEVEMENTS.length) * 100}%`, borderRadius: '8px 2px 8px 2px' }}>
-               <div className="absolute top-0.5 left-1 right-1 h-0.5 bg-white/30 rounded-full" />
+          <div className="mb-8 h-4 w-full border-[3px] border-slate-800 bg-slate-100 p-0.5" style={{ borderRadius: '15px 5px 15px 5px' }}>
+            <div className="h-full bg-amber-400 transition-all duration-700 relative" style={{ width: `${(achDone / ACHIEVEMENTS.length) * 100}%`, borderRadius: '8px 2px 8px 2px' }}>
+               <div className="absolute top-0.5 left-1 right-1 h-1 bg-white/30 rounded-full" />
             </div>
           </div>
-          <div className="flex flex-wrap gap-3 mb-6">
+          <div className="flex flex-wrap gap-4 mb-8">
             {ACHIEVEMENTS.map(a => {
               const done = unlockedAch.has(a.id);
               return (
-                  <div key={a.id} title={`${a.title} · ${a.desc}`} className={`flex h-10 w-10 items-center justify-center rounded-sm border-[3px] transition-transform hover:scale-110 cursor-help ${done ? 'border-slate-800 bg-amber-200 text-amber-900 shadow-[2px_2px_0_#2d3436] rotate-1' : 'border-slate-300 bg-slate-100 text-slate-400 rotate-[-1deg]'}`}>
-                    {done ? <Award size={20} strokeWidth={2.5} /> : <Lock size={16} strokeWidth={2.5} />}
-                </div>
+                  <motion.div 
+                    whileHover={{ scale: 1.15, y: -4, rotate: done ? [-5, 5, -5, 0] : 0 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                    key={a.id} 
+                    title={`${a.title} · ${a.desc}`} 
+                    className={`flex h-14 w-14 items-center justify-center rounded-xl border-[3px] transition-transform cursor-help shadow-[3px_3px_0_rgba(15,23,42,1)] ${done ? 'border-slate-800 bg-amber-200 text-amber-900 rotate-1 hover:shadow-[5px_5px_0_rgba(15,23,42,1)]' : 'border-slate-300 bg-slate-100 text-slate-400 rotate-[-1deg] shadow-none'}`}
+                  >
+                    {done ? <Award size={28} strokeWidth={3} /> : <Lock size={20} strokeWidth={2.5} />}
+                </motion.div>
               );
             })}
           </div>
-          <div className="rounded-sm border-[2px] border-dashed border-slate-300 bg-white px-5 py-4 text-sm text-slate-600">
-            {nextAch ? <><span className="font-black text-slate-800">下一段旅程：</span>{nextAch.title} · {nextAch.desc}</> : <span className="font-black text-slate-800">全部成就已完成，这份护照已经写满了。</span>}
+          <div className="rounded-xl border-[3px] border-slate-800 bg-[#f4ebd0] px-6 py-5 text-sm text-slate-600 shadow-[2px_2px_0_rgba(15,23,42,1)]">
+            {nextAch ? <><span className="font-black text-slate-800 flex items-center gap-2 mb-1"><Star size={16} className="text-amber-500" strokeWidth={3} /> 下一段旅程：</span><span className="font-bold">{nextAch.title}</span> <span className="opacity-50 mx-1">·</span> {nextAch.desc}</> : <span className="font-black text-slate-800">全部成就已完成，这份护照已经写满了。</span>}
           </div>
-        </section>
+        </motion.section>
       </div>
     </div>
   );

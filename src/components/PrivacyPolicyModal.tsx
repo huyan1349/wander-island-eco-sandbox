@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { motion } from 'motion/react';
 import { X, Shield, ChevronDown } from 'lucide-react';
 import { AudioSystem } from '../lib/audio';
 
@@ -270,19 +271,30 @@ export const PrivacyPolicyModal: React.FC<{
   const [agreed, setAgreed] = useState(false);
 
   return (
-    <div className="hand-drawn-panel w-[680px] max-w-[94vw] max-h-[88vh] p-0 flex flex-col animate-slide-up ring-1 overflow-hidden">
+    <motion.div 
+      className="hand-drawn-panel w-[680px] max-w-[94vw] max-h-[88vh] p-0 flex flex-col ring-1 overflow-hidden shadow-[0_20px_50px_rgba(15,23,42,0.3)] bg-[#fbf7ec]"
+      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: 10 }}
+      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+    >
       {/* Header */}
-      <div className="flex justify-between items-center border-b-2 border-slate-800 px-8 py-5 shrink-0">
+      <div className="flex justify-between items-center border-b-2 border-slate-800 px-8 py-5 shrink-0 bg-[#f2ebd9]">
         <div className="flex items-center gap-3">
-          <Shield size={24} className="text-amber-600" />
+          <Shield size={24} className="text-emerald-700" />
           <div>
-            <h2 className="text-2xl hand-drawn-title -rotate-1">流浪岛隐私政策</h2>
-            <p className="text-slate-400 text-[9px] font-mono tracking-[0.25em] uppercase mt-0.5">PRIVACY POLICY · WANDER ISLAND</p>
+            <h2 className="text-2xl hand-drawn-title -rotate-1 text-slate-800">流浪岛隐私政策</h2>
+            <p className="text-slate-500 text-[9px] font-mono tracking-[0.25em] uppercase mt-0.5">PRIVACY POLICY · WANDER ISLAND</p>
           </div>
         </div>
-        <button onClick={() => { AudioSystem.playClose(); onClose(); }} className="hand-drawn-btn p-2 rounded-full flex items-center justify-center border-0 hover:bg-slate-200">
-          <X size={24} strokeWidth={3} className="text-slate-800" />
-        </button>
+        <motion.button 
+          whileHover={{ scale: 1.15, rotate: 90 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => { AudioSystem.playClose(); onClose(); }} 
+          className="p-2 rounded-full bg-white text-slate-800 border-2 border-slate-800 shadow-[3px_3px_0_rgba(15,23,42,1)] hover:shadow-[1px_1px_0_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center justify-center"
+        >
+          <X size={20} strokeWidth={3} className="text-slate-800" />
+        </motion.button>
       </div>
 
       {/* Content */}
@@ -336,15 +348,17 @@ export const PrivacyPolicyModal: React.FC<{
               我已阅读并同意《流浪岛隐私政策》，了解平台将按照本政策收集、使用和保护我的个人信息。我理解并同意，使用「辞」聊天功能时，我的消息内容将被发送至 DeepSeek API 进行处理。
             </span>
           </label>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             disabled={!agreed}
             onClick={() => { AudioSystem.playConfirm(); onAgree?.(); }}
-            className="hand-drawn-btn w-full py-3 text-base font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full bg-emerald-300 py-3 text-base font-black border-[3px] border-slate-800 rounded-xl shadow-[4px_4px_0_rgba(15,23,42,1)] hover:shadow-[2px_2px_0_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0_rgba(15,23,42,1)]"
           >
             同意并继续
-          </button>
+          </motion.button>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };

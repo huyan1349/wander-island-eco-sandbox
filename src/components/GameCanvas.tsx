@@ -12,7 +12,7 @@ import { TelescopeControls } from './game/TelescopeControls';
 import { updateHeightField } from '../game/water/heightField';
 import { Assets } from './Assets';
 import * as THREE from 'three';
-import { EffectComposer, Bloom, Vignette, HueSaturation } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, Vignette, HueSaturation, DepthOfField, BrightnessContrast } from '@react-three/postprocessing';
 import { useGameStore } from '../store';
 
 // 触屏检测 hook
@@ -131,6 +131,66 @@ function BoatCameraFollow({ controlsRef }: { controlsRef: React.RefObject<any> }
     }
   });
   return null;
+}
+
+function FocusRaycaster() {
+  const { gl, camera, scene, pointer, raycaster } = useThree();
+  
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      const state = useGameStore.getState();
+      if (!state.isPhotoMode) return;
+      
+      // Update raycaster with latest pointer
+      raycaster.setFromCamera(pointer, camera);
+      const intersects = raycaster.intersectObjects(scene.children, true);
+      
+      // Filter out invisible or helper objects if needed
+      if (intersects.length > 0) {
+        const point = intersects[0].point;
+        state.setPhotoSettings({ ...state.photoSettings, focusTarget: [point.x, point.y, point.z] });
+        // visual indicator
+        const div = document.createElement('div');
+        div.className = 'absolute w-12 h-12 border-2 border-amber-400 rounded-sm pointer-events-none z-[200] opacity-80 transition-transform duration-300 scale-150';
+        div.style.left = `${e.clientX - 24}px`;
+        div.style.top = `${e.clientY - 24}px`;
+        div.style.boxShadow = '0 0 10px rgba(251,191,36,0.5)';
+        document.body.appendChild(div);
+        
+        requestAnimationFrame(() => {
+          div.style.transform = 'scale(1)';
+        });
+        setTimeout(() => {
+          div.style.opacity = '0';
+          setTimeout(() => div.remove(), 300);
+        }, 500);
+      }
+    };
+    
+    gl.domElement.addEventListener('pointerdown', onPointerDown);
+    return () => gl.domElement.removeEventListener('pointerdown', onPointerDown);
+  }, [gl, camera, scene, pointer, raycaster]);
+  return null;
+}
+
+function DynamicDOF({ photoSettings }: { photoSettings: any }) {
+  const { camera } = useThree();
+  const targetVec = photoSettings.focusTarget ? new THREE.Vector3(...photoSettings.focusTarget) : undefined;
+  
+  // Calculate world distance
+  let worldDist = photoSettings.focusDistance * (camera.far - camera.near);
+  if (targetVec) {
+    worldDist = camera.position.distanceTo(targetVec);
+  }
+
+  return (
+    <DepthOfField 
+      worldFocusDistance={worldDist} 
+      focalLength={photoSettings.focalLength} 
+      bokehScale={photoSettings.bokehScale} 
+      height={480} 
+    />
+  );
 }
 
 function CameraFocusPan({ controlsRef }: { controlsRef: any }) {
@@ -338,8 +398,23 @@ export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = 
   const isDrawing = useGameStore(state => state.isDrawing);
   const screen = useGameStore(state => state.screen);
   const assetCount = useGameStore(state => state.assets.length);
-  const drivingBoatId = useGameStore(state => state.drivingBoatId);
+  const drivingBoatId = useGameStore(s => s.drivingBoatId);
   const isObservatoryMode = useGameStore(s => s.isObservatoryMode);
+  
+  const isPhotoMode = useGameStore(s => s.isPhotoMode);
+  const photoSettings = useGameStore(s => s.photoSettings);
+
+  let hue = 0;
+  let sat = 0.3; // base game saturation
+  let contrast = 0;
+  let brightness = 0;
+
+  if (isPhotoMode) {
+    if (photoSettings.filter === 'cinematic') { sat = 0.1; contrast = 0.2; brightness = -0.05; }
+    else if (photoSettings.filter === 'vintage') { sat = -0.3; hue = 0.05; contrast = 0.1; }
+    else if (photoSettings.filter === 'cyberpunk') { sat = 0.5; hue = 0.2; contrast = 0.3; }
+    else if (photoSettings.filter === 'blackwhite') { sat = -1.0; contrast = 0.4; }
+  }
   const isTouch = useIsTouchDevice();
   
   const enableOrbitControls = !isDrawing;
@@ -363,6 +438,7 @@ export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = 
           <SkySystem />
           <WeatherSystem />
           <FirefliesSystem />
+          <FocusRaycaster />
           
           <HeightFieldSync />
           <Terrain />
@@ -394,8 +470,10 @@ export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = 
           )}
 
           <EffectComposer multisampling={0}>
+             {isPhotoMode && <DynamicDOF photoSettings={photoSettings} />}
              <Bloom luminanceThreshold={1.2} luminanceSmoothing={0.8} intensity={1.5} mipmapBlur />
-             <HueSaturation saturation={0.3} hue={0} />
+             <HueSaturation saturation={sat} hue={hue} />
+             {isPhotoMode && <BrightnessContrast brightness={brightness} contrast={contrast} />}
              <Vignette eskil={false} offset={0.15} darkness={0.8} />
           </EffectComposer>
         </Suspense>

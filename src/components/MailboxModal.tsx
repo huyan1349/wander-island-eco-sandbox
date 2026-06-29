@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { X, Mail, Send, Trash2, ArrowLeft, Pen, User, Gift, UserPlus, Check, Hammer, Castle, TowerControl, PenTool } from 'lucide-react';
@@ -450,11 +451,23 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
   };
 
   return (
-    <div className={embedded ? "flex flex-col h-full" : "hand-drawn-panel w-[700px] h-[550px] max-h-[85vh] p-0 flex flex-col animate-slide-up ring-1 relative"}>
+    <motion.div 
+      className={embedded ? "flex flex-col h-full" : "hand-drawn-panel w-[700px] h-[550px] max-h-[85vh] p-0 flex flex-col ring-1 relative shadow-[0_20px_50px_rgba(15,23,42,0.3)] bg-[#fbf7ec]"}
+      initial={embedded ? false : { opacity: 0, scale: 0.95, y: 20 }}
+      animate={embedded ? false : { opacity: 1, scale: 1, y: 0 }}
+      exit={embedded ? false : { opacity: 0, scale: 0.95, y: 10 }}
+      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+    >
       {!embedded && (
-        <button onClick={() => { AudioSystem.playClose(); onClose(); }} className="hand-drawn-close-btn" title="关闭">
-           <X size={24} strokeWidth={3} />
-        </button>
+        <motion.button 
+          whileHover={{ scale: 1.15, rotate: 90 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => { AudioSystem.playClose(); onClose(); }} 
+          className="absolute top-6 right-6 z-50 p-2.5 rounded-full bg-white text-slate-800 border-2 border-slate-800 shadow-[3px_3px_0_rgba(15,23,42,1)] hover:shadow-[1px_1px_0_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all flex items-center justify-center"
+          title="关闭"
+        >
+           <X size={20} strokeWidth={3} />
+        </motion.button>
       )}
       <div className="flex w-full h-full flex-col overflow-hidden" style={{ borderRadius: 'inherit' }}>
       {/* Header */}
@@ -749,6 +762,6 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
         )}
       </div>
       </div>
-    </div>
+    </motion.div>
   );
 };

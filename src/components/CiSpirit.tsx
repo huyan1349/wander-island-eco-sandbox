@@ -7,6 +7,25 @@ import { Send, Maximize2, X } from 'lucide-react';
 
 const CI_USER_ID = '00000000-0000-0000-0000-000000000001';
 
+function useTypewriter(text: string | null, speed = 40) {
+  const [displayedText, setDisplayedText] = useState('');
+  useEffect(() => {
+    if (!text) { setDisplayedText(''); return; }
+    let i = 0;
+    setDisplayedText('');
+    const timer = setInterval(() => {
+      if (i < text.length) {
+        setDisplayedText(prev => prev + text.charAt(i));
+        i++;
+      } else {
+        clearInterval(timer);
+      }
+    }, speed);
+    return () => clearInterval(timer);
+  }, [text, speed]);
+  return displayedText;
+}
+
 /**
  * 辞（织潮者的回音）浮层组件 — 最右下角
  * - 头像始终可见（呼吸动画）；单击 → 展开一个小聊天窗，在原地聊天
@@ -22,6 +41,8 @@ export const CiSpirit: React.FC = () => {
   const setPanelInitialTab = useGameStore(s => s.setPanelInitialTab);
   const setPanelInitialSocialTab = useGameStore(s => s.setPanelInitialSocialTab);
   const authUser = useGameStore(s => s.authUser);
+
+  const typedBubble = useTypewriter(ci.bubble);
 
   const [isSending, setIsSending] = useState(false);
   const [bubbleVisible, setBubbleVisible] = useState(false);
@@ -120,12 +141,12 @@ export const CiSpirit: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-5 right-5 z-[90] flex flex-col items-end gap-2 pointer-events-none">
+    <div className="relative shrink-0 pointer-events-none">
       {/* 辞主动发话气泡（仅小窗关闭时显示，避免重复） */}
       {ci.bubble && bubbleVisible && !chatOpen && (
         <div
-          className="pointer-events-auto max-w-[280px] transition-all duration-500"
-          style={{ opacity: bubbleVisible ? 1 : 0, transform: bubbleVisible ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.96)' }}
+          className="absolute left-full top-0 ml-4 pointer-events-auto w-[280px] transition-all duration-500 z-50"
+          style={{ opacity: bubbleVisible ? 1 : 0, transform: bubbleVisible ? 'translateX(0) scale(1)' : 'translateX(-8px) scale(0.96)' }}
         >
           <div className="relative hand-drawn-panel px-5 py-4 shadow-lg">
             <button onClick={handleCloseBubble} className="absolute top-2 right-2 text-slate-400 hover:text-slate-700 transition-colors" title="关闭">
@@ -137,11 +158,14 @@ export const CiSpirit: React.FC = () => {
               </div>
               <div className="flex-1 min-w-0 pt-0.5">
                 <p className="text-[9px] font-black tracking-[0.2em] uppercase text-emerald-600 mb-1">辞 · 织潮者的回音</p>
-                <p className="text-[13px] text-slate-700 leading-relaxed">{ci.bubble}</p>
+                <p className="text-[13px] text-slate-700 leading-relaxed font-medium">
+                  {typedBubble}
+                  <span className="inline-block w-1 h-3 bg-emerald-600/50 ml-0.5 animate-pulse" />
+                </p>
               </div>
             </div>
-            <div className="absolute -bottom-2 right-8 w-4 h-4 overflow-hidden">
-              <div className="w-4 h-4 bg-[#fbf7ec] border-b-2 border-l-2 border-slate-800/20 transform -rotate-45 -translate-y-2" />
+            <div className="absolute top-4 -left-2 w-4 h-4 overflow-hidden">
+              <div className="w-4 h-4 bg-[#fbf7ec] border-b-2 border-l-2 border-slate-800/20 transform rotate-45 translate-x-1" />
             </div>
           </div>
         </div>
@@ -149,26 +173,7 @@ export const CiSpirit: React.FC = () => {
 
       {/* 小聊天窗 */}
       {chatOpen && (
-        <div className="pointer-events-auto relative ci-chat-rough w-[300px] max-w-[calc(100vw-2.5rem)] h-[400px] max-h-[60vh] flex flex-col hand-drawn-panel shadow-xl animate-in slide-in-from-bottom-2 fade-in duration-300" style={{ borderColor: 'transparent', borderRadius: '4px' }}>
-          {/* 手绘"粗细不匀"边框：SVG 湍流把直边位移成手绘线，转角仍近方正（不歪） */}
-          <svg width="0" height="0" className="absolute" aria-hidden="true">
-            <filter id="ciRoughEdge">
-              <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="2" seed="7" result="n" />
-              <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G" />
-            </filter>
-          </svg>
-          <style>{`
-            .ci-chat-rough::before {
-              content: '';
-              position: absolute;
-              inset: -1px;
-              border: 2.5px solid #2d3436;
-              border-radius: 5px;
-              filter: url(#ciRoughEdge);
-              pointer-events: none;
-              z-index: 1;
-            }
-          `}</style>
+        <div className="absolute left-full top-0 ml-4 pointer-events-auto flex flex-col w-[300px] max-w-[calc(100vw-5rem)] h-[400px] max-h-[60vh] hand-drawn-panel shadow-xl animate-in slide-in-from-left-2 fade-in duration-300 z-50">
           {/* 头部 */}
           <div className="flex items-center gap-2 px-3 py-2.5 border-b-2 border-slate-800 shrink-0">
             <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-slate-800 shrink-0">
@@ -221,9 +226,9 @@ export const CiSpirit: React.FC = () => {
       )}
 
       {/* 辞头像（始终可见，呼吸动画） */}
-      <div className="pointer-events-auto cursor-pointer group relative" onClick={toggleChat}>
+      <div className="pointer-events-auto cursor-pointer group relative flex items-center justify-center hand-drawn-btn shrink-0 hover:scale-110 active:scale-95 w-12 h-12" onClick={toggleChat}>
         <div
-          className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-slate-800 shadow-[3px_3px_0_rgba(15,23,42,0.3)] transition-all duration-300 hover:scale-110 hover:shadow-[4px_4px_0_rgba(15,23,42,0.4)]"
+          className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-slate-800 transition-all duration-300"
           style={{ animation: 'ciBreathe 3s ease-in-out infinite' }}
         >
           <img src="/ci-avatar.png" alt="辞" className="w-full h-full object-cover" />
