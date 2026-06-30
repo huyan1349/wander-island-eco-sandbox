@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { connectSocket } from '../lib/socket';
 import { syncOnLogin } from '../lib/cloudSync';
 import { AudioSystem } from '../lib/audio';
+import { lazyNamed } from '../lib/lazyNamed';
 import { User, Lock, ArrowRight, Globe, ArrowLeft, Check, X } from 'lucide-react';
-import { PrivacyPolicyModal } from './PrivacyPolicyModal';
+
+const PrivacyPolicyModal = lazyNamed(() => import('./PrivacyPolicyModal'), 'PrivacyPolicyModal');
 
 type NameStatus = 'idle' | 'checking' | 'available' | 'taken' | 'short';
 
@@ -288,6 +290,7 @@ export const LoginScreen: React.FC = () => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
+          <Suspense fallback={null}>
           <PrivacyPolicyModal
             onClose={() => { setShowPrivacy(false); }}
             showAgree={mode === 'register'}
@@ -297,6 +300,7 @@ export const LoginScreen: React.FC = () => {
               setShowPrivacy(false);
             }}
           />
+          </Suspense>
         </motion.div>
       )}
       </AnimatePresence>

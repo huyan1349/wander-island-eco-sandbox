@@ -71,19 +71,29 @@ export const PhotoModeOverlay: React.FC = () => {
 
       {/* 水印常驻右下角 */}
       {photoSettings.watermark && (
-        <div 
-          className={`absolute bottom-24 right-12 z-[150] flex flex-col items-end pointer-events-none transition-opacity duration-300 ${hideUI && !isCapturing ? 'opacity-0' : 'opacity-100'}`}
+        <div
+          className={`absolute bottom-16 right-12 z-[150] flex items-center gap-3.5 pointer-events-none select-none transition-opacity duration-300 ${hideUI && !isCapturing ? 'opacity-0' : 'opacity-100'}`}
+          style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.55))' }}
         >
-          {/* Logo */}
-          <div className="flex items-center drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] pointer-events-none select-none relative -rotate-3">
-            <h1 className="text-[4rem] text-white tracking-widest pointer-events-none select-none" style={{ fontFamily: '"ZCOOL KuaiLe", sans-serif', textShadow: '0 2px 10px rgba(0,0,0,0.8)' }}>
+          {/* 右对齐字标块 */}
+          <div className="flex flex-col items-end leading-none">
+            <span className="text-white/95 text-[15px] font-semibold uppercase" style={{ fontFamily: '"Raleway","Nunito",sans-serif', letterSpacing: '0.42em', paddingRight: '0.42em' }}>
               Wander Island
-            </h1>
+            </span>
+            <div className="flex items-center gap-2 mt-2.5">
+              <span className="h-px w-9 bg-white/45" />
+              <span className="text-white/85 text-[11px] font-medium uppercase" style={{ fontFamily: '"Raleway","Nunito",sans-serif', letterSpacing: '0.28em' }}>
+                {photoSettings.watermarkText}
+              </span>
+            </div>
           </div>
-          {/* 用户文字 */}
-          <div className="text-white/90 text-lg font-medium tracking-widest pointer-events-none select-none -mt-4 mr-4" style={{ fontFamily: '"ZCOOL KuaiLe", sans-serif', textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
-            ~ {photoSettings.watermarkText} ~
-          </div>
+          {/* 圆形印章：双描边 + 浪纹 */}
+          <svg width="46" height="46" viewBox="0 0 46 46" className="shrink-0" fill="none">
+            <circle cx="23" cy="23" r="21.4" stroke="white" strokeOpacity="0.85" strokeWidth="1.4" />
+            <circle cx="23" cy="23" r="16.6" stroke="white" strokeOpacity="0.35" strokeWidth="0.8" />
+            <path d="M11.5 25.6c2.45 0 2.45-2.7 4.9-2.7s2.45 2.7 4.9 2.7 2.45-2.7 4.9-2.7 2.45 2.7 4.9 2.7" stroke="white" strokeOpacity="0.92" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M13.5 20c1.95 0 1.95-2.1 3.9-2.1s1.95 2.1 3.9 2.1 1.95-2.1 3.9-2.1 1.95 2.1 3.9 2.1" stroke="white" strokeOpacity="0.5" strokeWidth="1.1" strokeLinecap="round" />
+          </svg>
         </div>
       )}
 
@@ -140,7 +150,14 @@ export const PhotoModeOverlay: React.FC = () => {
                 </div>
                 <input type="range" min="0" max="10" step="0.1" value={photoSettings.bokehScale} onChange={e => setPhotoSettings({ bokehScale: parseFloat(e.target.value) })} className="w-full h-1 bg-slate-200 rounded-full appearance-none outline-none accent-amber-600 cursor-pointer" />
               </div>
-              
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+                  <span>清晰范围 (Focus Range)</span>
+                  <span className="font-mono bg-white/50 px-1 rounded">{(photoSettings.focusRange ?? 14).toFixed(0)}</span>
+                </div>
+                <input type="range" min="2" max="60" step="1" value={photoSettings.focusRange ?? 14} onChange={e => setPhotoSettings({ focusRange: parseFloat(e.target.value) })} className="w-full h-1 bg-slate-200 rounded-full appearance-none outline-none accent-amber-600 cursor-pointer" />
+              </div>
+
               <div className="text-[10px] text-amber-700 font-bold bg-amber-50 p-2 border border-amber-200 rounded mt-2">
                 提示：直接点击屏幕中的物体即可实现自动对焦。
               </div>
@@ -177,7 +194,26 @@ export const PhotoModeOverlay: React.FC = () => {
               </label>
               
               <div className={`transition-opacity ${photoSettings.watermark ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-                <p className="text-xs font-bold text-slate-500 mb-2">水印文字</p>
+                <p className="text-xs font-bold text-slate-500 mb-2">水印样式 (Style)</p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {([
+                    ['seal', '印章 (Seal)'],
+                    ['minimal', '极简 (Minimal)'],
+                    ['polaroid', '拍立得 (Polaroid)'],
+                    ['eco', '生态 (Eco)'],
+                    ['cinema', '电影宽幅 (Cinema)']
+                  ] as const).map(([val, label]) => (
+                    <button
+                      key={val}
+                      onClick={() => setPhotoSettings({ watermarkStyle: val })}
+                      className={`hand-drawn-btn px-3 py-1.5 text-xs font-bold ${photoSettings.watermarkStyle === val ? 'hand-drawn-btn-active' : ''}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="text-xs font-bold text-slate-500 mb-2">水印文字 (Text)</p>
                 <input 
                   type="text" 
                   value={photoSettings.watermarkText}
@@ -205,7 +241,7 @@ export const PhotoModeOverlay: React.FC = () => {
       
       {/* 隐藏状态下的恢复按钮 */}
       <div className={`absolute top-6 right-8 pointer-events-none transition-opacity duration-300 ${hideUI && !isCapturing ? 'opacity-100' : 'opacity-0'}`}>
-         <button onClick={(e) => { e.stopPropagation(); AudioSystem.playTap(); setHideUI(false); }} className="pointer-events-auto w-10 h-10 rounded-full bg-black/40 border border-white/20 hover:bg-black/60 backdrop-blur flex items-center justify-center text-white transition-colors" title="显示参数面板">
+         <button onClick={(e) => { e.stopPropagation(); AudioSystem.playTap(); setHideUI(false); }} className={`${hideUI ? 'pointer-events-auto' : 'pointer-events-none'} w-10 h-10 rounded-full bg-black/40 border border-white/20 hover:bg-black/60 backdrop-blur flex items-center justify-center text-white transition-colors`} title="显示参数面板">
             <Eye size={18} />
          </button>
       </div>

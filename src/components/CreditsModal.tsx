@@ -1,49 +1,51 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import type { Variants } from 'motion/react';
 import { X, Heart, Code2, Sparkles, Coffee } from 'lucide-react';
 import { AudioSystem } from '../lib/audio';
 
 interface CreditsModalProps {
   onClose: () => void;
   isTouch: boolean;
+  onOpenDevelopment: () => void;
 }
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: { opacity: 0, scale: 0.95, y: 20 },
-  visible: { 
-    opacity: 1, 
-    scale: 1, 
+  visible: {
+    opacity: 1,
+    scale: 1,
     y: 0,
-    transition: { 
-      type: "spring", 
-      stiffness: 300, 
+    transition: {
+      type: "spring" as const,
+      stiffness: 300,
       damping: 25,
       staggerChildren: 0.1,
       delayChildren: 0.05
     }
   },
-  exit: { 
-    opacity: 0, 
-    scale: 0.95, 
+  exit: {
+    opacity: 0,
+    scale: 0.95,
     y: 10,
     transition: { duration: 0.2, ease: "easeOut" }
   }
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 30, scale: 0.95 },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
+  visible: {
+    opacity: 1,
+    y: 0,
     scale: 1,
-    transition: { type: "spring", stiffness: 350, damping: 25 }
+    transition: { type: "spring" as const, stiffness: 350, damping: 25 }
   }
 };
 
-export function CreditsModal({ onClose, isTouch }: CreditsModalProps) {
+export function CreditsModal({ onClose, isTouch, onOpenDevelopment }: CreditsModalProps) {
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4" onClick={() => { AudioSystem.playClose(); onClose(); }}>
-      <motion.div 
+      <motion.div
         className={`hand-drawn-panel relative shadow-[0_20px_50px_rgba(15,23,42,0.3)] bg-[#fbf7ec] w-[600px] max-w-[95vw] h-[85vh] max-h-[850px] flex flex-col overflow-hidden rounded-[32px] border-[3px] border-slate-800 p-0 ${isTouch ? 'h-[90vh]' : ''}`}
         onClick={(e) => e.stopPropagation()}
         variants={containerVariants}
@@ -55,16 +57,16 @@ export function CreditsModal({ onClose, isTouch }: CreditsModalProps) {
 
         {/* Header */}
         <motion.div variants={itemVariants} className="relative pt-10 pb-6 px-10 flex flex-col items-center border-b-[3px] border-slate-800 bg-[#f2ebd9] z-10 shrink-0">
-          <motion.button 
+          <motion.button
             whileHover={{ scale: 1.15, rotate: 90 }}
             whileTap={{ scale: 0.9 }}
-            onClick={() => { AudioSystem.playClose(); onClose(); }} 
+            onClick={() => { AudioSystem.playClose(); onClose(); }}
             className="absolute top-6 right-6 z-50 p-2.5 rounded-full bg-white text-slate-800 border-2 border-slate-800 shadow-[3px_3px_0_rgba(15,23,42,1)] hover:shadow-[1px_1px_0_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
           >
             <X size={20} strokeWidth={3} />
           </motion.button>
-          
-          <motion.h2 
+
+          <motion.h2
             initial={{ rotate: -2 }}
             whileHover={{ rotate: 1, scale: 1.05 }}
             transition={{ type: "spring", stiffness: 400 }}
@@ -74,12 +76,12 @@ export function CreditsModal({ onClose, isTouch }: CreditsModalProps) {
           </motion.h2>
           <p className="text-sm font-black tracking-widest text-emerald-600 mt-2 uppercase">Credits & Appreciations</p>
         </motion.div>
-        
+
         {/* Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-10 relative z-10 space-y-8">
-          
+
           {/* Main Dev Card */}
-          <motion.div 
+          <motion.div
             variants={itemVariants}
             whileHover={{ y: -4, rotate: -1, scale: 1.01 }}
             className="bg-white border-[3px] border-slate-800 rounded-3xl p-6 sm:p-8 shadow-[8px_8px_0_rgba(15,23,42,1)] flex flex-col gap-6 relative overflow-hidden transition-colors hover:bg-[#faf9f5]"
@@ -88,13 +90,13 @@ export function CreditsModal({ onClose, isTouch }: CreditsModalProps) {
             <div className="flex items-center gap-2 text-[10px] font-black tracking-[0.2em] uppercase text-slate-400 relative z-10">
               <Code2 size={14} /> Solo Developer / Game Design
             </div>
-            
+
             <div className="flex items-end justify-between gap-4 border-b-[3px] border-slate-100 pb-6 relative z-10">
               <div className="flex flex-col">
                 <span className="text-4xl font-black tracking-tight text-slate-900 leading-none">huyan</span>
                 <span className="text-xs font-bold tracking-[0.2em] text-amber-600 mt-2 uppercase">Independent Creator</span>
               </div>
-              <motion.div 
+              <motion.div
                 whileHover={{ scale: 1.1, rotate: 10 }}
                 transition={{ type: "spring", stiffness: 400, damping: 15 }}
                 className="w-16 h-16 rounded-full border-[3px] border-slate-800 bg-white overflow-hidden shrink-0 shadow-[2px_2px_0_rgba(15,23,42,1)]"
@@ -102,33 +104,41 @@ export function CreditsModal({ onClose, isTouch }: CreditsModalProps) {
                 <img src="/title/huyan-avatar.png" alt="huyan avatar" className="w-full h-full object-cover" />
               </motion.div>
             </div>
-            
+
             <div className="flex flex-col gap-3 relative z-10">
               <span className="text-[10px] font-black tracking-[0.2em] uppercase text-slate-400">Links</span>
-              <motion.a 
+              <motion.a
                 whileHover={{ scale: 1.02, x: 4 }}
                 whileTap={{ scale: 0.98 }}
-                href="https://github.com/huyan1349" 
-                target="_blank" 
-                rel="noreferrer" 
+                href="https://github.com/huyan1349"
+                target="_blank"
+                rel="noreferrer"
                 className="flex items-center gap-2 text-sm font-black text-slate-700 bg-[#fbf7ec] px-4 py-3 rounded-xl border-[2px] border-slate-800 shadow-[2px_2px_0_rgba(15,23,42,1)] hover:shadow-[1px_1px_0_rgba(15,23,42,1)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all"
               >
                 GitHub: huyan1349
               </motion.a>
-              <motion.a 
+              <motion.a
                 whileHover={{ scale: 1.02, x: 4 }}
                 whileTap={{ scale: 0.98 }}
-                href="mailto:huyanxius@gmail.com" 
+                href="mailto:huyanxius@gmail.com"
                 className="flex items-center gap-2 text-sm font-black text-slate-700 bg-[#fbf7ec] px-4 py-3 rounded-xl border-[2px] border-slate-800 shadow-[2px_2px_0_rgba(15,23,42,1)] hover:shadow-[1px_1px_0_rgba(15,23,42,1)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all"
               >
                 Contact: huyanxius@gmail.com
               </motion.a>
+              <motion.button
+                whileHover={{ scale: 1.02, x: 4 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => { AudioSystem.playClick(); onOpenDevelopment(); }}
+                className="flex items-center gap-2 text-sm font-black text-slate-700 bg-[#fbf7ec] px-4 py-3 rounded-xl border-[2px] border-slate-800 shadow-[2px_2px_0_rgba(15,23,42,1)] hover:shadow-[1px_1px_0_rgba(15,23,42,1)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all text-left"
+              >
+                开发：技术栈与架构说明
+              </motion.button>
             </div>
           </motion.div>
-          
+
           {/* Special Thanks & Engine */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <motion.div 
+            <motion.div
               variants={itemVariants}
               whileHover={{ y: -4, rotate: 1, scale: 1.02 }}
               className="bg-[#f0f9ff] border-[3px] border-slate-800 rounded-3xl p-6 shadow-[6px_6px_0_rgba(15,23,42,1)] flex flex-col gap-4"
@@ -145,8 +155,8 @@ export function CreditsModal({ onClose, isTouch }: CreditsModalProps) {
                 </div>
               </div>
             </motion.div>
-            
-            <motion.div 
+
+            <motion.div
               variants={itemVariants}
               whileHover={{ y: -4, rotate: -1, scale: 1.02 }}
               className="bg-[#ecfdf5] border-[3px] border-slate-800 rounded-3xl p-6 shadow-[6px_6px_0_rgba(15,23,42,1)] flex flex-col gap-4"
@@ -162,19 +172,19 @@ export function CreditsModal({ onClose, isTouch }: CreditsModalProps) {
               </div>
             </motion.div>
           </div>
-          
+
           {/* Footer Motto */}
           <motion.div variants={itemVariants} className="pt-8 pb-4 text-center">
-            <motion.div 
+            <motion.div
               whileHover={{ scale: 1.08, rotate: -2 }}
               transition={{ type: "spring", stiffness: 400, damping: 10 }}
               className="inline-block relative cursor-default"
             >
               <span className="text-lg font-black text-slate-700">在孤岛中寻找生态的呼吸</span>
-              <motion.div 
+              <motion.div
                 animate={{ scaleX: [0.9, 1.1, 0.9] }}
                 transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -bottom-2 left-0 w-full h-2 bg-emerald-200/60 -rotate-1 -z-10 rounded-full" 
+                className="absolute -bottom-2 left-0 w-full h-2 bg-emerald-200/60 -rotate-1 -z-10 rounded-full"
               />
             </motion.div>
           </motion.div>

@@ -5,6 +5,12 @@ import { AudioSystem } from '../lib/audio';
 import { loadPresetIsland, ensureHomeSlot } from '../utils/islandIO';
 import { Plus, Trash2, ArrowLeft, TreePine, Mountain, Waves, Bird, Fish, Cloud, Sun, Globe, Check, CloudLightning, CloudRain, Snowflake, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { Transition } from 'framer-motion';
+
+type SaveSelectItem =
+    | { type: 'hermit'; id: 'hermit' }
+    | { type: 'create'; id: 'create' }
+    | { type: 'save'; id: string; data: any; name?: string };
 
 const getWeatherConfig = (type: string, id: string, data?: any) => {
     if (type === 'create') {
@@ -59,10 +65,10 @@ export const SaveSelectScreen: React.FC = () => {
         })();
     }, [setServerIslandMap]);
 
-    const allItems = [
+    const allItems: SaveSelectItem[] = [
         { type: 'hermit', id: 'hermit' },
         { type: 'create', id: 'create' },
-        ...saves.map(s => ({ type: 'save', id: s.id, data: s }))
+        ...saves.map(s => ({ type: 'save' as const, id: s.id, data: s, name: s.name }))
     ];
 
     const handleCreateNew = (e: React.MouseEvent) => {
@@ -282,7 +288,7 @@ export const SaveSelectScreen: React.FC = () => {
                             <div className="flex-1 pr-4">
                                 <p className={`text-[10px] font-black tracking-[0.2em] ${theme.textSub} uppercase mb-1`}>Destination / 坐标位置</p>
                                 <h2 className={`text-[26px] font-black tracking-widest ${theme.textMain} uppercase hand-drawn-title leading-tight line-clamp-2`}>
-                                    {item.type === 'hermit' ? '归隐之岛' : item.type === 'create' ? '唤醒新世界' : item.data.name}
+                                    {item.type === 'hermit' ? '归隐之岛' : item.type === 'create' ? '唤醒新世界' : (item.name || item.data?.name || '未知岛屿')}
                                 </h2>
                             </div>
                             
@@ -343,7 +349,7 @@ export const SaveSelectScreen: React.FC = () => {
     const cardHeight = 280; 
     const maxItemsInColumn = Math.ceil(allItems.length / 2);
     const totalHeight = (maxItemsInColumn - 1) * visibleTopEdge + cardHeight;
-    const springTransition = { type: "spring", stiffness: 400, damping: 30 };
+    const springTransition: Transition = { type: "spring", stiffness: 400, damping: 30 };
 
     return (
         <motion.div 
@@ -491,10 +497,10 @@ export const SaveSelectScreen: React.FC = () => {
                                                 
                                                 {authUser && (() => {
                                                     const item = allItems[selectedIndex];
-                                                    const isSynced = deployedIds.has(item.id) || serverIslandMap[item.id];
+                                                    const isSynced = !!(deployedIds.has(item.id) || serverIslandMap[item.id]);
                                                     return (
                                                         <button 
-                                                            onClick={(e) => handleDeploy(item.id, item.data.name, e)}
+                                                            onClick={(e) => handleDeploy(item.id, item.name || item.data?.name || '岛屿', e)}
                                                             disabled={isSynced}
                                                             className={`w-14 h-14 shrink-0 border-[4px] border-slate-900 rounded-2xl hover:translate-x-[2px] hover:translate-y-[2px] active:translate-x-[6px] active:translate-y-[6px] transition-all flex items-center justify-center ${isSynced ? 'bg-emerald-400 text-slate-900' : 'bg-blue-400 text-slate-900'}`}
                                                             title="部署至云端"

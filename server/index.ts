@@ -1,4 +1,5 @@
 import express from 'express';
+import type { ErrorRequestHandler } from 'express';
 import { createServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import cors from 'cors';
@@ -57,6 +58,15 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
+
+const jsonParseErrorHandler: ErrorRequestHandler = (err, _req, res, next) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    res.status(400).json({ error: '请求 JSON 格式无效' });
+    return;
+  }
+  next(err);
+};
+app.use(jsonParseErrorHandler);
 app.use('/avatars', express.static(path.join(__dirname, '..', 'data', 'avatars')));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
@@ -146,6 +156,24 @@ app.get('/api/stats', (_req, res) => {
   const islandCount = (db.prepare('SELECT COUNT(*) as count FROM islands').get() as any).count;
   res.json({ userCount, islandCount, onlineCount: io.sockets.sockets.size });
 });
+
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'API endpoint not found' });
+});
+
+const apiErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
+  if (!req.path.startsWith('/api')) {
+    next(err);
+    return;
+  }
+  console.error('Unhandled API error:', err);
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+  res.status(500).json({ error: '服务器暂时开小差了' });
+};
+app.use(apiErrorHandler);
 
 // Serve built frontend in production
 const distPath = path.join(__dirname, '..', 'dist');

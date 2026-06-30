@@ -1,4 +1,5 @@
 import { useGameStore } from '../store';
+import { buildIslandExportPayload, buildIslandSavePayload } from '../game/saveFormat';
 
 // 直接把一份岛屿快照应用到 store（临时、不建存档）。用于开屏 demo / 归隐之岛预置底图。
 export function applyIslandSnapshot(d: any) {
@@ -56,24 +57,11 @@ async function seedPresetHome(): Promise<void> {
   const name = `${store.authUser?.username || store.playerName || '漫游者'}的岛屿`;
   const slot = { id: HOME_ISLAND_ID, name, lastPlayed: Date.now(), ecoPoints: d.ecoPoints ?? 200, playtime: d.stats?.playtime ?? 0 };
   localStorage.setItem('eco_saves_index', JSON.stringify([slot]));
-  localStorage.setItem(`eco_save_${HOME_ISLAND_ID}`, JSON.stringify({
-    timeOfDay: d.timeOfDay ?? 6,
-    weather: d.weather ?? 'sunny',
-    assets: d.assets ?? [],
-    grassHealth: d.grassHealth ?? 100,
-    deerCount: d.deerCount ?? 0,
-    wolfCount: d.wolfCount ?? 0,
+  localStorage.setItem(`eco_save_${HOME_ISLAND_ID}`, JSON.stringify(buildIslandSavePayload(d, {
     playerName: store.playerName,
     playerAvatar: store.playerAvatar,
-    playerXP: d.playerXP ?? 0,
-    playerLevel: d.playerLevel ?? 1,
-    ecoPoints: d.ecoPoints ?? 200,
-    awakening: d.awakening ?? 0,
-    unlockedAssets: d.unlockedAssets,
-    stats: d.stats ?? { playtime: 0, itemsPlaced: d.assets?.length || 0 },
-    terrainPositions: d.terrainPositions ?? null,
-    terrainTypes: d.terrainTypes ?? null,
-  }));
+    statsItemsPlacedFallback: d.assets?.length || 0,
+  })));
 }
 
 // 确保存档列表里至少有「默认岛」：零存档时把预置岛(preset-demo)落地为一个真实存档槽
@@ -91,27 +79,7 @@ export async function ensureHomeSlot(): Promise<void> {
 // 把当前小岛序列化成游戏可读取的数据对象（与存档格式一致）
 export function serializeIsland() {
   const s = useGameStore.getState();
-  return {
-    format: 'wander-island',
-    version: 2,
-    name: s.islandName,
-    savedAt: Date.now(),
-    timeOfDay: s.timeOfDay,
-    weather: s.weather,
-    season: s.season,
-    biome: s.biome,
-    assets: s.assets,
-    grassHealth: s.grassHealth,
-    deerCount: s.deerCount,
-    wolfCount: s.wolfCount,
-    ecoPoints: s.ecoPoints,
-    playerXP: s.playerXP,
-    playerLevel: s.playerLevel,
-    unlockedAssets: s.unlockedAssets,
-    stats: s.stats,
-    terrainPositions: s.terrainData.positions ? Array.from(s.terrainData.positions) : null,
-    terrainTypes: s.terrainData.types ? Array.from(s.terrainData.types) : null,
-  };
+  return buildIslandExportPayload(s);
 }
 
 // 导出当前小岛为 JSON 文件并触发下载
@@ -135,23 +103,11 @@ export function applyIslandData(d: any, name: string) {
   const slots = store.getSavedSlots();
   slots.push({ id, name, lastPlayed: Date.now(), ecoPoints: d.ecoPoints ?? 200, playtime: d.stats?.playtime ?? 0 });
   localStorage.setItem('eco_saves_index', JSON.stringify(slots));
-  localStorage.setItem(`eco_save_${id}`, JSON.stringify({
-    timeOfDay: d.timeOfDay ?? 6,
-    weather: d.weather ?? 'sunny',
-    assets: d.assets ?? [],
-    grassHealth: d.grassHealth ?? 100,
-    deerCount: d.deerCount ?? 0,
-    wolfCount: d.wolfCount ?? 0,
+  localStorage.setItem(`eco_save_${id}`, JSON.stringify(buildIslandSavePayload(d, {
     playerName: store.playerName,
     playerAvatar: store.playerAvatar,
-    playerXP: d.playerXP ?? 0,
-    playerLevel: d.playerLevel ?? 1,
-    ecoPoints: d.ecoPoints ?? 200,
-    unlockedAssets: d.unlockedAssets,
-    stats: d.stats ?? { playtime: 0, itemsPlaced: 0 },
-    terrainPositions: d.terrainPositions ?? null,
-    terrainTypes: d.terrainTypes ?? null,
-  }));
+    statsItemsPlacedFallback: 0,
+  })));
   store.loadGame(id);
 }
 

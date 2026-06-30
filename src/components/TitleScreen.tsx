@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Suspense, useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store';
 import {
     X,
@@ -26,10 +26,13 @@ import {
 import { AudioSystem } from '../lib/audio';
 import { api } from '../lib/api';
 import { disconnectSocket } from '../lib/socket';
-import { PlayerPanel } from './PlayerPanel';
-import { SettingsModal } from './SettingsModal';
-import { PrivacyPolicyModal } from './PrivacyPolicyModal';
-import { CreditsModal } from './CreditsModal';
+import { lazyNamed } from '../lib/lazyNamed';
+import type { SettingsTab } from './SettingsModal';
+
+const PlayerPanel = lazyNamed(() => import('./PlayerPanel'), 'PlayerPanel');
+const SettingsModal = lazyNamed(() => import('./SettingsModal'), 'SettingsModal');
+const PrivacyPolicyModal = lazyNamed(() => import('./PrivacyPolicyModal'), 'PrivacyPolicyModal');
+const CreditsModal = lazyNamed(() => import('./CreditsModal'), 'CreditsModal');
 
 type ModalType = 'NONE' | 'SETTINGS' | 'CREDITS' | 'PROFILE' | 'MAILBOX' | 'VISITORS' | 'PLAZA' | 'PRIVACY';
 type QualityPreset = 'performance' | 'balanced' | 'cinematic';
@@ -69,6 +72,7 @@ export const TitleScreen: React.FC = () => {
 
     const initialSkipIntro = readStoredBool('wander_title_skip_intro', false);
     const [activeModal, setActiveModal] = useState<ModalType>('NONE');
+    const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>('audio');
     const [splashPhase, setSplashPhase] = useState<'AUTHOR' | 'TITLE' | 'DONE'>(hasSeenSplash || initialSkipIntro ? 'DONE' : 'AUTHOR');
     const [splashVisible, setSplashVisible] = useState(false);
     const [splashOverlayVisible, setSplashOverlayVisible] = useState(!(hasSeenSplash || initialSkipIntro));
@@ -381,7 +385,9 @@ export const TitleScreen: React.FC = () => {
                 {authUser && (
                   <div className="mt-3 pointer-events-auto">
                     {/* 统一玩家界面：与正式游戏内同一套 PlayerPanel */}
-                    <PlayerPanel />
+                    <Suspense fallback={null}>
+                        <PlayerPanel />
+                    </Suspense>
                   </div>
                 )}
             </div>
@@ -435,7 +441,7 @@ export const TitleScreen: React.FC = () => {
                     </button>
 
                     <button
-                        onClick={() => { AudioSystem.playClick(); setActiveModal('SETTINGS'); }}
+                        onClick={() => { AudioSystem.playClick(); setSettingsInitialTab('audio'); setActiveModal('SETTINGS'); }}
                         className={`group flex justify-center items-center hand-drawn-btn hand-drawn-ghost ${isTouch ? 'w-full py-4' : 'w-56 px-5 py-3'} rotate-1`}
                     >
                         <span className={`${isTouch ? 'text-xl' : 'text-xl'} font-bold group-hover:text-slate-900 transition-colors ` + (titleTheme === 'white' ? "text-white/90" : "text-slate-400")}>
@@ -473,6 +479,7 @@ export const TitleScreen: React.FC = () => {
             {/* Modals Overlay */}
             {activeModal !== 'NONE' && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/20 backdrop-blur-md pointer-events-auto animate-in fade-in duration-500">
+                    <Suspense fallback={null}>
 
                     {/* SETTINGS MODAL */}
                     {activeModal === 'SETTINGS' && (
@@ -500,19 +507,28 @@ export const TitleScreen: React.FC = () => {
                             resetTitlePreferences={resetTitlePreferences}
                             isClearingData={isClearingData}
                             clearAllData={clearAllData}
-                            setActiveModal={setActiveModal}
+                            setActiveModal={(modal) => setActiveModal(modal as ModalType)}
+                            initialTab={settingsInitialTab}
                         />
                     )}
 
                     {/* CREDITS MODAL */}
                     {activeModal === 'CREDITS' && (
-                        <CreditsModal onClose={() => setActiveModal('NONE')} isTouch={isTouch} />
+                        <CreditsModal
+                            onClose={() => setActiveModal('NONE')}
+                            isTouch={isTouch}
+                            onOpenDevelopment={() => {
+                                setSettingsInitialTab('development');
+                                setActiveModal('SETTINGS');
+                            }}
+                        />
                     )}
                     {/* PRIVACY POLICY MODAL */}
                     {activeModal === 'PRIVACY' && (
                         <PrivacyPolicyModal onClose={() => { setActiveModal('NONE'); }} />
                     )}
 
+                    </Suspense>
 
                 </div>
             )}
@@ -522,5 +538,3 @@ export const TitleScreen: React.FC = () => {
         </>
     );
 };
-
-

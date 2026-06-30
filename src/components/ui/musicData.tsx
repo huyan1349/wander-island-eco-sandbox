@@ -24,41 +24,88 @@ export function cardObtainedDate(url: string): string | null {
 export const TRACKS = [
   {
     title: 'Tides of Mahogany',
+    subtitle: '桃花木之潮',
     url: '/Tides_of_Mahogany.mp3',
+    cover: '/music-covers/tides-of-mahogany-card.png',
     bg: 'radial-gradient(ellipse at 30% 120%, rgba(180,83,9,0.45), transparent 60%), linear-gradient(160deg, rgba(217,119,6,0.18), rgba(120,53,15,0.05))',
     story: '云海里最老的一座岛，是一艘沉船长成的。当年的水手再没上岸，只把他的潮汐留在红木甲板的纹路里——至今仍随他的思念，一涨，一落。',
   },
   {
     title: 'Glockenspiel Sunprint',
+    subtitle: '日印钟琴',
     url: '/Glockenspiel_Sunprint.mp3',
+    cover: '/music-covers/glockenspiel-sunprint-card.png',
     bg: 'radial-gradient(circle at 50% 22%, rgba(251,191,36,0.5), transparent 65%), linear-gradient(180deg, rgba(254,243,199,0.22), transparent)',
     story: '这座岛的清晨从不结束。曾有个孩子在这里等一个再没来的人，便把钟琴挂上了树，让每一缕阳光替他数着时间——叮，咚，又一天。',
   },
   {
     title: 'The Architecture of Leaves',
+    subtitle: '叶之建筑',
     url: '/The_Architecture_of_Leaves.mp3',
+    cover: '/music-covers/architecture-of-leaves-card.png',
     bg: 'radial-gradient(ellipse at 72% 8%, rgba(132,204,22,0.42), transparent 60%), linear-gradient(160deg, rgba(22,101,52,0.16), rgba(20,83,45,0.05))',
     story: '这里曾是云海中最大的图书馆，后来被森林温柔地吞没。没写完的句子顺着叶脉继续生长，风一吹，便是那些书在轻声朗读自己。',
   },
   {
     title: 'Sakura Drifting Down',
+    subtitle: '樱花飘落时',
     url: '/Sakura_Drifting_Down.mp3',
+    cover: '/music-covers/sakura-drifting-down-card.png',
     bg: 'radial-gradient(ellipse at 50% 0%, rgba(251,207,232,0.55), transparent 65%), linear-gradient(160deg, rgba(244,114,182,0.18), rgba(219,39,119,0.05))',
     story: '这座岛只在有人离开时开花。樱花是它学会的唯一一种告别——落得越多，便记得越久。所以漫游者从不舍得回头。',
   },
   {
     title: 'Lighthouse Beam',
+    subtitle: '灯塔之光',
     url: '/Lighthouse_Beam.mp3',
+    cover: '/music-covers/lighthouse-beam-card.png',
     bg: 'radial-gradient(circle at 50% 18%, rgba(254,240,138,0.5), transparent 60%), linear-gradient(180deg, rgba(248,250,252,0.15), rgba(30,58,138,0.12))',
     story: '最后的守岛人把自己变成了灯塔，好在每个夜里继续转动——为那艘他早知道不会回来、却仍在等的船，留一束光。',
   },
   {
     title: 'Before the First Snow',
+    subtitle: '初雪之前',
     url: '/Before_the_First_Snow.mp3',
+    cover: '/music-covers/before-the-first-snow-card.png',
     bg: 'radial-gradient(ellipse at 50% 0%, rgba(224,242,254,0.85), transparent 70%), linear-gradient(165deg, #c3dcef 0%, #8fb4d6 52%, #5d7da0 100%)',
     story: '这座岛永远停在初雪落下的前一刻。曾有两个人约好一起看第一场雪，后来只剩一个人留了下来——于是整座岛屏住呼吸，替他把那场雪，一直等了下去。',
   },
 ];
+
+export type MusicCardCoverMode = 'classic' | 'illustrated';
+
+export const MUSIC_CARD_COVER_MODE_KEY = 'wander_music_card_cover_mode';
+
+export function readMusicCardCoverMode(): MusicCardCoverMode {
+  if (typeof localStorage === 'undefined') return 'illustrated';
+  return localStorage.getItem(MUSIC_CARD_COVER_MODE_KEY) === 'classic' ? 'classic' : 'illustrated';
+}
+
+export function writeMusicCardCoverMode(mode: MusicCardCoverMode) {
+  localStorage.setItem(MUSIC_CARD_COVER_MODE_KEY, mode);
+  window.dispatchEvent(new CustomEvent('wander:music-cover-mode', { detail: mode }));
+}
+
+export function renderTrackArtwork(idx: number, mode: MusicCardCoverMode = 'illustrated') {
+  const track = TRACKS[idx];
+  if (mode === 'illustrated' && track.cover) {
+    return (
+      <img
+        src={track.cover}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover"
+        draggable={false}
+      />
+    );
+  }
+
+  return (
+    <>
+      <div className="absolute inset-0" style={{ background: track.bg }} />
+      {renderTrackTexture(idx)}
+    </>
+  );
+}
 
 // 针对每首歌曲风绘制的纹理（叠在渐变之上）
 export function renderTrackTexture(idx: number) {

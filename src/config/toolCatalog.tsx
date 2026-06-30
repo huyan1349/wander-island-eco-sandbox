@@ -46,6 +46,7 @@ import {
   Wheat,
   Wind,
   Bird,
+  Train,
 } from "lucide-react";
 import type { ToolType, WeatherType } from "../store";
 
@@ -127,7 +128,7 @@ export const BUILD_CATEGORIES: ToolCategory[] = [
       { id: "terrainDown", icon: ArrowDown, label: "降低地形（可挖谷）", cost: 0 },
       { id: "pond", icon: Waves, label: "水塘 / 湖泊", cost: 100 },
       { id: "water_flow", icon: Waves, label: "河流（拖绘）", cost: 0 },
-      { id: "waterfall", icon: Waves, label: "瀑布（拖绘 · 顺坡而下）", cost: 0 },
+      { id: "waterfall", icon: Waves, label: "瀑布（点两下 · 高→低）", cost: 0 },
       { id: "pave", icon: Hammer, label: "铺设石板路", cost: 0 },
     ],
   },
@@ -169,6 +170,7 @@ export const BUILD_CATEGORIES: ToolCategory[] = [
       { id: "pier", icon: AlignEndHorizontal, label: "固定码头", cost: 60 },
       { id: "sub_island", icon: MountainSnow, label: "人造副岛", cost: 3000 },
       { id: "boat", icon: Ship, label: "小船", cost: 80 },
+      { id: "raft", icon: TreePalm, label: "木筏", cost: 40 },
       { id: "bridge_pillar", icon: Columns, label: "打桩/地基", cost: 100 },
       { id: "bridge", icon: Route, label: "架设悬索桥", cost: 150 },
       { id: "rope", icon: Link, label: "小船系绳", cost: 30 },
@@ -182,6 +184,14 @@ export const BUILD_CATEGORIES: ToolCategory[] = [
       { id: "balloon", icon: Cloud, label: "热气球(系绳)", cost: 120 },
       { id: "balloon_ladder", icon: Cloud, label: "热气球(软梯)", cost: 150 },
       { id: "balloon_bridge", icon: Cloud, label: "热气球(吊桥)", cost: 200 },
+    ],
+  },
+  {
+    name: "交通",
+    icon: Train,
+    tools: [
+      { id: "track", icon: Route, label: "铁轨(拖绘)", cost: 0 },
+      { id: "train", icon: Train, label: "蒸汽火车", cost: 1000 },
     ],
   },
 ];

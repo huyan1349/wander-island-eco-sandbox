@@ -453,9 +453,9 @@ export const MailboxModal: React.FC<{ onClose: () => void; embedded?: boolean }>
   return (
     <motion.div 
       className={embedded ? "flex flex-col h-full" : "hand-drawn-panel w-[700px] h-[550px] max-h-[85vh] p-0 flex flex-col ring-1 relative shadow-[0_20px_50px_rgba(15,23,42,0.3)] bg-[#fbf7ec]"}
-      initial={embedded ? false : { opacity: 0, scale: 0.95, y: 20 }}
-      animate={embedded ? false : { opacity: 1, scale: 1, y: 0 }}
-      exit={embedded ? false : { opacity: 0, scale: 0.95, y: 10 }}
+      initial={embedded ? undefined : { opacity: 0, scale: 0.95, y: 20 }}
+      animate={embedded ? undefined : { opacity: 1, scale: 1, y: 0 }}
+      exit={embedded ? undefined : { opacity: 0, scale: 0.95, y: 10 }}
       transition={{ type: "spring", stiffness: 350, damping: 25 }}
     >
       {!embedded && (

@@ -42,6 +42,12 @@ interface StylizedWaterProps {
   flow?: [number, number];
   /** 额外旋转：圆形水面默认躺平(-PI/2)，带状几何通常已在世界系，传 false 不旋转。 */
   lieFlat?: boolean;
+  /** 关掉「按地形水深上色」改走横向 uv 岸缘上色。瀑布悬在半空，水深会爆表 → 必须传 false。 */
+  depthShade?: boolean;
+  /** 陡面白水（vSteep）强度。溪流默认 0.55；瀑布给低值让水帘以蓝水为主、不整条发白。 */
+  steepFoam?: number;
+  /** 几何提供逐顶点 aSteep 坡度属性（0 缓→1 陡），驱动「陡→白水加速、缓→蓝静」的自然过渡。瀑布专用。 */
+  slopeAttr?: boolean;
   renderOrder?: number;
 }
 
@@ -57,6 +63,9 @@ export function StylizedWater({
   foamMode = 'radial',
   flow = [0, 0],
   lieFlat = true,
+  depthShade = true,
+  steepFoam = 0.55,
+  slopeAttr = false,
   renderOrder = 0,
 }: StylizedWaterProps) {
   const matRef = useRef<THREE.MeshStandardMaterial>(null);
@@ -78,6 +87,7 @@ export function StylizedWater({
     uFresnelP: { value: 4.0 },
     uMinA: { value: 0.16 },        // 浅水透明
     uMaxA: { value: 0.92 },        // 深水不透
+    uSteepFoam: { value: steepFoam }, // 陡面白水强度（瀑布调低 → 蓝水为主）
   });
 
   // 保持 uniforms 与 props 同步（颜色/不透明度可被场景实时调）。
@@ -90,7 +100,8 @@ export function StylizedWater({
     u.uWaveAmp.value = waveAmp;
     u.uFoamMode.value = foamMode === 'ribbon' ? 1.0 : 0.0;
     u.uFlow.value.set(flow[0], flow[1]);
-  }, [shallow, deep, foam, opacity, waveAmp, foamMode, flow]);
+    u.uSteepFoam.value = steepFoam;
+  }, [shallow, deep, foam, opacity, waveAmp, foamMode, flow, steepFoam]);
 
   const circleGeo = useMemo(() => {
     if (geometry) return null;
@@ -103,10 +114,12 @@ export function StylizedWater({
       .replace('#include <common>', `#include <common>
 uniform float uTime; uniform float uWaveAmp; uniform float uFoamMode;
 varying float vShore; varying float vSteep; varying vec2 vWUv;
-varying vec3 vWorldPos; varying vec3 vViewDir;`)
+varying vec3 vWorldPos; varying vec3 vViewDir;
+${slopeAttr ? 'attribute float aSteep;' : ''} varying float vSteepA;`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
 {
   vWUv = uv;
+  vSteepA = ${slopeAttr ? 'aSteep' : '0.0'};
   vec3 wp = (modelMatrix * vec4(position, 1.0)).xyz; // 未起伏的水面世界坐标（算水深用，稳定不闪）
   vWorldPos = wp;
   vViewDir = cameraPosition - wp;
@@ -132,9 +145,10 @@ varying vec3 vWorldPos; varying vec3 vViewDir;`)
 uniform float uTime; uniform vec3 uShallow; uniform vec3 uDeep; uniform vec3 uFoam;
 uniform float uOpacity; uniform float uFoamMode; uniform vec2 uFlow;
 uniform sampler2D uHeightTex; uniform float uIslandSize; uniform float uUseDepth;
-uniform float uAbsorb; uniform float uFoamWidth; uniform float uFresnelP; uniform float uMinA; uniform float uMaxA;
+uniform float uAbsorb; uniform float uFoamWidth; uniform float uFresnelP; uniform float uMinA; uniform float uMaxA; uniform float uSteepFoam;
 varying float vShore; varying float vSteep; varying vec2 vWUv;
 varying vec3 vWorldPos; varying vec3 vViewDir;
+varying float vSteepA;
 float wHash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float wNoise(vec2 p){ vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.0-2.0*f);
   return mix(mix(wHash(i),wHash(i+vec2(1,0)),u.x), mix(wHash(i+vec2(0,1)),wHash(i+vec2(1,1)),u.x), u.y); }`)
@@ -158,7 +172,9 @@ float wNoise(vec2 p){ vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.0-2.0*f);
     alpha = uOpacity;
   }
   vec3 water = mix(uShallow, uDeep, t);
-  float centerFast = clamp(1.0 - vShore, 0.0, 1.0); // 河心快、近岸慢
+  // 级联：陡处(vSteepA 来自几何坡度属性，溪流恒为 0)颜色略浅、水流更急 → 缓蓝陡白的自然过渡
+  water = mix(water, uShallow, vSteepA * 0.35);
+  float centerFast = clamp(1.0 - vShore + vSteepA * 1.2, 0.0, 1.6); // 河心快、近岸慢；陡处更急
 
   // 顺流而下的水花丝：沿流向(uv.y 弧长)漂移的两层噪声，组织成细丝（河心更急更密）
   vec2 f1 = vec2(vWUv.x * 3.2, vWUv.y * 0.9 - uTime * (0.7 + centerFast * 1.2));
@@ -169,25 +185,27 @@ float wNoise(vec2 p){ vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.0-2.0*f);
   // 岸线白沫：贴水线一圈，慢噪声起伏（不再高频闪烁）
   float shoreFoam = shoreF * (0.45 + 0.55 * wNoise(vec2(vWUv.x * 5.0, vWUv.y * 1.3 - uTime * 0.9)));
 
-  // 陡处白水（瀑布段，本期先保留弱化，待第二期单独打磨）
-  float fall = uFoamMode > 0.5 ? smoothstep(0.35, 0.8, vSteep) * 0.55 : 0.0;
+  // 陡处白水（瀑布段）：强度由 uSteepFoam 控制——溪流默认 0.55，瀑布给低值让水帘以蓝水为主。
+  float fall = uFoamMode > 0.5 ? smoothstep(0.35, 0.8, vSteep) * uSteepFoam : 0.0;
 
   // 菲涅尔：掠角微泛白（俯视通透）
   float fres = pow(1.0 - clamp(normalize(vViewDir).y, 0.0, 1.0), uFresnelP);
   water = mix(water, uShallow, fres * 0.12);
 
   float riverFoam = uFoamMode > 0.5 ? threads * 0.5 : 0.0;
-  float foamAmt = clamp(shoreFoam + riverFoam + fall, 0.0, 1.0);
+  float cascadeFoam = smoothstep(0.15, 0.95, vSteepA) * 0.5; // 陡处白水（自然过渡：陡→白、缓→蓝）
+  float foamAmt = clamp(shoreFoam + riverFoam + fall + cascadeFoam, 0.0, 1.0);
   diffuseColor.rgb = mix(water, uFoam, foamAmt);
+  ${slopeAttr ? 'diffuseColor.rgb = mix(diffuseColor.rgb, uDeep, smoothstep(0.78, 1.0, vWUv.y) * 0.8); // 瀑布末节渐变为潭水深色 → 与跌水潭融合，消除色差衔接' : ''}
   diffuseColor.a = max(alpha, foamAmt * 0.9);
 }`);
-  }, []);
+  }, [slopeAttr]);
 
   useFrame((s) => {
     const u = uniforms.current;
     u.uTime.value = s.clock.elapsedTime;
     const hf = getHeightField();
-    if (hf) { u.uHeightTex.value = hf.tex; u.uIslandSize.value = hf.size; u.uUseDepth.value = 1; }
+    if (hf && depthShade) { u.uHeightTex.value = hf.tex; u.uIslandSize.value = hf.size; u.uUseDepth.value = 1; }
     else { u.uUseDepth.value = 0; }
   });
 
@@ -206,7 +224,7 @@ float wNoise(vec2 p){ vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.0-2.0*f);
         flatShading
         side={THREE.DoubleSide}
         onBeforeCompile={onBeforeCompile}
-        customProgramCacheKey={() => 'stylized-water-' + foamMode}
+        customProgramCacheKey={() => 'stylized-water-' + foamMode + (slopeAttr ? '-s' : '')}
       />
     </mesh>
   );

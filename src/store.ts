@@ -5,90 +5,13 @@ import { getCiAffinity, addCiAffinity, getCiMemory, addCiMemory as addCiMemoryEn
 import type { BrushMode, BrushFalloff, SurfaceType } from './utils/terrainBrush';
 import { FlourishCardId, FLOURISH_CARDS, STARTING_DECK, HAND_SIZE, SEASON_BASE_ECO, evaluateSymbiosis, shuffle } from './game/flourish';
 import { getTerrainHeight } from './utils/terrain';
-import { pickFragment } from './game/fragments';
 import { loadUnlocked, saveUnlocked } from './game/constellations';
 import { snapFloatingPlatformPlacement } from './utils/platformPlacement';
-
-export type ToolType = 'none' | 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'water_flow' | 'waterfall' | 'streetlamp' | 'terrainUp' | 'terrainDown' | 'eraser' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'pave' | 'sub_island' | 'birdhouse' | 'hoe' | 'seed_wheat' | 'seed_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox' | 'lantern_girl';
-export type WeatherType = 'sunny' | 'cloudy' | 'rainy' | 'foggy' | 'snowy' | 'stormy';
-
-// 辞向玩家播报天气时的诗意文案（每种天气随机取一句）
-const FORECAST_LINES: Record<WeatherType, string[]> = {
-  sunny: ['天要放晴了，阳光会把岛照得发亮。', '云散了，是个好天气。'],
-  cloudy: ['云正慢慢聚拢，光会变得温柔。', '天色要暗一点了，云在路上。'],
-  rainy: ['我闻到雨的气息了，草会喝饱水。', '要下雨了，听见远处的潮声了吗。'],
-  foggy: ['雾要漫上来了，岛会变得朦胧。', '一层雾正靠近，看不太远了。'],
-  snowy: ['要下雪了……岛会安静下来。', '第一片雪快落了，记得留意。'],
-  stormy: ['风暴在路上，把松动的东西收一收吧。', '雷云压过来了，今晚不太平静。'],
-};
-function pickForecastLine(w: WeatherType): string {
-  const lines = FORECAST_LINES[w] || FORECAST_LINES.sunny;
-  return lines[Math.floor(Math.random() * lines.length)];
-}
-
-export interface Vector3Data {
-  x: number;
-  y: number;
-  z: number;
-}
-
-export interface PlacedAsset {
-  id: string;
-  type: 'treeA' | 'treeB' | 'rock' | 'deer' | 'wolf' | 'seagull' | 'dolphin' | 'fish' | 'spring' | 'pond' | 'water_flow' | 'waterfall' | 'streetlamp' | 'house' | 'windmill' | 'lighthouse' | 'platform' | 'pier' | 'boat' | 'bridge' | 'bridge_pillar' | 'rope' | 'sub_island' | 'birdhouse' | 'hoe' | 'farmland' | 'crop_wheat' | 'crop_carrot' | 'tent' | 'campfire' | 'fence' | 'well' | 'bench' | 'balloon' | 'balloon_ladder' | 'balloon_bridge' | 'spirit_tree' | 'observatory' | 'ruins_arch' | 'waterwheel' | 'cherry_tree' | 'bamboo' | 'pine_tree' | 'willow_tree' | 'bush' | 'sign' | 'mailbox' | 'lantern_girl';
-  position: Vector3Data;
-  rotation: Vector3Data;
-  scale?: number;
-  customState?: string;
-  text?: string; // 牌子文字
-  growthProgress?: number;
-  plantedAt?: number;
-  connections?: string[]; // IDs of connected objects (for ropes/bridges)
-  terrain?: {
-    positions: number[];
-    types: number[];
-    size: number;
-    segments: number;
-  };
-}
-
-export interface VFX {
-    id: number;
-    type: 'dust' | 'splash' | 'blood';
-    position: Vector3Data;
-}
-
-export type GameScreen = 'TITLE' | 'LOGIN' | 'ONBOARD' | 'SAVE_SELECT' | 'PLAYING';
-
-export interface AuthUser {
-  id: string;
-  username: string;
-  avatar: string;
-  motto: string;
-  visitorCount?: number;
-  memberNo?: number; residentNo?: number;
-}
-
-export interface ToastItem {
-  id: string;
-  message: string;
-  type: 'online' | 'offline' | 'friend_request' | 'info';
-  createdAt: number;
-}
-
-export interface VisitingIsland {
-  islandId: string;
-  islandName: string;
-  ownerName: string;
-  data: any;
-}
-
-export interface SaveSlot {
-  id: string;
-  name: string;
-  lastPlayed: number;
-  ecoPoints: number;
-  playtime: number;
-}
+import { getDefaultUnlockedAssets, mergeDefaultUnlockedAssets } from './game/defaults';
+import { buildIslandSavePayload, normalizeIslandSavePayload } from './game/saveFormat';
+import { advanceForecast, buildForecastAlert } from './game/weather';
+import type { AuthUser, BiomeType, GameScreen, PlacedAsset, SaveSlot, SeasonType, ToastItem, ToolType, Vector3Data, VFX, VisitingIsland, WeatherType } from './game/types';
+export type { AuthUser, BiomeType, GameScreen, PlacedAsset, SaveSlot, SeasonType, ToastItem, ToolType, Vector3Data, VFX, VisitingIsland, WeatherType } from './game/types';
 
 export const DEFAULT_AVATAR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0f172a"/><stop offset="100%" stop-color="#1e293b"/></linearGradient><linearGradient id="g2" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient></defs><rect width="120" height="120" fill="url(#g1)"/><circle cx="60" cy="45" r="24" fill="url(#g2)" opacity="0.9"/><path d="M10 100 L60 40 L110 100 Z" fill="#0f172a" opacity="0.7"/><path d="M45 100 L80 50 L115 100 Z" fill="#020617" opacity="0.6"/></svg>`;
 export const AVATAR_PRESETS = [
@@ -185,11 +108,11 @@ interface GameState {
   balloonStyle: 'lowpoly' | 'striped';
   setBalloonStyle: (s: 'lowpoly' | 'striped') => void;
   
-  season: 'spring' | 'summer' | 'autumn' | 'winter';
-  setSeason: (season: 'spring' | 'summer' | 'autumn' | 'winter') => void;
+  season: SeasonType;
+  setSeason: (season: SeasonType) => void;
 
-  biome: 'default' | 'forest' | 'desert' | 'tundra' | 'volcanic';
-  setBiome: (biome: 'default' | 'forest' | 'desert' | 'tundra' | 'volcanic') => void;
+  biome: BiomeType;
+  setBiome: (biome: BiomeType) => void;
   titleTheme: 'white' | 'blue';
   setTitleTheme: (theme: 'white' | 'blue') => void;
   
@@ -335,6 +258,7 @@ interface GameState {
   startFlourish: () => void;
   selectCard: (id: FlourishCardId) => void;
   cancelCard: () => void;
+  commitCardPlacement: (pos: { x: number; z: number }) => boolean;
   advanceSeason: () => void;
 
   // 拍照模式
@@ -345,9 +269,11 @@ interface GameState {
     focusDistance: number;
     focusTarget: [number, number, number] | null;
     bokehScale: number;
+    focusRange: number;
     filter: 'default' | 'cinematic' | 'vintage' | 'cyberpunk' | 'blackwhite';
     watermark: boolean;
     watermarkText: string;
+    watermarkStyle: 'seal' | 'minimal' | 'polaroid' | 'eco' | 'cinema';
   };
   setPhotoSettings: (settings: Partial<GameState['photoSettings']>) => void;
 }
@@ -463,26 +389,20 @@ export const useGameStore = create<GameState>((set, get) => ({
   forecast: ['cloudy', 'rainy', 'sunny'],
   forecastAlert: null,
   advanceDay: () => set((state) => {
-    const types: WeatherType[] = ['sunny', 'cloudy', 'rainy', 'foggy', 'snowy', 'stormy'];
-    const nextForecast = [...state.forecast];
-    const today = nextForecast.shift() || 'sunny';
-    nextForecast.push(types[Math.floor(Math.random() * types.length)]);
-    const alert = today !== state.weather
-      ? { weather: today, forecast: nextForecast, line: pickForecastLine(today), at: Date.now() }
+    const next = advanceForecast(state.forecast);
+    const alert = next.weather !== state.weather
+      ? buildForecastAlert(next.weather, next.forecast)
       : state.forecastAlert;
-    return { weather: today, forecast: nextForecast, forecastAlert: alert };
+    return { weather: next.weather, forecast: next.forecast, forecastAlert: alert };
   }),
   // 随机推进一档天气（不跨天），并让辞向玩家播报预报
   rollWeather: () => set((state) => {
-    const types: WeatherType[] = ['sunny', 'cloudy', 'rainy', 'foggy', 'snowy', 'stormy'];
-    const nextForecast = [...state.forecast];
-    const today = nextForecast.shift() || 'sunny';
-    nextForecast.push(types[Math.floor(Math.random() * types.length)]);
-    if (today === state.weather) return { forecast: nextForecast }; // 没变就不打扰
+    const next = advanceForecast(state.forecast);
+    if (next.weather === state.weather) return { forecast: next.forecast }; // 没变就不打扰
     return {
-      weather: today,
-      forecast: nextForecast,
-      forecastAlert: { weather: today, forecast: nextForecast, line: pickForecastLine(today), at: Date.now() },
+      weather: next.weather,
+      forecast: next.forecast,
+      forecastAlert: buildForecastAlert(next.weather, next.forecast),
     };
   }),
   clearForecastAlert: () => set({ forecastAlert: null }),
@@ -533,8 +453,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   unlockedAssets: [
     'treeA', 'treeB', 'rock', 'terrainUp', 'terrainDown', 'eraser',
     'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'water_flow', 'waterfall', 'streetlamp', 'house', 'windmill',
-    'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
-    'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'lantern_girl'
+    'lighthouse', 'platform', 'boat', 'raft', 'bridge', 'rope', 'sub_island', 'birdhouse',
+    'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'lantern_girl', 'track', 'train'
   ],
   unlockAsset: (assetId, cost) => {
       const state = get();
@@ -616,7 +536,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   pendingFragment: null,
   setPendingFragment: (id) => set({ pendingFragment: id }),
   awardFragment: () => {
-    import('./game/fragments').then(({ pickFragment }) => {
+    import('./game/fragmentPicker').then(({ pickFragment }) => {
       const frag = pickFragment(get().collectedFragments);
       set({ pendingFragment: frag.id });
     });
@@ -678,9 +598,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     focusDistance: 0.05,
     focusTarget: null,
     bokehScale: 8.0,
+    focusRange: 14,
     filter: 'default',
     watermark: true,
     watermarkText: 'Wander Island',
+    watermarkStyle: 'seal',
   },
   setPhotoSettings: (settings) => set((state) => ({ photoSettings: { ...state.photoSettings, ...settings } })),
 
@@ -737,7 +659,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     
     // Auto-spawn visual effects for placed objects
     let newVfxQueue = [...state.vfxQueue];
-    const waterAssets = ['pier', 'platform', 'boat', 'bridge_pillar', 'bridge', 'rope'];
+    const waterAssets = ['pier', 'platform', 'boat', 'raft', 'bridge_pillar', 'bridge', 'rope'];
     const landAssets = ['house', 'windmill', 'lighthouse', 'treeA', 'treeB', 'rock'];
     
     if (waterAssets.includes(asset.type)) {
@@ -896,7 +818,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const finalEP = Math.max(0, state.ecoPoints + passiveEP);
     
     // Update Procedural Audio Env Mix
-    AudioSystem.updateEcologyState(springs.length, windmills.length, state.weather);
+    AudioSystem.updateEcologyState(springs.length, windmills.length, state.weather, state.timeOfDay);
 
     // 苏醒度（主线脊柱）：持续健康 + 有水有树才缓慢累积；生态崩溃时轻微回落
     let newAwakening = state.awakening;
@@ -957,24 +879,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!state.islandId) return;
 
     try {
-      const saveData = {
-        timeOfDay: state.timeOfDay,
-        weather: state.weather,
-        assets: state.assets,
-        grassHealth: state.grassHealth,
-        deerCount: state.deerCount,
-        wolfCount: state.wolfCount,
-        playerName: state.playerName,
-        playerAvatar: state.playerAvatar,
-        playerXP: state.playerXP,
-        playerLevel: state.playerLevel,
-        ecoPoints: state.ecoPoints,
-        awakening: state.awakening,
-        unlockedAssets: state.unlockedAssets,
-        stats: state.stats,
-        terrainPositions: state.terrainData.positions ? Array.from(state.terrainData.positions) : null,
-        terrainTypes: state.terrainData.types ? Array.from(state.terrainData.types) : null
-      };
+      const saveData = buildIslandSavePayload(state);
       localStorage.setItem(`eco_save_${state.islandId}`, JSON.stringify(saveData));
 
       // Update index
@@ -1002,13 +907,20 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       const saved = localStorage.getItem(`eco_save_${targetId}`);
       if (saved) {
-        const data = JSON.parse(saved);
+        const data = normalizeIslandSavePayload(JSON.parse(saved), {
+          playerName: 'wander',
+          playerAvatar: DEFAULT_AVATAR,
+          season: get().season,
+          biome: get().biome,
+        });
         set({
           screen: keepTitleScreen ? 'TITLE' : 'PLAYING',
           islandId: targetId,
           islandName: slot.name,
           timeOfDay: 6, // Forced to 6 AM
           weather: data.weather,
+          season: data.season,
+          biome: data.biome,
           assets: data.assets,
           grassHealth: data.grassHealth,
           deerCount: data.deerCount,
@@ -1019,13 +931,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           playerLevel: levelFromXP(getGlobalXP()),
           ecoPoints: data.ecoPoints !== undefined ? data.ecoPoints : 200,
           awakening: data.awakening ?? 0,
-          unlockedAssets: Array.from(new Set([
-            ...(data.unlockedAssets || []),
-            'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'terrainUp', 'terrainDown', 'eraser',
-            'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'water_flow', 'waterfall', 'streetlamp', 'house', 'windmill',
-            'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
-            'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'lantern_girl'
-          ])),
+          unlockedAssets: mergeDefaultUnlockedAssets(data.unlockedAssets),
           stats: data.stats || { playtime: 0, itemsPlaced: data.assets?.length || 0 },
           terrainData: {
              ...get().terrainData,
@@ -1049,12 +955,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       ecoPoints: 200,
       awakening: 0,
       stats: { playtime: 0, itemsPlaced: 0 },
-      unlockedAssets: [
-          'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock', 'terrainUp', 'terrainDown', 'eraser',
-          'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'water_flow', 'waterfall', 'streetlamp', 'house', 'windmill',
-          'lighthouse', 'platform', 'boat', 'bridge', 'rope', 'sub_island', 'birdhouse',
-          'hoe', 'seed_wheat', 'seed_carrot', 'tent', 'campfire', 'fence', 'well', 'bench', 'balloon', 'balloon_ladder', 'balloon_bridge', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'lantern_girl'
-      ],
+      unlockedAssets: getDefaultUnlockedAssets(),
       terrainData: { ...get().terrainData, positions: null, types: null }
   }),
 

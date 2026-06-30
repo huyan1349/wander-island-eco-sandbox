@@ -226,7 +226,46 @@ export interface WaterfallSpec {
   width: number;
 }
 
-const smooth = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+/**
+ * 沿地形「最陡下降」追踪一条自然水流折线（参考河网生成的 steepest-descent 思路：
+ * Red Blob Games / flowing-terrain / mapgen_rivers——每点朝最低邻居流）。
+ *  - 以梯度下降方向为主 + 朝目标点的弱偏置（保证大致流向用户点的落点）
+ *  - 惯性平滑 → 路径圆顺、不生硬
+ *  - 进洼地/到目标/兜底里程 → 停止
+ * 解决「两点直连 → 浮空、生硬」：水像真的一样顺着山坡流到最低处。
+ */
+function traceFlowPath(start: Vec2, target: Vec2, sampleH: (x: number, z: number) => number): Vec2[] {
+  const STEP = 0.5, MAX = 120, EPS = 0.35, BIAS = 0.45, INERT = 0.55;
+  const out: Vec2[] = [{ x: start.x, z: start.z }];
+  let px = start.x, pz = start.z;
+  let dirx = target.x - start.x, dirz = target.z - start.z;
+  { const l = Math.hypot(dirx, dirz) || 1; dirx /= l; dirz /= l; }
+  const span = Math.hypot(target.x - start.x, target.z - start.z) || 1;
+  const targetH = sampleH(target.x, target.z); // 落点高度 → 降到这个高度就停（到最低处）
+  for (let i = 0; i < MAX; i++) {
+    // 最陡下降方向（中心差分求梯度，取负）
+    const gx = sampleH(px + EPS, pz) - sampleH(px - EPS, pz);
+    const gz = sampleH(px, pz + EPS) - sampleH(px, pz - EPS);
+    let dnx = -gx, dnz = -gz; const dn = Math.hypot(dnx, dnz);
+    // 朝目标方向（单位向量）
+    let hx = target.x - px, hz = target.z - pz; const hl = Math.hypot(hx, hz) || 1; hx /= hl; hz /= hl;
+    if (dn > 1e-4) { dnx /= dn; dnz /= dn; } else { dnx = hx; dnz = hz; } // 平地 → 直接朝目标
+    // 梯度为主 + 目标弱偏置
+    const bx = dnx * (1 - BIAS) + hx * BIAS, bz = dnz * (1 - BIAS) + hz * BIAS;
+    // 惯性平滑（圆顺）
+    dirx = dirx * INERT + bx * (1 - INERT); dirz = dirz * INERT + bz * (1 - INERT);
+    const l = Math.hypot(dirx, dirz) || 1; const ux = dirx / l, uz = dirz / l;
+    px += ux * STEP; pz += uz * STEP;
+    out.push({ x: px, z: pz });
+    const traveled = Math.hypot(px - start.x, pz - start.z);
+    const curH = sampleH(px, pz);
+    if (Math.hypot(px - target.x, pz - target.z) < STEP * 1.5) break;  // 到达目标附近
+    if (curH <= targetH + 0.05 && traveled > STEP * 2) break;          // 已降到落点高度（最低处）
+    if (dn < 0.012 && traveled > span * 0.5) break;                    // 进洼地（平处）
+    if (traveled > span * 1.8) break;                                  // 兜底里程
+  }
+  return out;
+}
 
 export function encodeWaterfall(s: WaterfallSpec): string {
   const { lip, base, width } = s;
@@ -241,34 +280,55 @@ export function decodeWaterfall(str: string | undefined): WaterfallSpec | null {
 }
 
 /**
- * 连线放置瀑布：取 A/B 两点，按地形高低定崖口/落潭，自动开凿
- *  ① 崖顶平台（干净出水口）② 顺线陡降凹槽（贴崖）③ 底部跌水潭碗。
- * 写回地形，返回 wf: 编码（含落潭水面 Y）。
+ * 放置瀑布：取 A/B 两点 → 从高点开始沿地形「最陡下降」追踪一条自然水路（不再两点直连，
+ * 杜绝浮空/生硬），沿水路挖一道浅槽让水嵌进地形（有岸、不浮空），末端挖跌水潭碗。
+ * 返回 wf2: 编码（整条水路折线 + 潭面 Y + 宽度）。
  */
-export function shapeWaterfallAndEncode(a: Vec2, b: Vec2, width = 2.4): string {
-  const ay = getTerrainHeight(a.x, a.z), by = getTerrainHeight(b.x, b.z);
-  const lip = ay >= by ? { x: a.x, z: a.z, y: ay } : { x: b.x, z: b.z, y: by };
-  const low = ay >= by ? { x: b.x, z: b.z, y: by } : { x: a.x, z: a.z, y: ay };
-  const poolFloor = low.y - 0.7;
-  const poolY = poolFloor + 0.45; // 潭水面
+export function shapeWaterfallAndEncode(a: Vec2, b: Vec2, width = 1.6): string {
+  const sampleH = buildHeightSampler();
+  const ay = sampleH(a.x, a.z), by = sampleH(b.x, b.z);
+  const top = ay >= by ? a : b;     // 高点 = 出水源头
+  const low = ay >= by ? b : a;     // 低点 = 大致落点（仅作偏置目标）
+  const path = traceFlowPath(top, low, sampleH);
+  const end = path[path.length - 1];
+  const endY = sampleH(end.x, end.z);
+  const poolFloor = endY - 0.6;
+  const poolY = poolFloor + 0.4;    // 潭水面（略低于末端地表 → 蓄住水）
 
   const store = useGameStore.getState();
   const td = store.terrainData;
   if (td.positions) {
     const positions = Float32Array.from(td.positions);
-    const dx = low.x - lip.x, dz = low.z - lip.z; const Lh = Math.hypot(dx, dz) || 1; const ux = dx / Lh, uz = dz / Lh;
-    // ① 沿水帘线开一道「凹槽」把山体挖空 → 水帘露出来、贴着凹槽后壁落下。
-    //    崖口后骤降到潭底，其后保持潭底。窄槽（不抬高、不铺大平台 → 不出土黄方块）。
-    for (let d = 0; d <= Lh; d += 0.4) {
-      const t = d / Lh;
-      const targetY = lip.y - (lip.y - poolFloor) * smooth(0.0, 0.4, t);
-      applyTerrainBrush(positions, { mode: 'flatten', targetY, size: width * 0.6, strength: 1, falloff: 'flat_center', isDrag: false, px: lip.x + ux * d, pz: lip.z + uz * d });
+    // ① 沿水路挖一道浅槽：水嵌进地形、两侧自然成岸、不再悬浮于坡面之上。
+    for (let k = 0; k < path.length; k++) {
+      const p = path[k];
+      const targetY = getTerrainHeight(p.x, p.z) - 0.3; // 浅槽，避免把山坡劈出大沟
+      applyTerrainBrush(positions, { mode: 'flatten', targetY, size: width * 0.5, strength: 0.65, falloff: 'flat_center', isDrag: false, px: p.x, pz: p.z });
     }
     // ② 跌水潭碗（圆滑凹陷 → 蓄水成潭）
-    applyTerrainBrush(positions, { mode: 'flatten', targetY: poolFloor, size: width * 1.5, strength: 1, falloff: 'flat_center', isDrag: false, px: low.x, pz: low.z });
+    applyTerrainBrush(positions, { mode: 'flatten', targetY: poolFloor, size: width * 1.6, strength: 1, falloff: 'flat_center', isDrag: false, px: end.x, pz: end.z });
     store.setTerrainData(positions, td.types, td.size, td.segments);
   }
-  return encodeWaterfall({ lip: { x: lip.x, y: lip.y + 0.05, z: lip.z }, base: { x: low.x, y: poolY, z: low.z }, width });
+  return encodeWaterfallPath(path, poolY, width);
+}
+
+/** wf2: 编码——整条水路折线 + 潭面 Y + 宽度。 */
+export function encodeWaterfallPath(points: Vec2[], poolY: number, width: number): string {
+  return `wf2:${width.toFixed(2)}:${poolY.toFixed(2)}:` + points.map(p => `${p.x.toFixed(2)},${p.z.toFixed(2)}`).join(';');
+}
+
+export function decodeWaterfallPath(s: string | undefined): { points: Vec2[]; poolY: number; width: number } | null {
+  if (!s || !s.startsWith('wf2:')) return null;
+  const parts = s.slice(4).split(':');
+  if (parts.length < 3) return null;
+  const width = parseFloat(parts[0]);
+  const poolY = parseFloat(parts[1]);
+  const points = parts[2].split(';').map(seg => {
+    const [x, z] = seg.split(',').map(parseFloat);
+    return { x, z };
+  }).filter(p => !Number.isNaN(p.x) && !Number.isNaN(p.z));
+  if (points.length < 2 || Number.isNaN(width) || Number.isNaN(poolY)) return null;
+  return { points, poolY, width };
 }
 
 export function decodeStreamState(s: string | undefined): Vec2[] | null {

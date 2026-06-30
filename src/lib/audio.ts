@@ -15,7 +15,11 @@ export class AudioSystem {
     private static waterGain: GainNode | null = null;
     private static bloomGain: GainNode | null = null;
     private static birdGain: GainNode | null = null;
-    
+    // 海岛声景：常驻涌浪 + 夜虫层（随昼夜淡入），让白噪音不止是一层平铺的"沙沙"。
+    private static oceanGain: GainNode | null = null;
+    private static oceanFilter: BiquadFilterNode | null = null;
+    private static insectGain: GainNode | null = null;
+
     private static windFilter: BiquadFilterNode | null = null;
     private static birdTimer: ReturnType<typeof setTimeout> | null = null;
     private static lastPressAt = 0;
@@ -528,6 +532,98 @@ export class AudioSystem {
         this.birdGain.gain.value = 0.025;
         this.birdGain.connect(this.masterGain);
         this.scheduleDistantLife();
+
+        // 涌浪 + 夜虫
+        this.setupOceanSurf();
+    }
+
+    /**
+     * 海浪涌动 + 夜虫层。
+     *  - 涌浪：低通噪声主体，由一快一慢两条 LFO 调制音量，做出"一波一波"的呼吸感；
+     *    再用同相 LFO 推高低通截止 → 每个浪头带出一缕高频泡沫"嘶"声，不机械。
+     *  - 夜虫：带通噪声 + ~22Hz 颤音，白天静默、入夜淡入，给夜晚多一层质感。
+     */
+    private static setupOceanSurf() {
+        if (!this.ctx || !this.masterGain || !this.noiseBuffer) return;
+        const ctx = this.ctx;
+
+        // —— 涌浪主体 ——
+        this.oceanGain = ctx.createGain();
+        this.oceanGain.gain.value = 0.05;                 // 基底，LFO 在其上起伏
+
+        this.oceanFilter = ctx.createBiquadFilter();
+        this.oceanFilter.type = 'lowpass';
+        this.oceanFilter.frequency.value = 480;
+        this.oceanFilter.Q.value = 0.4;
+
+        const oceanHP = ctx.createBiquadFilter();          // 去掉低频隆隆，留"水"的中低频
+        oceanHP.type = 'highpass';
+        oceanHP.frequency.value = 160;
+
+        const oceanSrc = ctx.createBufferSource();
+        oceanSrc.buffer = this.noiseBuffer;
+        oceanSrc.loop = true;
+        oceanSrc.connect(oceanHP);
+        oceanHP.connect(this.oceanFilter);
+        this.oceanFilter.connect(this.oceanGain);
+        this.oceanGain.connect(this.masterGain);
+        oceanSrc.start();
+
+        // 主涌浪：约每 7s 一波
+        const swell = ctx.createOscillator();
+        swell.type = 'sine';
+        swell.frequency.value = 0.14;
+        const swellDepth = ctx.createGain();
+        swellDepth.gain.value = 0.034;
+        swell.connect(swellDepth);
+        swellDepth.connect(this.oceanGain.gain);
+        swell.start();
+
+        // 细碎波纹：更快更轻，破坏机械感
+        const ripple = ctx.createOscillator();
+        ripple.type = 'sine';
+        ripple.frequency.value = 0.37;
+        const rippleDepth = ctx.createGain();
+        rippleDepth.gain.value = 0.013;
+        ripple.connect(rippleDepth);
+        rippleDepth.connect(this.oceanGain.gain);
+        ripple.start();
+
+        // 浪头泡沫"嘶"：同相推高低通截止
+        const crest = ctx.createGain();
+        crest.gain.value = 300;
+        swell.connect(crest);
+        crest.connect(this.oceanFilter.frequency);
+
+        // —— 夜虫层 ——
+        this.insectGain = ctx.createGain();
+        this.insectGain.gain.value = 0.0;                  // 由 updateEcologyState 按昼夜驱动
+        this.insectGain.connect(this.masterGain);
+
+        const insBp = ctx.createBiquadFilter();
+        insBp.type = 'bandpass';
+        insBp.frequency.value = 6200;
+        insBp.Q.value = 6;
+
+        const insTrem = ctx.createGain();
+        insTrem.gain.value = 0.5;                          // 颤音中心
+
+        const insSrc = ctx.createBufferSource();
+        insSrc.buffer = this.noiseBuffer;
+        insSrc.loop = true;
+        insSrc.connect(insBp);
+        insBp.connect(insTrem);
+        insTrem.connect(this.insectGain);
+        insSrc.start();
+
+        const trem = ctx.createOscillator();
+        trem.type = 'sine';
+        trem.frequency.value = 22;                         // 唧唧颤音
+        const tremDepth = ctx.createGain();
+        tremDepth.gain.value = 0.5;
+        trem.connect(tremDepth);
+        tremDepth.connect(insTrem.gain);
+        trem.start();
     }
 
     private static animateWind() {
@@ -538,9 +634,9 @@ export class AudioSystem {
         setTimeout(() => this.animateWind(), time * 1000);
     }
 
-    static updateEcologyState(springCount: number, windmillCount: number, weather: string) {
+    static updateEcologyState(springCount: number, windmillCount: number, weather: string, timeOfDay = 12) {
         if (!this.ctx || !this.rainGain || !this.windGain || !this.waterGain) return;
-        
+
         const t = this.ctx.currentTime;
         
         if (weather === 'rainy') {
@@ -571,6 +667,24 @@ export class AudioSystem {
             const targetBirds = weather === 'stormy' || weather === 'rainy' ? 0.006 : 0.024;
             this.birdGain.gain.cancelScheduledValues(t);
             this.birdGain.gain.linearRampToValueAtTime(targetBirds, t + 2.5);
+        }
+
+        // 涌浪：海岛常驻，风暴/雨天更汹涌（基底音量；LFO 调制仍叠加其上）
+        if (this.oceanGain) {
+            const targetOcean = weather === 'stormy' ? 0.1 : weather === 'rainy' ? 0.072 : 0.05;
+            this.oceanGain.gain.cancelScheduledValues(t);
+            this.oceanGain.gain.linearRampToValueAtTime(targetOcean, t + 2.5);
+        }
+
+        // 夜虫：入夜淡入、白昼静默；雨夜减弱
+        if (this.insectGain) {
+            const hour = ((timeOfDay % 24) + 24) % 24;
+            const isNight = hour >= 19.5 || hour < 4.5;
+            const isDusk = (hour >= 18 && hour < 19.5) || (hour >= 4.5 && hour < 6);
+            let targetIns = isNight ? 0.017 : isDusk ? 0.008 : 0.0;
+            if (weather === 'stormy' || weather === 'rainy') targetIns *= 0.3;
+            this.insectGain.gain.cancelScheduledValues(t);
+            this.insectGain.gain.linearRampToValueAtTime(targetIns, t + 3.0);
         }
     }
 
@@ -734,6 +848,21 @@ export class AudioSystem {
         this.connectDelaySend(tickGain, kind === 'confirm' ? 0.08 : 0.025);
         tick.start(t + 0.004);
         tick.stop(t + 0.09);
+
+        // 极轻的高频泛音 sparkle，给点击一点"水晶"质感（柔和的关闭声不加）
+        if (kind !== 'close') {
+            const shimmer = this.ctx.createOscillator();
+            const shimmerGain = this.ctx.createGain();
+            shimmer.type = 'sine';
+            shimmer.frequency.setValueAtTime(settings.tick * 2.0, t + 0.006);
+            shimmerGain.gain.setValueAtTime(0.0001, t + 0.006);
+            shimmerGain.gain.exponentialRampToValueAtTime(kind === 'confirm' ? 0.01 : 0.006, t + 0.012);
+            shimmerGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.055);
+            shimmer.connect(shimmerGain);
+            shimmerGain.connect(this.masterGain);
+            shimmer.start(t + 0.006);
+            shimmer.stop(t + 0.07);
+        }
     }
 
     private static playSynthNote(freq: number, peakVol: number, attack: number, release: number) {
@@ -896,25 +1025,41 @@ export class AudioSystem {
         o.stop(t + 0.1);
     }
 
-    /** Hover — 极轻的高频 tick，用于鼠标悬停交互。不计入 lastPlayAt（不抑制点击音） */
+    /** Hover — 软"纸感"轻触：极短高通噪声 tick + 一缕正弦尾，安静不刺耳。不计入 lastPlayAt（不抑制点击音） */
     static playHover() {
         this.init();
-        if (!this.ctx) return;
+        if (!this.ctx || !this.masterGain) return;
         const t = this.ctx.currentTime;
 
+        // 纸/木的轻触质感：高通噪声极短 tick
+        const noise = this.makeNoiseBurst(0.03, 0.06);
+        if (noise) {
+            const hp = this.ctx.createBiquadFilter();
+            hp.type = 'highpass';
+            hp.frequency.value = 2600;
+            const ng = this.ctx.createGain();
+            ng.gain.setValueAtTime(0.0001, t);
+            ng.gain.exponentialRampToValueAtTime(0.009, t + 0.006);
+            ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+            noise.connect(hp);
+            hp.connect(ng);
+            ng.connect(this.masterGain);
+            noise.start(t);
+            noise.stop(t + 0.05);
+        }
+
+        // 一缕上扬的正弦尾，给"划过"一点方向感（很轻）
         const o = this.ctx.createOscillator();
         o.type = 'sine';
-        o.frequency.setValueAtTime(620, t);
-        o.frequency.exponentialRampToValueAtTime(760, t + 0.04);
-
+        o.frequency.setValueAtTime(880, t);
+        o.frequency.exponentialRampToValueAtTime(1180, t + 0.035);
         const g = this.ctx.createGain();
         g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(0.012, t + 0.012);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
-
+        g.gain.exponentialRampToValueAtTime(0.006, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
         o.connect(g);
-        if (this.masterGain) g.connect(this.masterGain);
+        g.connect(this.masterGain);
         o.start(t);
-        o.stop(t + 0.08);
+        o.stop(t + 0.07);
     }
 }

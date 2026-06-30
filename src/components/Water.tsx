@@ -275,15 +275,14 @@ diffuseColor.a *= vUnder;`);
           />
         </mesh>
 
-        {/* Invisible flat raycast proxy: receives all ocean pointer events
-            on 2 triangles instead of the dense animated mesh */}
+        {/* Invisible flat raycast proxy: receives all ocean pointer events */}
         <mesh
           position={[0, -0.4, 0]}
           rotation={[-Math.PI / 2, 0, 0]}
           onPointerDown={(e) => {
             const state = useGameStore.getState();
             const tool = state.selectedTool;
-            const placeableTools = ['platform', 'pier', 'sub_island', 'boat', 'bridge_pillar', 'seagull', 'dolphin', 'fish', 'birdhouse', 'balloon', 'balloon_ladder', 'balloon_bridge'];
+            const placeableTools = ['platform', 'pier', 'sub_island', 'boat', 'raft', 'bridge_pillar', 'seagull', 'dolphin', 'fish', 'birdhouse', 'balloon', 'balloon_ladder', 'balloon_bridge'];
             if (placeableTools.includes(tool)) {
                e.stopPropagation();
                if (e.button !== 0) return;

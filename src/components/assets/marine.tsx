@@ -512,12 +512,12 @@ function DynamicSail({ position, width, height, color, baseBulge, windFactor, is
       #include <begin_vertex>
       float hw = ${width.toFixed(2)} / 2.0;
       float nx = ${flipX ? '(position.x + hw) / (hw * 2.0)' : '(hw - position.x) / (hw * 2.0)'};
-      
+
       float bulge = sin(nx * 3.14159) * ${baseBulge.toFixed(2)};
       float flutter = sin(position.y * 4.0 + uTime * 6.0) * sin(nx * 10.0 - uTime * 8.0) * nx * ${windFactor.toFixed(2)};
-      
+
       transformed.z += bulge + flutter;
-      
+
       ${isJib ? `
       // Taper the jib to a point at the bow (nx=1)
       if (position.y > 0.0) {
@@ -533,238 +533,6 @@ function DynamicSail({ position, width, height, color, baseBulge, windFactor, is
       <planeGeometry args={[width, height, 16, 16]} />
       <meshStandardMaterial color={color} roughness={0.9} side={THREE.DoubleSide} onBeforeCompile={onBeforeCompile} customProgramCacheKey={() => "sail_" + width + "_" + isJib + "_" + flipX} />
     </mesh>
-  );
-}
-
-// --- Boat wake: stylized low-poly foam ribbon trailing the driven boat ---
-// Decoupled from the coarse ocean mesh so the wake stays crisp regardless of
-// water tessellation. Points are dropped along the boat's stern path, ride the
-// live wave surface, spread (Kelvin V) and fade with age. Flat toon foam matches
-// the low-poly + Edges art style.
-const WAKE_MAX_POINTS = 70;
-const WAKE_POINT_STEP = 0.55;   // min world distance between dropped points
-const WAKE_LIFETIME = 2.6;      // seconds a foam point lives
-const WAKE_SPEED_MIN = 1.2;     // boat speed below which no foam is emitted
-const SPRAY_MAX = 120;          // splash particle pool size
-const SPRAY_LIFE = 0.7;         // seconds a spray droplet lives
-
-// Daylight factor matching the ocean shader: 0 at night, 1 at midday, with
-// smooth dawn/dusk ramps. Foam reflects light, so at night it dims to a cool
-// moonlit grey instead of glowing pure white.
-function daylightFactor(tod: number) {
-  return Math.max(0, Math.min(1, (tod - 5.5) / 1.5)) *
-         Math.max(0, Math.min(1, (18.5 - tod) / 1.5));
-}
-
-type WakePoint = { x: number; z: number; px: number; pz: number; halfW: number; born: number };
-type Spray = { x: number; y: number; z: number; vx: number; vy: number; vz: number; born: number };
-
-export function BoatWake() {
-  const weather = useGameStore((s) => s.weather);
-  const geomRef = useRef<THREE.BufferGeometry>(null);
-  const sprayGeomRef = useRef<THREE.BufferGeometry>(null);
-  const points = useRef<WakePoint[]>([]);
-  const lastDrop = useRef<{ x: number; z: number } | null>(null);
-  const sprays = useRef<Spray[]>([]);
-
-  const MAXV = WAKE_MAX_POINTS * 2;
-  const positions = useMemo(() => new Float32Array(MAXV * 3), [MAXV]);
-  const uvs = useMemo(() => new Float32Array(MAXV * 2), [MAXV]);
-  const alphas = useMemo(() => new Float32Array(MAXV), [MAXV]);
-  const indices = useMemo(() => {
-    const idx: number[] = [];
-    for (let i = 0; i < WAKE_MAX_POINTS - 1; i++) {
-      const a = i * 2, b = i * 2 + 1, c = i * 2 + 2, d = i * 2 + 3;
-      idx.push(a, c, b, b, c, d);
-    }
-    return new Uint16Array(idx);
-  }, []);
-
-  const sprayPos = useMemo(() => new Float32Array(SPRAY_MAX * 3), []);
-  const sprayAlpha = useMemo(() => new Float32Array(SPRAY_MAX), []);
-
-  const material = useMemo(() => new THREE.ShaderMaterial({
-    transparent: true,
-    depthWrite: false,
-    uniforms: { uTime: { value: 0 }, uDaylight: { value: 1 } },
-    vertexShader: `
-      attribute float aAlpha;
-      varying float vAlpha;
-      varying vec2 vUv;
-      void main() {
-        vAlpha = aAlpha;
-        vUv = uv;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }`,
-    fragmentShader: `
-      uniform float uTime;
-      uniform float uDaylight;
-      varying float vAlpha;
-      varying vec2 vUv;
-      void main() {
-        float across = abs(vUv.x * 2.0 - 1.0);           // 0 center .. 1 edges
-        float edge = smoothstep(0.45, 1.0, across);       // diverging wake walls
-        float stripes = sin(vUv.y * 38.0 - uTime * 6.0) * 0.5 + 0.5; // churn moving aft
-        float churn = (1.0 - across) * stripes * 0.9;     // turbulent centerline
-        float foam = max(edge, churn);
-        foam = smoothstep(0.22, 0.5, foam);               // toon hard edge
-        float a = foam * vAlpha;
-        if (a < 0.02) discard;
-        vec3 col = mix(vec3(0.20, 0.25, 0.34), vec3(1.0), uDaylight); // moonlit at night
-        gl_FragColor = vec4(col, a);
-      }`,
-  }), []);
-
-  const sprayMaterial = useMemo(() => new THREE.ShaderMaterial({
-    transparent: true,
-    depthWrite: false,
-    uniforms: { uDaylight: { value: 1 } },
-    vertexShader: `
-      attribute float aAlpha;
-      varying float vAlpha;
-      void main() {
-        vAlpha = aAlpha;
-        vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        gl_PointSize = (14.0 + 26.0 * aAlpha) * (8.0 / -mv.z); // bigger when fresh / near
-        gl_Position = projectionMatrix * mv;
-      }`,
-    fragmentShader: `
-      uniform float uDaylight;
-      varying float vAlpha;
-      void main() {
-        float d = length(gl_PointCoord - 0.5);
-        if (d > 0.5) discard;                              // round droplet
-        float a = smoothstep(0.5, 0.18, d) * vAlpha;
-        vec3 col = mix(vec3(0.22, 0.27, 0.36), vec3(1.0), uDaylight);
-        gl_FragColor = vec4(col, a);
-      }`,
-  }), []);
-
-  useEffect(() => {
-    const g = geomRef.current;
-    if (g) {
-      g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-      g.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
-      g.setIndex(new THREE.BufferAttribute(indices, 1));
-    }
-    const sg = sprayGeomRef.current;
-    if (sg) {
-      sg.setAttribute('position', new THREE.BufferAttribute(sprayPos, 3));
-      sg.setAttribute('aAlpha', new THREE.BufferAttribute(sprayAlpha, 1));
-    }
-    return () => { material.dispose(); sprayMaterial.dispose(); };
-  }, [positions, uvs, alphas, indices, sprayPos, sprayAlpha, material, sprayMaterial]);
-
-  useFrame((state, delta) => {
-    const t = state.clock.elapsedTime;
-    const dt = Math.min(delta, 0.05);
-    const daylight = daylightFactor(useGameStore.getState().timeOfDay);
-    material.uniforms.uTime.value = t;
-    material.uniforms.uDaylight.value = daylight;
-    sprayMaterial.uniforms.uDaylight.value = daylight;
-    const g = geomRef.current;
-    if (!g) return;
-    const positionAttr = g.getAttribute('position') as THREE.BufferAttribute | undefined;
-    const uvAttr = g.getAttribute('uv') as THREE.BufferAttribute | undefined;
-    const alphaAttr = g.getAttribute('aAlpha') as THREE.BufferAttribute | undefined;
-    if (!positionAttr || !uvAttr || !alphaAttr) return;
-    const pts = points.current;
-    const { pos, dir, speed } = globalBoatState;
-
-    // Emit a foam point at the stern when moving fast enough and far enough.
-    if (speed > WAKE_SPEED_MIN) {
-      const sx = pos.x - dir.x * 1.0;   // stern offset (dir is unit travel vector)
-      const sz = pos.y - dir.y * 1.0;
-      const moved = lastDrop.current
-        ? Math.hypot(sx - lastDrop.current.x, sz - lastDrop.current.z)
-        : Infinity;
-      if (moved > WAKE_POINT_STEP) {
-        const halfW = 0.6 + Math.min(speed, 16.0) * 0.11;
-        pts.push({ x: sx, z: sz, px: dir.y, pz: -dir.x, halfW, born: t });
-        lastDrop.current = { x: sx, z: sz };
-        if (pts.length > WAKE_MAX_POINTS) pts.shift();
-      }
-    }
-    // Cull expired points from the tail.
-    while (pts.length && t - pts[0].born > WAKE_LIFETIME) pts.shift();
-
-    const n = pts.length;
-    for (let i = 0; i < n; i++) {
-      const p = pts[i];
-      const age = (t - p.born) / WAKE_LIFETIME;          // 0 fresh .. 1 gone
-      const spread = 1.0 + age * 1.8;                     // Kelvin-style widening
-      const hw = p.halfW * spread;
-      const y = getWaterHeight(p.x, p.z, t, weather) + 0.06;
-      const lx = p.x + p.px * hw, lz = p.z + p.pz * hw;
-      const rx = p.x - p.px * hw, rz = p.z - p.pz * hw;
-      const fade = (1.0 - age) * (1.0 - age);             // ease-out fade
-      const vi = i * 2;
-      positions[vi * 3 + 0] = lx; positions[vi * 3 + 1] = y; positions[vi * 3 + 2] = lz;
-      positions[vi * 3 + 3] = rx; positions[vi * 3 + 4] = y; positions[vi * 3 + 5] = rz;
-      uvs[vi * 2 + 0] = 0.0; uvs[vi * 2 + 1] = age;
-      uvs[vi * 2 + 2] = 1.0; uvs[vi * 2 + 3] = age;
-      alphas[vi] = fade; alphas[vi + 1] = fade;
-    }
-    g.setDrawRange(0, Math.max(0, (n - 1) * 6));
-    positionAttr.needsUpdate = true;
-    uvAttr.needsUpdate = true;
-    alphaAttr.needsUpdate = true;
-
-    // --- Spray droplets: splash kicked sideways from the bow at speed ---
-    const sp = sprays.current;
-    if (speed > WAKE_SPEED_MIN * 1.3 && sp.length < SPRAY_MAX) {
-      const count = speed > 9 ? 4 : speed > 5 ? 3 : 2;
-      const bx = pos.x + dir.x * 1.1;   // bow
-      const bz = pos.y + dir.y * 1.1;
-      const by = getWaterHeight(bx, bz, t, weather);
-      const px = dir.y, pz = -dir.x;    // perpendicular (sideways)
-      for (let k = 0; k < count && sp.length < SPRAY_MAX; k++) {
-        const side = Math.random() < 0.5 ? 1 : -1;
-        const out = 1.6 + Math.random() * 2.2;
-        sp.push({
-          x: bx, y: by + 0.1, z: bz,
-          vx: px * side * out + dir.x * speed * 0.15 + (Math.random() - 0.5),
-          vy: 2.6 + Math.random() * 2.4,
-          vz: pz * side * out + dir.y * speed * 0.15 + (Math.random() - 0.5),
-          born: t,
-        });
-      }
-    }
-    let sn = 0;
-    for (let i = 0; i < sp.length; i++) {
-      const s = sp[i];
-      const age = (t - s.born) / SPRAY_LIFE;
-      if (age >= 1) continue;            // expired; compacted below
-      s.vy -= 9.0 * dt;                  // gravity
-      s.x += s.vx * dt; s.y += s.vy * dt; s.z += s.vz * dt;
-      if (s.y < getWaterHeight(s.x, s.z, t, weather)) continue; // splashed back down
-      sprayPos[sn * 3 + 0] = s.x; sprayPos[sn * 3 + 1] = s.y; sprayPos[sn * 3 + 2] = s.z;
-      sprayAlpha[sn] = (1.0 - age);
-      sp[sn] = s;                        // compact in place
-      sn++;
-    }
-    sp.length = sn;
-    const sg = sprayGeomRef.current;
-    if (sg) {
-      const sprayPositionAttr = sg.getAttribute('position') as THREE.BufferAttribute | undefined;
-      const sprayAlphaAttr = sg.getAttribute('aAlpha') as THREE.BufferAttribute | undefined;
-      if (!sprayPositionAttr || !sprayAlphaAttr) return;
-      sg.setDrawRange(0, sn);
-      sprayPositionAttr.needsUpdate = true;
-      sprayAlphaAttr.needsUpdate = true;
-    }
-  });
-
-  return (
-    <group>
-      <mesh material={material} renderOrder={3} frustumCulled={false}>
-        <bufferGeometry ref={geomRef} />
-      </mesh>
-      <points material={sprayMaterial} renderOrder={4} frustumCulled={false}>
-        <bufferGeometry ref={sprayGeomRef} />
-      </points>
-    </group>
   );
 }
 
@@ -788,7 +556,7 @@ export function Boat(props: any) {
   const drivingBoatId = useGameStore((state) => state.drivingBoatId);
   const setDrivingBoatId = useGameStore((state) => state.setDrivingBoatId);
   const addAsset = useGameStore((state) => state.addAsset);
-  
+
   const [showHover, setShowHover] = useState(false);
   const [isHoverLeaving, setIsHoverLeaving] = useState(false);
   const hoverTimeout = useRef<any>(null);
@@ -843,7 +611,7 @@ export function Boat(props: any) {
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, [drivingBoatId, props.id]);
-  
+
   const posRef = useRef({ x: props.position.x, z: props.position.z });
 
   useFrame((state, delta) => {
@@ -855,46 +623,38 @@ export function Boat(props: any) {
     let px: number;
     let pz: number;
 
+    const isOcean = props.position.y < -0.1;
+    const riverSurfaceH = props.position.y + 0.5;
+
     if (drivingBoatId === props.id) {
       // Manual Driving Logic
       let speedIncrement = 0;
-      let baseSpeed = keys.current.shift ? 15.0 : 10.0; // Boosted vs Normal speed
+      let baseSpeed = keys.current.shift ? 15.0 : 10.0;
       if (keys.current.w || keys.current.arrowup) speedIncrement = baseSpeed;
       if (keys.current.s || keys.current.arrowdown) speedIncrement = -baseSpeed * 0.6;
-      
-      // Apply drag / friction
+
       velocity.current += (speedIncrement - velocity.current * 1.5) * dt;
-      
+
       let rotIncrement = 0;
       if (keys.current.a || keys.current.arrowleft) rotIncrement = 1.5;
       if (keys.current.d || keys.current.arrowright) rotIncrement = -1.5;
-      
-      // Turn faster if moving, but can turn slowly when stopped
+
       ref.current.rotation.y += rotIncrement * dt * (Math.abs(velocity.current) > 0.1 ? 1 : 0.5);
-      
-      // Calculate intended next position
+
       let nextX = posRef.current.x + Math.sin(ref.current.rotation.y) * velocity.current * dt;
       let nextZ = posRef.current.z + Math.cos(ref.current.rotation.y) * velocity.current * dt;
-      
-      // Smart collision with terrain (allows backing out into deeper water)
-      const oldTerrainH = getTerrainHeight(posRef.current.x, posRef.current.z);
-      const newTerrainH = getTerrainHeight(nextX, nextZ);
-      
-      if (newTerrainH > -0.2 && newTerrainH >= oldTerrainH) {
-          // If trying to move further onto land, stop movement but allow turning
-          velocity.current *= 0.5; // Lose speed quickly
+
+      // Collision with shore: if water is too shallow (depth < 0.2)
+      const surfaceH = isOcean ? getWaterHeight(nextX, nextZ, time, weather) : riverSurfaceH;
+      const tH = getTerrainHeight(nextX, nextZ);
+      if (surfaceH - tH < 0.2) {
+          velocity.current *= 0.5; // slow down
       } else {
-          // Allow movement if it's in water OR moving towards deeper water
           posRef.current.x = nextX;
           posRef.current.z = nextZ;
       }
-      
       px = posRef.current.x;
       pz = posRef.current.z;
-
-      globalBoatState.pos.set(px, pz);
-      globalBoatState.dir.set(Math.sin(ref.current.rotation.y), Math.cos(ref.current.rotation.y));
-      globalBoatState.speed += (Math.abs(velocity.current) - globalBoatState.speed) * dt * 5.0;
 
     } else if (isMoored) {
       if (globalBoatState.speed > 0) globalBoatState.speed *= (1.0 - dt * 2.0);
@@ -902,6 +662,7 @@ export function Boat(props: any) {
       posRef.current.z += (props.position.z - posRef.current.z) * 2 * dt;
       px = posRef.current.x;
       pz = posRef.current.z;
+
     } else {
       const angle = time * sailParams.speed * (weather === "rainy" ? 1.4 : 1.0) + sailParams.offset;
       const targetX = props.position.x + Math.cos(angle) * sailParams.radiusX;
@@ -911,19 +672,23 @@ export function Boat(props: any) {
       const dz = targetZ - posRef.current.z;
       const dist = Math.hypot(dx, dz) || 1;
       const speed = 4.0 * dt * (weather === "rainy" ? 1.4 : 1.0);
-      
-      posRef.current.x += (dx / dist) * Math.min(speed, dist);
-      posRef.current.z += (dz / dist) * Math.min(speed, dist);
 
-      const terrainH = getTerrainHeight(posRef.current.x, posRef.current.z);
-      if (terrainH > -0.2) {
+      let moveX = (dx / dist) * Math.min(speed, dist);
+      let moveZ = (dz / dist) * Math.min(speed, dist);
+
+      posRef.current.x += moveX;
+      posRef.current.z += moveZ;
+
+      const surfaceH = isOcean ? getWaterHeight(posRef.current.x, posRef.current.z, time, weather) : riverSurfaceH;
+      const tH = getTerrainHeight(posRef.current.x, posRef.current.z);
+      if (surfaceH - tH < 0.2) {
           const toCenterX = props.position.x - posRef.current.x;
           const toCenterZ = props.position.z - posRef.current.z;
           const cDist = Math.hypot(toCenterX, toCenterZ) || 1;
           posRef.current.x += (toCenterX / cDist) * 5.0 * dt;
           posRef.current.z += (toCenterZ / cDist) * 5.0 * dt;
       }
-      
+
       px = posRef.current.x;
       pz = posRef.current.z;
 
@@ -940,16 +705,21 @@ export function Boat(props: any) {
     ref.current.position.x = px;
     ref.current.position.z = pz;
 
-    const hC = getWaterHeight(px, pz, time, weather);
-    ref.current.position.y = hC + 0.1;
+    const finalSurfaceH = isOcean ? getWaterHeight(px, pz, time, weather) : riverSurfaceH;
+    ref.current.position.y = finalSurfaceH + 0.1 + (isOcean ? 0 : Math.sin(time * 2.0) * 0.02);
 
-    const d = 1.5;
-    const hX = getWaterHeight(px + d, pz, time, weather);
-    const hZ = getWaterHeight(px, pz + d, time, weather);
-    const targetRotX = Math.atan2(hZ - hC, d) * 0.7 + Math.cos(time * 1.6 + pz) * 0.03;
-    const targetRotZ = -Math.atan2(hX - hC, d) * 0.7 + Math.sin(time * 1.4 + px) * 0.04;
-    ref.current.rotation.x += (targetRotX - ref.current.rotation.x) * 0.15;
-    ref.current.rotation.z += (targetRotZ - ref.current.rotation.z) * 0.15;
+    if (isOcean) {
+      const d = 1.5;
+      const hX = getWaterHeight(px + d, pz, time, weather);
+      const hZ = getWaterHeight(px, pz + d, time, weather);
+      const targetRotX = Math.atan2(hZ - finalSurfaceH, d) * 0.7 + Math.cos(time * 1.6 + pz) * 0.03;
+      const targetRotZ = -Math.atan2(hX - finalSurfaceH, d) * 0.7 + Math.sin(time * 1.4 + px) * 0.04;
+      ref.current.rotation.x += (targetRotX - ref.current.rotation.x) * 0.15;
+      ref.current.rotation.z += (targetRotZ - ref.current.rotation.z) * 0.15;
+    } else {
+      ref.current.rotation.x += (Math.sin(time * 1.5) * 0.02 - ref.current.rotation.x) * 0.15;
+      ref.current.rotation.z += (Math.cos(time * 1.3) * 0.02 - ref.current.rotation.z) * 0.15;
+    }
 
     const gWindow = window as any;
     if (!gWindow.__assetPositions) gWindow.__assetPositions = {};
@@ -968,9 +738,9 @@ export function Boat(props: any) {
 
   return (
     <>
-    <group 
-      ref={ref as any} 
-      position={[props.position.x, props.position.y, props.position.z]} 
+    <group
+      ref={ref as any}
+      position={[props.position.x, props.position.y, props.position.z]}
       scale={0}
       onPointerOver={(e) => {
           e.stopPropagation();
@@ -1002,14 +772,14 @@ export function Boat(props: any) {
       {/* Hand-drawn Driving Hover Button */}
       {showHover && drivingBoatId !== props.id && selectedTool === 'none' && (
         <Html position={[0, 4.0, 0]} center zIndexRange={[100, 0]}>
-          <div 
+          <div
              style={{ padding: '60px', cursor: 'pointer' }}
              onPointerEnter={() => { keepHoverAlive(); }}
              onPointerLeave={() => { keepHoverAlive(); /* Timer still takes over */ }}
-             onClick={(e) => { 
-                e.stopPropagation(); 
+             onClick={(e) => {
+                e.stopPropagation();
                 if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
-                setShowHover(false); 
+                setShowHover(false);
                 setIsHoverLeaving(false);
                 setDrivingBoatId(props.id);
                 AudioSystem.playConfirm();
@@ -1138,7 +908,7 @@ export function Boat(props: any) {
             <meshStandardMaterial color="#334155" />
           </mesh>
         </group>
-        
+
         {/* Rudder */}
         <group position={[0, 0.2, -1.55]} rotation={[0.2, 0, 0]}>
           <mesh position={[0, -0.2, 0]} castShadow receiveShadow>
@@ -1157,7 +927,7 @@ export function Boat(props: any) {
         <cylinderGeometry args={[0.06, 0.08, 3.6]} />
         <meshStandardMaterial color="#451a03" roughness={0.9} />
       </mesh>
-      
+
       {/* Boom (Horizontal pole) */}
       <mesh position={[0, 1.2, -0.2]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.04, 0.04, 2.0]} />

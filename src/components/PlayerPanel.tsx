@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Suspense, useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { AudioSystem } from '../lib/audio';
 import { disconnectSocket, onChatMessage, onFriendRequest, onFriendAccepted, onIslandVisitor, emitChatSend, emitFriendRequest, emitFriendAccepted, emitPresenceCheck, emitIslandVisit, onPresenceStatus, onUserOnline, onUserOffline } from '../lib/socket';
-import { MailboxModal } from './MailboxModal';
 import { VisitorBookModal } from './VisitorBookModal';
 import { SocialPlaza } from './SocialPlaza';
 import {
@@ -14,10 +14,13 @@ import {
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { exportIslandFile, applyIslandData, captureScreenshot } from '../utils/islandIO';
-import { GiftModal } from './GiftModal';
 import { THEMES } from './OnboardingFlow';
 import { ACHIEVEMENTS, getUnlocked, buildSnapshot } from '../lib/achievements';
 import { PlayerStatsTab } from './PlayerStatsTab';
+import { lazyNamed } from '../lib/lazyNamed';
+
+const MailboxModal = lazyNamed(() => import('./MailboxModal'), 'MailboxModal');
+const GiftModal = lazyNamed(() => import('./GiftModal'), 'GiftModal');
 
 // 段位称号：随等级成长，给玩家明确的进阶身份感
 type Tab = 'stats' | 'card' | 'ecology' | 'unlocks' | 'social' | 'system';
@@ -339,7 +342,7 @@ export const PlayerPanel: React.FC = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-500">
           <div className={`hand-drawn-panel bg-[#fdfcf8] flex relative shadow-[16px_16px_0_rgba(0,0,0,0.4)] animate-slide-up ${isTouch ? 'touch-modal-full touch-safe-bottom flex-col rounded-none' : 'w-[960px] h-[640px]'}`}>
             <div className="absolute inset-0 bg-grid-paper opacity-40 mix-blend-multiply pointer-events-none" style={{ borderRadius: 'inherit' }} />
-            
+
             <button onClick={() => { AudioSystem.playClose(); setIsOpen(false); }} className="hand-drawn-close-btn" title="关闭">
               <X size={26} strokeWidth={3} />
             </button>
@@ -372,29 +375,64 @@ export const PlayerPanel: React.FC = () => {
                   </div>
                 </div>
 
-                <button onClick={() => { AudioSystem.playTap(); setActiveTab('stats'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'stats' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
-                  <BarChart2 size={16} /> 护照
-                </button>
-                <button onClick={() => { AudioSystem.playTap(); setActiveTab('card'); setCardFlipped(false); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'card' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
-                  <IdCard size={16} /> 居民证
-                </button>
-                <button onClick={() => { AudioSystem.playTap(); setActiveTab('ecology'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'ecology' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
-                  <Leaf size={16} /> 生态
-                </button>
-                <button onClick={() => { AudioSystem.playTap(); setActiveTab('unlocks'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === 'unlocks' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
-                  <Unlock size={16} /> 蓝图
-                </button>
-                <button onClick={() => { AudioSystem.playTap(); setActiveTab('social'); setActiveSocialTab('friends'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all relative ${activeTab === 'social' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
-                  <Users size={16} /> 社交
-                  {(unreadCount > 0 || unreadMailCount > 0) && (
-                    <span className="absolute right-3 top-2 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-[16px] flex items-center justify-center rounded-full border border-slate-800">
-                      {unreadCount + unreadMailCount > 9 ? '9+' : unreadCount + unreadMailCount}
-                    </span>
+                <div className="relative">
+                  {activeTab === 'stats' && (
+                    <motion.div layoutId="activeTab" className="absolute inset-0 bg-emerald-400 rounded-xl border-[3px] border-slate-800 shadow-[3px_3px_0_rgba(15,23,42,1)]" initial={false} transition={{ type: "spring", stiffness: 400, damping: 25 }} />
                   )}
-                </button>
-                <button onClick={() => { AudioSystem.playTap(); setActiveTab('system'); }} className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all mt-auto ${activeTab === 'system' ? 'hand-drawn-btn-active' : 'text-slate-500 hover:text-slate-700'}`}>
-                  <Settings size={16} /> 系统
-                </button>
+                  <button onClick={() => { AudioSystem.playTap(); setActiveTab('stats'); }} className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-black transition-colors ${activeTab === 'stats' ? 'text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}>
+                    <BarChart2 size={18} strokeWidth={2.5} /> 护照档案
+                  </button>
+                </div>
+
+                <div className="relative">
+                  {activeTab === 'card' && (
+                    <motion.div layoutId="activeTab" className="absolute inset-0 bg-emerald-400 rounded-xl border-[3px] border-slate-800 shadow-[3px_3px_0_rgba(15,23,42,1)]" initial={false} transition={{ type: "spring", stiffness: 400, damping: 25 }} />
+                  )}
+                  <button onClick={() => { AudioSystem.playTap(); setActiveTab('card'); setCardFlipped(false); }} className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-black transition-colors ${activeTab === 'card' ? 'text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}>
+                    <IdCard size={18} strokeWidth={2.5} /> 居民证
+                  </button>
+                </div>
+
+                <div className="relative">
+                  {activeTab === 'ecology' && (
+                    <motion.div layoutId="activeTab" className="absolute inset-0 bg-emerald-400 rounded-xl border-[3px] border-slate-800 shadow-[3px_3px_0_rgba(15,23,42,1)]" initial={false} transition={{ type: "spring", stiffness: 400, damping: 25 }} />
+                  )}
+                  <button onClick={() => { AudioSystem.playTap(); setActiveTab('ecology'); }} className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-black transition-colors ${activeTab === 'ecology' ? 'text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}>
+                    <Leaf size={18} strokeWidth={2.5} /> 岛屿生态
+                  </button>
+                </div>
+
+                <div className="relative">
+                  {activeTab === 'unlocks' && (
+                    <motion.div layoutId="activeTab" className="absolute inset-0 bg-emerald-400 rounded-xl border-[3px] border-slate-800 shadow-[3px_3px_0_rgba(15,23,42,1)]" initial={false} transition={{ type: "spring", stiffness: 400, damping: 25 }} />
+                  )}
+                  <button onClick={() => { AudioSystem.playTap(); setActiveTab('unlocks'); }} className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-black transition-colors ${activeTab === 'unlocks' ? 'text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}>
+                    <Unlock size={18} strokeWidth={2.5} /> 蓝图收藏
+                  </button>
+                </div>
+
+                <div className="relative">
+                  {activeTab === 'social' && (
+                    <motion.div layoutId="activeTab" className="absolute inset-0 bg-emerald-400 rounded-xl border-[3px] border-slate-800 shadow-[3px_3px_0_rgba(15,23,42,1)]" initial={false} transition={{ type: "spring", stiffness: 400, damping: 25 }} />
+                  )}
+                  <button onClick={() => { AudioSystem.playTap(); setActiveTab('social'); setActiveSocialTab('friends'); }} className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-black transition-colors ${activeTab === 'social' ? 'text-slate-900' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}>
+                    <Users size={18} strokeWidth={2.5} /> 社交网络
+                    {(unreadCount > 0 || unreadMailCount > 0) && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-red-500 text-white text-[10px] font-black min-w-[20px] h-[20px] flex items-center justify-center rounded-full border-2 border-slate-800 shadow-sm">
+                        {unreadCount + unreadMailCount > 9 ? '9+' : unreadCount + unreadMailCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                <div className="relative mt-auto">
+                  {activeTab === 'system' && (
+                    <motion.div layoutId="activeTab" className="absolute inset-0 bg-slate-800 rounded-xl border-[3px] border-slate-800 shadow-[3px_3px_0_rgba(15,23,42,1)]" initial={false} transition={{ type: "spring", stiffness: 400, damping: 25 }} />
+                  )}
+                  <button onClick={() => { AudioSystem.playTap(); setActiveTab('system'); }} className={`relative w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-black transition-colors ${activeTab === 'system' ? 'text-white' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'}`}>
+                    <Settings size={18} strokeWidth={2.5} /> 系统设置
+                  </button>
+                </div>
               </div>
             ) : (
               /* 触屏：底部 Tab 导航 */
@@ -430,7 +468,12 @@ export const PlayerPanel: React.FC = () => {
 
               {/* ====== Passport Tab (玩家档案 / 角色卡) ====== */}
               {activeTab === 'stats' && (
-                <PlayerStatsTab handleAvatarUpload={handleAvatarUpload} setActiveTab={setActiveTab} />
+                <PlayerStatsTab
+                  handleAvatarUpload={handleAvatarUpload}
+                  setActiveTab={setActiveTab}
+                  exportIslandFile={exportIslandFile}
+                  setShowGift={setShowGift}
+                />
               )}
 
               {/* ====== Resident Card Tab (居民证 · 明信片) ====== */}
@@ -447,16 +490,16 @@ export const PlayerPanel: React.FC = () => {
                     </div>
                   </div>
 
-                  <motion.div 
+                  <motion.div
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ type: "spring", stiffness: 300, damping: 25 }}
                     className="flex flex-col items-center gap-8 relative z-10" style={{ perspective: 1200 }}
                   >
-                    <motion.div 
+                    <motion.div
                       whileHover={{ scale: 1.02 }}
-                      onClick={() => { AudioSystem.playTap(); setCardFlipped(f => !f); }} 
-                      className="relative w-[420px] max-w-full h-[260px] cursor-pointer shadow-[12px_12px_0_rgba(15,23,42,0.6)] rounded-3xl" 
+                      onClick={() => { AudioSystem.playTap(); setCardFlipped(f => !f); }}
+                      className="relative w-[420px] max-w-full h-[260px] cursor-pointer shadow-[12px_12px_0_rgba(15,23,42,0.6)] rounded-3xl"
                       style={{ transformStyle: 'preserve-3d', transform: cardFlipped ? 'rotateY(180deg)' : 'rotateY(0)', transition: 'transform .6s cubic-bezier(.4,.2,.2,1)' }}
                     >
                       {/* 正面 */}
@@ -493,7 +536,7 @@ export const PlayerPanel: React.FC = () => {
                   </motion.div>
 
                   {/* 明信片 / 礼物 */}
-                  <motion.div 
+                  <motion.div
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.1 }}
@@ -509,7 +552,7 @@ export const PlayerPanel: React.FC = () => {
               {activeTab === 'ecology' && (
                 <div className="flex-1 p-10 lg:p-12 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto custom-scrollbar bg-[#f4ebd0]">
                   <div className="absolute inset-0 bg-grid-paper opacity-30 mix-blend-multiply pointer-events-none" />
-                  
+
                   <div className="relative z-10 mb-10 flex items-center justify-between border-b-[3px] border-dashed border-slate-800/30 pb-6">
                     <div>
                       <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-slate-600 mb-2">
@@ -520,7 +563,7 @@ export const PlayerPanel: React.FC = () => {
                     </div>
                   </div>
 
-                  <motion.div 
+                  <motion.div
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ type: "spring", stiffness: 300, damping: 25 }}
@@ -539,8 +582,8 @@ export const PlayerPanel: React.FC = () => {
                       </div>
                     </div>
                   </motion.div>
-                  
-                  <motion.div 
+
+                  <motion.div
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.1 }}
@@ -557,7 +600,7 @@ export const PlayerPanel: React.FC = () => {
                   </motion.div>
 
                   {/* 分享你的小岛 */}
-                  <motion.div 
+                  <motion.div
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.2 }}
@@ -574,7 +617,7 @@ export const PlayerPanel: React.FC = () => {
               {activeTab === 'unlocks' && (
                 <div className="flex-1 p-10 lg:p-12 animate-in fade-in slide-in-from-bottom-4 overflow-y-auto custom-scrollbar bg-[#f4ebd0]">
                   <div className="absolute inset-0 bg-grid-paper opacity-30 mix-blend-multiply pointer-events-none" />
-                  
+
                   <div className="relative z-10 mb-10 flex items-center justify-between border-b-[3px] border-dashed border-slate-800/30 pb-6">
                     <div>
                       <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-slate-600 mb-2">
@@ -587,12 +630,12 @@ export const PlayerPanel: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-5 relative z-10">
                     {unlockedAssets.map((asset, idx) => (
-                      <motion.div 
+                      <motion.div
                         initial={{ y: 20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ type: "spring", stiffness: 300, damping: 25, delay: idx * 0.05 }}
                         whileHover={{ y: -4, scale: 1.02 }}
-                        key={asset} 
+                        key={asset}
                         className="hand-drawn-panel bg-white px-6 py-5 flex items-center justify-between group cursor-default shadow-[4px_4px_0_rgba(15,23,42,1)]"
                       >
                         <span className="font-black tracking-widest text-slate-700 group-hover:text-slate-900 capitalize text-lg flex items-center gap-3">
@@ -777,7 +820,9 @@ export const PlayerPanel: React.FC = () => {
                     {/* Mailbox Sub-tab */}
                     {activeSocialTab === 'mailbox' && (
                       <div className="h-full">
-                        <MailboxModal onClose={() => {}} embedded />
+                        <Suspense fallback={null}>
+                          <MailboxModal onClose={() => {}} embedded />
+                        </Suspense>
                       </div>
                     )}
 
@@ -876,12 +921,14 @@ export const PlayerPanel: React.FC = () => {
         </div>
       )}
       {showGift && (
-        <GiftModal
-          mode="create"
-          fromName={useGameStore.getState().playerName}
-          islandName={useGameStore.getState().islandName}
-          onClose={() => setShowGift(false)}
-        />
+        <Suspense fallback={null}>
+          <GiftModal
+            mode="create"
+            fromName={useGameStore.getState().playerName}
+            islandName={useGameStore.getState().islandName}
+            onClose={() => setShowGift(false)}
+          />
+        </Suspense>
       )}
 
       {/* 成为好友庆祝浮层 */}

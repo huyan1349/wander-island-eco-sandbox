@@ -3,7 +3,7 @@ import { useGameStore, WeatherType } from '../../store';
 import { Sun, CloudRain, Snowflake, Cloud, CloudFog, CloudLightning, Music, CloudSun, LayoutGrid } from 'lucide-react';
 import { AudioSystem } from '../../lib/audio';
 import { MusicLibrary } from './MusicLibrary';
-import { TRACKS, renderTrackTexture } from './musicData'; // 共享曲目表+纹理（含新歌），与收藏库一致
+import { MusicCardCoverMode, TRACKS, readMusicCardCoverMode, renderTrackArtwork } from './musicData'; // 共享曲目表+纹理（含新歌），与收藏库一致
 
 export function WeatherForecast() {
   const weather = useGameStore(state => state.weather);
@@ -16,6 +16,7 @@ export function WeatherForecast() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
   const dragStartRef = useRef({ x: 0, y: 0 });
+  const [coverMode, setCoverMode] = useState<MusicCardCoverMode>(() => readMusicCardCoverMode());
 
   // 播放进度（仅音乐模式轮询）
   const [progress, setProgress] = useState(0);
@@ -28,6 +29,14 @@ export function WeatherForecast() {
     }, 250);
     return () => clearInterval(id);
   }, [mode]);
+
+  useEffect(() => {
+    const onCoverMode = (event: Event) => {
+      setCoverMode(((event as CustomEvent<MusicCardCoverMode>).detail) || readMusicCardCoverMode());
+    };
+    window.addEventListener('wander:music-cover-mode', onCoverMode);
+    return () => window.removeEventListener('wander:music-cover-mode', onCoverMode);
+  }, []);
 
   // 卡片与当前播放同步：自动切歌时，最上面那张卡跟着切到正在播放的这首（复用切卡动画）。
   // 只在歌曲真正变化时触发，避免每 250ms 把手动浏览的卡拽回去。
@@ -215,8 +224,8 @@ export function WeatherForecast() {
               {/* 曲风叠底背景 + 针对性纹理 */}
               {mode === 'music' && (
                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                  <div className="absolute inset-0" style={{ background: card.bg }} />
-                  {renderTrackTexture(idx)}
+                  {renderTrackArtwork(idx, coverMode)}
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#fcf8ec]/10 to-[#fcf8ec]/75" />
                 </div>
               )}
 

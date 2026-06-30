@@ -5,13 +5,12 @@ import { AudioSystem } from '../lib/audio';
 import { SpotLight, Html, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { getTerrainHeight, getTerrainGradient, buildHeightSampler } from '../utils/terrain';
-import { getFragmentById } from '../game/fragments';
+import { getFragmentById } from '../game/fragmentLookup';
 import { applyTerrainBrush, paintSurface } from '../utils/terrainBrush';
 import { getWaterHeight as getOceanHeight, getWaveAmplitude } from '../game/water/oceanModel';
-import { DepthWater, WaterfallSheet } from '../game/water/DepthWater';
 import { StylizedWater } from '../game/water/StylizedWater';
 import { decodePondState, carvePondAndEncode } from '../game/water/pondFit';
-import { buildStream, decodeStreamState, decodeWaterfall } from '../game/water/streamPath';
+import { buildStream, decodeStreamState, decodeWaterfall, decodeWaterfallPath } from '../game/water/streamPath';
 import { Waterfall } from '../game/water/Waterfall';
 import {
   createLocomotionState,
@@ -25,6 +24,7 @@ import {
   generateSubIslandTerrain,
   normalizeSubIslandTerrainData,
 } from '../game/terrain/subIslandTerrain';
+import { getCropGrowthProgress } from '../game/crops';
 import {
   Balloon as MarineBalloon,
   Boat as MarineBoat,
@@ -35,21 +35,16 @@ import {
   Platform as MarinePlatform,
   RopeRenderer as MarineRopeRenderer,
 } from './assets/marine';
+import { RaftAsset } from './assets/RaftAsset';
 import { usePopIn } from './assets/shared';
 import { HoverButton, SelectableAssetWrapper, useHoverInteraction } from './assets/interactions';
 import { TreeA, TreeB, Rock, CherryTree, Bamboo, PineTree, WillowTree, Bush } from './assets/Plants';
+import { Crop, Farmland } from './assets/crops';
+import { Fence, Tent, Well } from './assets/rusticProps';
 import { SmokeParticles, SparkParticles, VFXSystem } from './effects/AmbientParticles';
 import { ParticleBurst } from './effects/ParticleBurst';
-
-const CROP_GROWTH_DURATION = 40;
-
-function getCropGrowthProgress(asset: Partial<PlacedAsset>, playtime: number) {
-  if (typeof asset.growthProgress === 'number' && asset.growthProgress >= 1) return 1;
-  if (typeof asset.plantedAt === 'number') {
-    return Math.min(1, Math.max(asset.growthProgress ?? 0, (playtime - asset.plantedAt) / CROP_GROWTH_DURATION));
-  }
-  return asset.growthProgress ?? 0;
-}
+import { TrackAsset, TrainAsset } from './assets/TrainSystem';
+import { TelescopeIcon } from './icons/TelescopeIcon';
 
 // Pop-in hook for assets
 // Shared natural water surface: a low-poly disc with gentle JS-driven vertex
@@ -273,28 +268,39 @@ function Stream({ customState }: { customState?: string }) {
   );
 }
 
-// 瀑布（连线放置）：解析系统整形后的崖口/落潭，挂一道直落水帘 + 跌水潭水面。
+// 瀑布：放置时已沿地形「最陡下降」追踪出自然水路（wf2）。这里据折线贴坡建出有体积的
+// 级联水体 + 跌水潭 + 落水水花；旧存档(wf:)回退为两点直连。
 function WaterfallStroke({ customState }: { customState?: string }) {
   const built = useMemo(() => {
-    const spec = decodeWaterfall(customState);
-    if (!spec) return null;
-    const { lip, base, width } = spec;
-    const height = Math.max(0.6, lip.y - base.y);
-    let dx = base.x - lip.x, dz = base.z - lip.z;
-    const hl = Math.hypot(dx, dz) || 1; dx /= hl; dz /= hl;
-    const bow = height * 0.1; // 出崖向外弓
-    const M = Math.min(40, Math.max(8, Math.round(height * 2)));
-    const poly: { x: number; y: number; z: number }[] = [];
-    for (let m = 0; m <= M; m++) {
-      const t = m / M;
-      poly.push({
-        x: lip.x + (base.x - lip.x) * t + dx * Math.sin(t * Math.PI) * bow,
-        y: lip.y + (base.y - lip.y) * t,
-        z: lip.z + (base.z - lip.z) * t + dz * Math.sin(t * Math.PI) * bow,
-      });
+    const wf = decodeWaterfallPath(customState);
+    let pts: { x: number; z: number }[]; let poolY: number; let width: number;
+    if (wf) {
+      pts = wf.points; poolY = wf.poolY; width = wf.width;
+    } else {
+      // 兼容旧存档：wf: 两点直连
+      const spec = decodeWaterfall(customState);
+      if (!spec) return null;
+      pts = [{ x: spec.lip.x, z: spec.lip.z }, { x: spec.base.x, z: spec.base.z }];
+      poolY = spec.base.y; width = spec.width;
     }
-    const fall = { x: (lip.x + base.x) / 2, z: (lip.z + base.z) / 2, topY: lip.y, bottomY: base.y, dir: { x: dx, z: dz }, width, poly };
-    return { fall, base, width };
+    if (pts.length < 2) return null;
+    // 贴坡：沿水路采样（已挖槽的）地形高度，水顺槽而下、只降不升，末端落到潭面。
+    const poly: { x: number; y: number; z: number }[] = [];
+    let prevY = getTerrainHeight(pts[0].x, pts[0].z) + 0.08;
+    for (let i = 0; i < pts.length; i++) {
+      const x = pts[i].x, z = pts[i].z;
+      const groundY = getTerrainHeight(x, z) + 0.08;     // 略浮于槽底，避免穿插
+      let y = Math.min(groundY, prevY);                  // 贴地且只降不升
+      y = Math.max(y, poolY);                            // 不低于潭面
+      if (i === pts.length - 1) y = poolY - 0.12;        // 末端没入潭面 → 不留悬空缝
+      poly.push({ x, y, z });
+      prevY = y;
+    }
+    const start = pts[0], end = pts[pts.length - 1];
+    let dx = end.x - start.x, dz = end.z - start.z;
+    const hl = Math.hypot(dx, dz) || 1; dx /= hl; dz /= hl; // 整体走向（仅几何兜底；逐点切线在几何内计算）
+    const fall = { x: start.x, z: start.z, topY: poly[0].y, bottomY: poolY, dir: { x: dx, z: dz }, width, poly };
+    return { fall, base: { x: end.x, y: poolY, z: end.z }, width };
   }, [customState]);
   if (!built) return null;
   const { fall, base, width } = built;
@@ -303,7 +309,7 @@ function WaterfallStroke({ customState }: { customState?: string }) {
       <Waterfall {...fall} />
       {/* 跌水潭：圆形水面，吃高度场体积着色 → 像真水潭 */}
       <group position={[base.x, base.y, base.z]}>
-        <StylizedWater radius={width * 1.25} segments={28} shallow="#aee6fa" deep="#2a6690" opacity={0.88} waveAmp={0.6} />
+        <StylizedWater radius={width * 1.6} segments={28} shallow="#aee6fa" deep="#2a6690" opacity={0.9} waveAmp={0.6} />
       </group>
     </group>
   );
@@ -3071,195 +3077,6 @@ export function Birdhouse(props: any) {
     );
 }
 
-function Farmland({ position, scale = 1, id }: any) {
-  const ref = usePopIn(scale);
-  return (
-    <group position={[position.x, position.y, position.z]} scale={scale} ref={ref}>
-      {/* Base soil mound */}
-      <mesh receiveShadow position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[2.5, 2.5]} />
-        <meshStandardMaterial color="#3f2716" roughness={1} flatShading />
-      </mesh>
-      
-      {/* Hand-drawn stylized soil mounds */}
-      <mesh receiveShadow position={[0, 0.08, 0]} rotation={[-Math.PI / 2 + 0.05, 0, 0]}>
-        <planeGeometry args={[2.3, 2.3]} />
-        <meshStandardMaterial color="#4a3018" roughness={1} flatShading />
-      </mesh>
-
-      {/* Dirt rows */}
-      {[...Array(4)].map((_, i) => (
-        <group key={i} position={[0, 0.12, -0.9 + i * 0.6]}>
-          <mesh rotation={[-Math.PI / 2, Math.random() * 0.05, 0]} receiveShadow>
-             <planeGeometry args={[2.3, 0.15]} />
-             <meshStandardMaterial color="#2a1b0f" roughness={1} flatShading />
-          </mesh>
-          <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, Math.random() * 0.05, 0]}>
-             <cylinderGeometry args={[0.08, 0.08, 2.2, 4]} />
-             <meshStandardMaterial color="#352112" roughness={1} flatShading />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  );
-}
-
-function Crop({ position, scale = 1, type, growthProgress = 0, plantedAt }: any) {
-  const isWheat = type === 'crop_wheat';
-  const playtime = useGameStore(state => state.stats.playtime);
-  const localProgress = getCropGrowthProgress({ growthProgress, plantedAt }, playtime);
-
-  // Visual growth stages based on progress
-  let visualScale: number;
-  let color: string;
-
-  if (localProgress < 0.3) {
-    // Small green sprout
-    visualScale = 0.3;
-    color = '#4ade80';
-  } else if (localProgress < 0.7) {
-    // Medium green stalk/top
-    visualScale = 0.6;
-    color = '#22c55e';
-  } else {
-    // Full grown
-    visualScale = 1.0;
-    color = isWheat ? '#eab308' : '#22c55e';
-  }
-
-  const h = isWheat ? 1.5 : 0.6;
-  const currentHeight = Math.max(0.1, h * visualScale);
-  const isGrown = localProgress >= 0.7;
-
-  return (
-    <group position={[position.x, position.y, position.z]} scale={scale}>
-       <group position={[0, currentHeight / 2, 0]}>
-         {/* Plants using cross-planes for hand-drawn/paper feel */}
-         {[...Array(3)].map((_, i) => (
-           <group key={i} position={[(i-1)*0.4, 0, (i%2 === 0 ? 0.2 : -0.2)]}>
-             <mesh rotation={[0, Math.PI / 4 + Math.random()*0.2, 0]} castShadow>
-               <planeGeometry args={[0.3, currentHeight]} />
-               <meshStandardMaterial color={color} roughness={0.8} side={THREE.DoubleSide} transparent opacity={0.9} flatShading />
-             </mesh>
-             <mesh rotation={[0, -Math.PI / 4 + Math.random()*0.2, 0]} castShadow>
-               <planeGeometry args={[0.3, currentHeight]} />
-               <meshStandardMaterial color={color} roughness={0.8} side={THREE.DoubleSide} transparent opacity={0.9} flatShading />
-             </mesh>
-             
-             {/* Carrot orange root visible when grown */}
-             {!isWheat && isGrown && (
-               <mesh position={[0, -currentHeight/2 + 0.15, 0]} castShadow>
-                 <coneGeometry args={[0.15, 0.4, 4]} />
-                 <meshStandardMaterial color="#f97316" roughness={0.7} flatShading />
-               </mesh>
-             )}
-             
-             {/* Wheat golden head when grown */}
-             {isWheat && isGrown && (
-               <mesh position={[0, currentHeight/2 - 0.1, 0]} castShadow>
-                 <octahedronGeometry args={[0.18, 0]} />
-                 <meshStandardMaterial color="#fbbf24" roughness={0.6} flatShading />
-               </mesh>
-             )}
-           </group>
-         ))}
-       </group>
-    </group>
-  );
-}
-
-
-export function Tent(props: any) {
-  const ref = usePopIn(props.scale || 1);
-  return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} scale={0} ref={ref}>
-      {/* Front Wooden Frame */}
-      <mesh position={[0, 0.9, 1.0]} rotation={[0, 0, Math.PI / 4]} castShadow>
-        <boxGeometry args={[0.1, 2.6, 0.1]} />
-        <meshStandardMaterial color="#5c4033" flatShading />
-      </mesh>
-      <mesh position={[0, 0.9, 1.0]} rotation={[0, 0, -Math.PI / 4]} castShadow>
-        <boxGeometry args={[0.1, 2.6, 0.1]} />
-        <meshStandardMaterial color="#5c4033" flatShading />
-      </mesh>
-
-      {/* Back Wooden Frame */}
-      <mesh position={[0, 0.9, -1.0]} rotation={[0, 0, Math.PI / 4]} castShadow>
-        <boxGeometry args={[0.1, 2.6, 0.1]} />
-        <meshStandardMaterial color="#5c4033" flatShading />
-      </mesh>
-      <mesh position={[0, 0.9, -1.0]} rotation={[0, 0, -Math.PI / 4]} castShadow>
-        <boxGeometry args={[0.1, 2.6, 0.1]} />
-        <meshStandardMaterial color="#5c4033" flatShading />
-      </mesh>
-
-      {/* Top Ridge Pole (Crossbar) */}
-      <mesh position={[0, 1.7, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.06, 0.06, 2.4, 6]} />
-        <meshStandardMaterial color="#451a03" roughness={0.8} flatShading />
-      </mesh>
-      
-      {/* Canvas Main - Left side */}
-      <mesh position={[-0.6, 0.9, 0]} rotation={[0, 0, Math.PI / 6]} castShadow receiveShadow>
-        <boxGeometry args={[0.05, 2.1, 2.1]} />
-        <meshStandardMaterial color="#fef3c7" roughness={1} flatShading />
-      </mesh>
-      {/* Canvas Main - Right side */}
-      <mesh position={[0.6, 0.9, 0]} rotation={[0, 0, -Math.PI / 6]} castShadow receiveShadow>
-        <boxGeometry args={[0.05, 2.1, 2.1]} />
-        <meshStandardMaterial color="#fef3c7" roughness={1} flatShading />
-      </mesh>
-
-      {/* Ropes and Pegs */}
-      {[-1, 1].map((sideX) => 
-        [-1, 1].map((sideZ) => (
-           <group key={`${sideX}-${sideZ}`}>
-             <mesh position={[sideX * 0.9, 0.4, sideZ * 1.0]} rotation={[0, 0, sideX * -Math.PI / 4]} castShadow>
-               <cylinderGeometry args={[0.015, 0.015, 1.2, 4]} />
-               <meshStandardMaterial color="#e5e5e5" roughness={1} flatShading />
-             </mesh>
-             <mesh position={[sideX * 1.3, 0.05, sideZ * 1.0]} rotation={[sideZ * 0.2, 0, sideX * -Math.PI / 6]} castShadow>
-               <cylinderGeometry args={[0.03, 0.01, 0.2, 4]} />
-               <meshStandardMaterial color="#52525b" roughness={0.7} flatShading />
-             </mesh>
-           </group>
-        ))
-      )}
-
-      {/* Back flap */}
-      <mesh position={[0, 0.7, -0.95]} rotation={[Math.PI / 10, 0, 0]} castShadow>
-        <planeGeometry args={[1.5, 1.7]} />
-        <meshStandardMaterial color="#fde68a" roughness={1} side={THREE.DoubleSide} flatShading />
-      </mesh>
-      
-      {/* Floor blanket */}
-      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[1.7, 2.0]} />
-        <meshStandardMaterial color="#92400e" roughness={1} flatShading />
-      </mesh>
-
-      {/* Lantern */}
-      <group position={[0, 0.8, 0.8]}>
-         <mesh position={[0, 0.1, 0]} castShadow>
-           <cylinderGeometry args={[0.01, 0.01, 0.2, 4]} />
-           <meshStandardMaterial color="#1c1917" />
-         </mesh>
-         <mesh castShadow>
-           <cylinderGeometry args={[0.06, 0.08, 0.15, 6]} />
-           <meshStandardMaterial color="#fbbf24" emissive="#fbbf24" emissiveIntensity={0.5} flatShading />
-         </mesh>
-         <pointLight color="#fde047" distance={3} intensity={0.8} />
-      </group>
-
-      {/* Inside Details */}
-      <mesh position={[-0.3, 0.15, -0.4]} rotation={[0, Math.PI/8, 0]} castShadow>
-        <boxGeometry args={[0.6, 0.25, 0.4]} />
-        <meshStandardMaterial color="#e2e8f0" flatShading />
-      </mesh>
-    </group>
-  );
-}
-
 export function Campfire(props: any) {
   const ref = usePopIn(props.scale || 1);
   const [isLit, setIsLit] = useState(false);
@@ -3396,100 +3213,6 @@ export function Campfire(props: any) {
           } 
           onClick={(e: any) => { e.stopPropagation(); AudioSystem.playClick(); setIsLit(!isLit); forceClose(); }} 
       />
-    </group>
-  );
-}
-
-export function Fence(props: any) {
-  const ref = usePopIn(props.scale || 1);
-  // Add some slight randomized variation based on position to look hand-made
-  const seed = (props.position.x * 13.1 + props.position.z * 7.9);
-  const r1 = Math.sin(seed) * 0.05;
-  const r2 = Math.cos(seed) * 0.05;
-  
-  return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
-      {/* Posts */}
-      <mesh position={[-0.8, 0.6, 0]} castShadow>
-        <cylinderGeometry args={[0.08, 0.08, 1.2, 5]} />
-        <meshStandardMaterial color="#78350f" roughness={0.9} flatShading />
-      </mesh>
-      <mesh position={[0.8, 0.6, 0]} rotation={[0, 0.5, 0]} castShadow>
-        <cylinderGeometry args={[0.08, 0.08, 1.2, 5]} />
-        <meshStandardMaterial color="#78350f" roughness={0.9} flatShading />
-      </mesh>
-      
-      {/* Planks */}
-      <mesh position={[0, 0.8, 0.1]} rotation={[0, 0, r1]} castShadow>
-        <boxGeometry args={[2.0, 0.15, 0.05]} />
-        <meshStandardMaterial color="#8b5a2b" roughness={0.8} flatShading />
-      </mesh>
-      <mesh position={[0, 0.4, -0.1]} rotation={[0, 0, r2]} castShadow>
-        <boxGeometry args={[2.0, 0.15, 0.05]} />
-        <meshStandardMaterial color="#8b5a2b" roughness={0.8} flatShading />
-      </mesh>
-    </group>
-  );
-}
-
-export function Well(props: any) {
-  const ref = usePopIn(props.scale || 1);
-  return (
-    <group position={[props.position.x, props.position.y, props.position.z]} rotation={[0, props.rotation.y, 0]} ref={ref}>
-      {/* Stone Base Ring */}
-      <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.8, 0.8, 0.8, 12]} />
-        <meshStandardMaterial color="#64748b" roughness={0.8} flatShading />
-      </mesh>
-      {/* Inner Hole */}
-      <mesh position={[0, 0.41, 0]} receiveShadow>
-        <cylinderGeometry args={[0.6, 0.6, 0.81, 12]} />
-        <meshStandardMaterial color="#0f172a" roughness={1} flatShading />
-      </mesh>
-      {/* Water inside */}
-      <mesh position={[0, 0.6, 0]} rotation={[-Math.PI/2, 0, 0]}>
-        <circleGeometry args={[0.55, 12]} />
-        <meshStandardMaterial color="#0ea5e9" transparent opacity={0.8} flatShading />
-      </mesh>
-
-      {/* Pillars */}
-      <mesh position={[-0.65, 1.2, 0]} castShadow>
-        <boxGeometry args={[0.15, 2.4, 0.15]} />
-        <meshStandardMaterial color="#5c4033" flatShading />
-      </mesh>
-      <mesh position={[0.65, 1.2, 0]} castShadow>
-        <boxGeometry args={[0.15, 2.4, 0.15]} />
-        <meshStandardMaterial color="#5c4033" flatShading />
-      </mesh>
-      
-      {/* Roof crossbeam */}
-      <mesh position={[0, 2.1, 0]} castShadow>
-        <boxGeometry args={[1.6, 0.1, 0.1]} />
-        <meshStandardMaterial color="#5c4033" flatShading />
-      </mesh>
-      {/* Roof */}
-      <mesh position={[-0.4, 2.4, 0]} rotation={[0, 0, Math.PI/6]} castShadow>
-        <boxGeometry args={[1.2, 0.1, 1.5]} />
-        <meshStandardMaterial color="#991b1b" roughness={0.9} flatShading />
-      </mesh>
-      <mesh position={[0.4, 2.4, 0]} rotation={[0, 0, -Math.PI/6]} castShadow>
-        <boxGeometry args={[1.2, 0.1, 1.5]} />
-        <meshStandardMaterial color="#991b1b" roughness={0.9} flatShading />
-      </mesh>
-      
-      {/* Roller & Rope & Bucket */}
-      <mesh position={[0, 1.8, 0]} rotation={[Math.PI/2, 0, Math.PI/2]} castShadow>
-        <cylinderGeometry args={[0.08, 0.08, 1.4, 6]} />
-        <meshStandardMaterial color="#78350f" flatShading />
-      </mesh>
-      <mesh position={[0, 1.4, 0]} castShadow>
-        <cylinderGeometry args={[0.02, 0.02, 0.8, 4]} />
-        <meshStandardMaterial color="#e2e8f0" flatShading />
-      </mesh>
-      <mesh position={[0, 1.0, 0]} castShadow>
-        <cylinderGeometry args={[0.2, 0.15, 0.3, 8]} />
-        <meshStandardMaterial color="#b45309" flatShading />
-      </mesh>
     </group>
   );
 }
@@ -4253,6 +3976,7 @@ const AssetInstance = memo(function AssetInstance({ asset }: { asset: PlacedAsse
     case 'pier': content = <MarinePier {...asset} />; break;
     case 'bridge_pillar': content = <MarineBridgePillar {...asset} assetId={asset.id} />; break;
     case 'boat': content = <MarineBoat {...asset} />; break;
+    case 'raft': content = <RaftAsset {...asset} />; break;
     case 'balloon':
     case 'balloon_ladder':
     case 'balloon_bridge': content = <MarineBalloon {...asset} />; break;
@@ -4278,6 +4002,8 @@ const AssetInstance = memo(function AssetInstance({ asset }: { asset: PlacedAsse
     case 'bush': content = <Bush {...asset} />; break;
     case 'sign': content = <Sign {...asset} assetId={asset.id} />; break;
     case 'mailbox': content = <Mailbox {...asset} assetId={asset.id} />; break;
+    case 'track': content = <TrackAsset asset={asset} />; break;
+    case 'train': content = <TrainAsset asset={asset} />; break;
     default: content = null;
   }
 
@@ -4299,33 +4025,5 @@ export function Assets() {
       <MarineBridgeRenderer />
       {assets.map(asset => <AssetInstance key={asset.id} asset={asset} />)}
     </MarineAssetIndexProvider>
-  );
-}
-
-export function TelescopeIcon() {
-  return (
-    <svg viewBox="0 0 100 100" className="w-8 h-8 overflow-visible text-slate-800">
-      <style>{`
-        @keyframes basePop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
-        @keyframes scopeUp { 0% { transform: rotate(20deg) scale(0.5); opacity: 0; } 100% { transform: rotate(-30deg) scale(1); opacity: 1; } }
-        @keyframes starsTwinkle { 0%, 100% { opacity: 0; transform: scale(0) translate(0, 0); } 50% { opacity: 1; transform: scale(1) translate(4px, -4px); } }
-        .base { animation: basePop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; transform-origin: center bottom; }
-        .scope { animation: scopeUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both; transform-origin: 30% 70%; }
-        .star1 { animation: starsTwinkle 1.5s ease-in-out infinite 0.4s; transform-origin: center; }
-        .star2 { animation: starsTwinkle 2s ease-in-out infinite 0.6s; transform-origin: center; }
-      `}</style>
-      <g className="base" fill="currentColor">
-        <path d="M40 85 L60 85 L55 60 L45 60 Z" />
-        <circle cx="50" cy="60" r="8" />
-      </g>
-      <g className="scope" fill="none" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="30" y1="70" x2="70" y2="30" />
-        <line x1="60" y1="20" x2="80" y2="40" strokeWidth="12" />
-      </g>
-      <g fill="#facc15">
-        <circle cx="85" cy="15" r="4" className="star1" />
-        <circle cx="75" cy="5" r="3" className="star2" />
-      </g>
-    </svg>
   );
 }

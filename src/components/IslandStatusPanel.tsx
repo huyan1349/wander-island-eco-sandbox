@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Feather, Compass, Sprout, Wind, PawPrint, Calendar, BookOpen, Star, Users, Gift, Heart } from 'lucide-react';
 import { useGameStore } from '../store';
 import { api } from '../lib/api';
 import { AudioSystem } from '../lib/audio';
-import { GiftModal } from './GiftModal';
+import { lazyNamed } from '../lib/lazyNamed';
+
+const GiftModal = lazyNamed(() => import('./GiftModal'), 'GiftModal');
 
 type VisitorLog = {
   id: string;
@@ -335,15 +337,16 @@ export const IslandStatusPanel: React.FC<{ onClose: () => void }> = ({ onClose }
       </motion.section>
       
       {showGift && (
-        <GiftModal
-          mode="create"
-          fromName={authUser?.username || '岛民'}
-          islandName={islandName}
-          onClose={() => setShowGift(false)}
-        />
+        <Suspense fallback={null}>
+          <GiftModal
+            mode="create"
+            fromName={authUser?.username || '岛民'}
+            islandName={islandName}
+            onClose={() => setShowGift(false)}
+          />
+        </Suspense>
       )}
     </motion.div>
     </AnimatePresence>
   );
 };
-

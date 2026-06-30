@@ -21,6 +21,7 @@ import {
   VERTICAL_TOOLS,
 } from '../config/toolRules';
 import { BuildPreview, ParticleBurst, ShockwaveRing } from './terrain/TerrainEffects';
+import { buildTrack, encodeTrackState } from '../game/train/trackSystem';
 
 const noise2D = createNoise2D();
 
@@ -37,7 +38,7 @@ function RiverPreview({ pointsRef }: { pointsRef: React.MutableRefObject<{ x: nu
     const mesh = meshRef.current;
     if (!mesh) return;
     const st = useGameStore.getState();
-    const drawing = st.isDrawing && (st.selectedTool === 'water_flow' || st.selectedTool === 'waterfall');
+    const drawing = st.isDrawing && st.selectedTool === 'water_flow';
     const pts = pointsRef.current;
     if (!drawing || pts.length < 2) { mesh.visible = false; lastLen.current = -1; return; }
     if (pts.length !== lastLen.current) {
@@ -55,6 +56,86 @@ function RiverPreview({ pointsRef }: { pointsRef: React.MutableRefObject<{ x: nu
   );
 }
 
+// 铁轨拖绘时的实时预览
+function TrackPreview({ pointsRef }: { pointsRef: React.MutableRefObject<{ x: number; z: number }[]> }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const lastLen = useRef(-1);
+  const trackMeshRef = useRef<THREE.Mesh>(null);
+
+  useFrame(() => {
+    const group = groupRef.current;
+    if (!group) return;
+    const st = useGameStore.getState();
+    const drawing = st.isDrawing && st.selectedTool === 'track';
+    const pts = pointsRef.current;
+    if (!drawing || pts.length < 2) { group.visible = false; lastLen.current = -1; return; }
+    if (pts.length !== lastLen.current) {
+      lastLen.current = pts.length;
+      const build = buildTrack(pts);
+      if (build.meshGeometry && trackMeshRef.current) {
+         trackMeshRef.current.geometry.dispose();
+         trackMeshRef.current.geometry = build.meshGeometry;
+      }
+    }
+    group.visible = true;
+  });
+
+  return (
+    <group ref={groupRef} visible={false} renderOrder={6}>
+      <mesh ref={trackMeshRef}>
+        <bufferGeometry />
+        <meshBasicMaterial color="#fca5a5" transparent opacity={0.6} depthWrite={false} depthTest={false} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
+// 瀑布两点放置预览：第一点（崖口）落下后，画出一圈高亮 + 一条到当前光标的连线，
+// 让"从高点连到低点"看得见，再点第二下成形。
+function WaterfallPreview({ anchorRef, cursorRef }: {
+  anchorRef: React.MutableRefObject<{ x: number; z: number; y: number } | null>;
+  cursorRef: React.MutableRefObject<THREE.Vector3>;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+  const aRef = useRef<THREE.Mesh>(null);
+  const bRef = useRef<THREE.Mesh>(null);
+  const line = useMemo(() => {
+    const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+    const m = new THREE.LineBasicMaterial({ color: '#7fd4ff', transparent: true, opacity: 0.85, depthTest: false });
+    const l = new THREE.Line(g, m);
+    l.renderOrder = 7;
+    return l;
+  }, []);
+  useFrame(({ clock }) => {
+    const st = useGameStore.getState();
+    const show = st.selectedTool === 'waterfall' && !!anchorRef.current;
+    if (groupRef.current) groupRef.current.visible = show;
+    if (!show) return;
+    const a = anchorRef.current!;
+    const c = cursorRef.current;
+    const pulse = 1 + Math.sin(clock.elapsedTime * 6) * 0.12;
+    if (aRef.current) { aRef.current.position.set(a.x, a.y + 0.06, a.z); aRef.current.scale.setScalar(pulse); }
+    if (bRef.current) bRef.current.position.set(c.x, c.y + 0.06, c.z);
+    const pos = line.geometry.attributes.position as THREE.BufferAttribute;
+    pos.setXYZ(0, a.x, a.y + 0.06, a.z);
+    pos.setXYZ(1, c.x, c.y + 0.06, c.z);
+    pos.needsUpdate = true;
+  });
+  return (
+    <group ref={groupRef} visible={false}>
+      <mesh ref={aRef} rotation={[-Math.PI / 2, 0, 0]} renderOrder={7}>
+        <ringGeometry args={[0.34, 0.5, 28]} />
+        <meshBasicMaterial color="#7fd4ff" transparent opacity={0.95} depthTest={false} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh ref={bRef} rotation={[-Math.PI / 2, 0, 0]} renderOrder={7}>
+        <ringGeometry args={[0.24, 0.4, 28]} />
+        <meshBasicMaterial color="#aee6fa" transparent opacity={0.75} depthTest={false} side={THREE.DoubleSide} />
+      </mesh>
+      <primitive object={line} />
+    </group>
+  );
+}
+
 export function Terrain() {
   const meshRef = useRef<THREE.Mesh>(null);
   const cursorRef = useRef<THREE.Mesh>(null);
@@ -68,10 +149,10 @@ export function Terrain() {
   const biome = useGameStore(state => state.biome);
   const assets = useGameStore(state => state.assets);
   const [clicks, setClicks] = useState<{id: number, pos: THREE.Vector3, color: string}[]>([]);
-  
+
   const cursorWorldPos = useRef(new THREE.Vector3());
   const cursorActive = useRef(false);
-  
+
   // Create non-indexed geometry for sharp, premium low-poly look
   const { positions, uvs, colors, types } = useMemo(() => {
     const gridPos: number[][][] = [];
@@ -86,14 +167,14 @@ export function Terrain() {
         const x = (j * segmentSize) - halfSize;
         const dist = Math.sqrt(x*x + y*y);
         const maxDist = ISAND_SIZE / 2;
-        
+
         let z = (maxDist - dist) * 0.5;
         if (dist > 18) {
              z = -20;
         } else if (dist > 16) {
              z -= (dist - 16) * 1.5;
         }
-        
+
         if (z > 0) {
            z += noise2D(x * 0.1, y * 0.1) * 1.5;
            if (z < 0.5) z = 0.2;
@@ -339,6 +420,12 @@ export function Terrain() {
   const flattenTargetY = useRef(0);
   // 溪流拖绘：落笔到松手之间累积的折线点（世界 x,z）。
   const streamPoints = useRef<{ x: number; z: number }[]>([]);
+  // 铁轨拖绘：落笔到松手之间累积的折线点
+  const trackPoints = useRef<{ x: number; z: number }[]>([]);
+  // 瀑布：两点连线放置——记住第一点（高处崖口），第二点落水成潭。
+  const waterfallAnchor = useRef<{ x: number; z: number; y: number } | null>(null);
+  // 切走瀑布工具时，丢弃悬而未决的第一点
+  useEffect(() => { if (selectedTool !== 'waterfall') waterfallAnchor.current = null; }, [selectedTool]);
   // 「挖低」一笔里触到的最低点 + 中心，松手判定是否自动出水。
   const digLowest = useRef({ y: 999, x: 0, z: 0 });
   const lastBrushTime = useRef(0);
@@ -353,10 +440,10 @@ export function Terrain() {
         const isWater = selectedTool === 'pond' || selectedTool === 'spring';
         const isObjectPlacement = OBJECT_DRAG_TOOLS.has(selectedTool);
         const minDistance = isWater ? 1.2 : isObjectPlacement ? 1.5 : 0.2;
-        
+
         // Ensure distance before applying brush again
         if (point.distanceTo(lastBrushPoint.current) < minDistance) return;
-        
+
         lastBrushTime.current = Date.now();
         lastBrushPoint.current.copy(point);
     }
@@ -370,7 +457,7 @@ export function Terrain() {
       if (['deer', 'wolf'].includes(selectedTool)) color = "#fbbf24";
       if (selectedTool === 'eraser') color = "#ef4444";
       setClicks(prev => [...prev.slice(-9), { id: Date.now() + Math.random(), pos: point.clone(), color }]);
-      
+
       if (!isDragEvent || Math.random() < 0.1) {
           if (GRAY_BURST_TOOLS.has(selectedTool)) {
               AudioSystem.playDig();
@@ -416,9 +503,10 @@ export function Terrain() {
        if (!meshRef.current) return;
        const geometry = meshRef.current.geometry;
        const posAttr = geometry.attributes.position;
-       const { brushSize, brushStrength, brushFalloff } = useGameStore.getState();
+       // 固定满强度 + 实心中心衰减 → 单击与拖拽都画出连续实心的小路。
+       // （之前用 brushStrength：paintSurface 拖拽时强度减半，低于 0.3 阈值 → 几乎画不上，所以"拖拽不可用"。）
        const paintChanged = paintSurface(types, posAttr.array as Float32Array, {
-         mode: 'paint', size: 1.5, strength: brushStrength, falloff: brushFalloff,
+         mode: 'paint', size: 1.5, strength: 1.0, falloff: 'flat_center',
          isDrag: isDragEvent, px: point.x, pz: point.z, paintType: 1, // 1 = 小路
        });
        if (paintChanged) {
@@ -472,7 +560,7 @@ export function Terrain() {
 
     // Add object tool (only on single clicks)
     if (!isDragEvent && PLACEABLE_TOOLS.has(selectedTool)) {
-        
+
         let rx = 0, rz = 0;
         if (e && e.face && e.face.normal && !VERTICAL_TOOLS.has(selectedTool)) {
             const normal = e.face.normal.clone();
@@ -484,10 +572,23 @@ export function Terrain() {
 
         let targetScale = 0.8 + Math.random() * 0.4;
         let targetRotY = Math.random() * Math.PI * 2;
-        
+
         if (FIXED_ROTATION_TOOLS.has(selectedTool)) {
             targetScale = 1.0;
             targetRotY = 0;
+        } else if (selectedTool === 'fence') {
+            // 栅栏：朝向「8 单位内最近的一段栅栏」自动连成直线（点哪连哪、方向可控），不再随机乱转；
+            // 远离已有栅栏（新起一段）则用默认朝向 0。
+            targetScale = 1.0;
+            const all = useGameStore.getState().assets;
+            let best: any = null, bestD = 64; // 8^2
+            for (let i = 0; i < all.length; i++) {
+              if (all[i].type !== 'fence') continue;
+              const ddx = point.x - all[i].position.x, ddz = point.z - all[i].position.z;
+              const d2 = ddx * ddx + ddz * ddz;
+              if (d2 > 0.0025 && d2 < bestD) { bestD = d2; best = all[i]; }
+            }
+            targetRotY = best ? Math.atan2(-(point.z - best.position.z), point.x - best.position.x) : 0;
         } else if (selectedTool === 'platform' || selectedTool === 'pier') {
             targetScale = 1.0;
             targetRotY = 0;
@@ -535,18 +636,49 @@ export function Terrain() {
   const onPointerDown = (e: any) => {
     if (selectedTool === 'none') return;
     e.stopPropagation();
-    
+
     // Check if right click (button 2) to cancel or allow anything
-    if (e.button !== 0) return;
+    if (e.button !== 0) {
+        // 瀑布：右键撤销已落下的第一点
+        if (selectedTool === 'waterfall' && waterfallAnchor.current) {
+            waterfallAnchor.current = null;
+            AudioSystem.playClose();
+        }
+        return;
+    }
 
     if (selectedTool === 'eraser') {
         useGameStore.getState().setSelectedEntityId(null);
         return;
     }
 
-    // 河流 / 瀑布：落笔开始记录折线，不走笔刷。
-    if (selectedTool === 'water_flow' || selectedTool === 'waterfall') {
-        streamPoints.current = [{ x: e.point.x, z: e.point.z }];
+    // 瀑布：两点连线放置（先点高处崖口，再点低处落潭），不拖绘。
+    if (selectedTool === 'waterfall') {
+        const p = { x: e.point.x, z: e.point.z, y: e.point.y };
+        if (!waterfallAnchor.current) {
+            waterfallAnchor.current = p;            // 第一点：高处崖口
+            AudioSystem.playTap();
+        } else {
+            const a = waterfallAnchor.current;       // 第二点：低处落潭 → 整形地形 + 挂水帘
+            const placed = {
+                type: 'waterfall' as any,
+                position: { x: (a.x + p.x) / 2, y: 0, z: (a.z + p.z) / 2 },
+                rotation: { x: 0, y: 0, z: 0 },
+                scale: 1,
+                customState: shapeWaterfallAndEncode({ x: a.x, z: a.z }, { x: p.x, z: p.z }, 1.6),
+            };
+            addAsset(placed);
+            if (useGameStore.getState().online) emitHermitPlace(placed);
+            AudioSystem.playConfirm();
+            waterfallAnchor.current = null;
+        }
+        return;
+    }
+
+    // 河流或铁轨：落笔开始记录折线，不走笔刷。
+    if (selectedTool === 'water_flow' || selectedTool === 'track') {
+        if (selectedTool === 'water_flow') streamPoints.current = [{ x: e.point.x, z: e.point.z }];
+        else trackPoints.current = [{ x: e.point.x, z: e.point.z }];
         useGameStore.getState().setIsDrawing(true);
         if (e.target && e.pointerId !== undefined) {
             (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -566,12 +698,11 @@ export function Terrain() {
     if (useGameStore.getState().isDrawing) {
        useGameStore.getState().setIsDrawing(false);
 
-       // 河流 / 瀑布：松手把折线提交为对应物件。
-       if (selectedTool === 'water_flow' || selectedTool === 'waterfall') {
-          const tool = selectedTool;
-          let pts = streamPoints.current;
+       // 河流/铁轨：松手把折线提交。
+       if (selectedTool === 'water_flow' || selectedTool === 'track') {
+          let pts = selectedTool === 'water_flow' ? streamPoints.current : trackPoints.current;
           // 单击（没拖出折线）：按坡度合成一段「顺坡而下」的短折线。
-          if (pts.length < 2) {
+          if (pts.length < 2 && selectedTool === 'water_flow') {
              const c = pts[0] || { x: lastBrushPoint.current.x, z: lastBrushPoint.current.z };
              const g = getTerrainGradient(c.x, c.z); // 指向上坡
              let ux = g.dx, uz = g.dz;
@@ -582,24 +713,30 @@ export function Terrain() {
                 { x: c.x + ux * span, z: c.z + uz * span }, // 高处
                 { x: c.x - ux * span, z: c.z - uz * span }, // 低处
              ];
+          } else if (pts.length < 2 && selectedTool === 'track') {
+             // 铁轨如果是单击就生成一个短直线
+             const c = pts[0] || { x: lastBrushPoint.current.x, z: lastBrushPoint.current.z };
+             pts = [
+                { x: c.x - 1, z: c.z },
+                { x: c.x + 1, z: c.z }
+             ];
           }
           if (pts.length >= 2) {
              const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
              const cz = pts.reduce((s, p) => s + p.z, 0) / pts.length;
-             // 河流：挖河床的流动河面；瀑布：连线两端，系统自动整形地形（崖+潭）再挂水帘
+             const customState = selectedTool === 'water_flow' ? carveRiverAndEncode(pts, 2.4) : encodeTrackState(pts);
              const placed = {
-                type: tool as any,
+                type: selectedTool as any,
                 position: { x: cx, y: 0, z: cz },
                 rotation: { x: 0, y: 0, z: 0 },
                 scale: 1,
-                customState: tool === 'water_flow'
-                  ? carveRiverAndEncode(pts, 2.4)
-                  : shapeWaterfallAndEncode(pts[0], pts[pts.length - 1], 2.4),
+                customState: customState,
              };
              addAsset(placed);
              if (useGameStore.getState().online) emitHermitPlace(placed);
           }
-          streamPoints.current = [];
+          if (selectedTool === 'water_flow') streamPoints.current = [];
+          else trackPoints.current = [];
           if (e.target && e.pointerId !== undefined) {
              try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { }
           }
@@ -633,12 +770,12 @@ export function Terrain() {
       cursorRef.current.visible = true;
       cursorRef.current.position.copy(e.point);
       cursorRef.current.position.y += 0.05;
-      
+
       if (e.face) {
          const n = e.face.normal;
          cursorRef.current.lookAt(e.point.x + n.x, e.point.y + n.y + 0.05, e.point.z + n.z);
       }
-      
+
       let cursorScale = 1;
       if (selectedTool === 'terrainUp' || selectedTool === 'terrainDown') cursorScale = useGameStore.getState().brushSize;
       if (selectedTool === 'eraser') cursorScale = 2;
@@ -647,8 +784,8 @@ export function Terrain() {
 
     if (useGameStore.getState().isDrawing) {
         e.stopPropagation();
-        if (selectedTool === 'water_flow' || selectedTool === 'waterfall') {
-            const pts = streamPoints.current;
+        if (selectedTool === 'water_flow' || selectedTool === 'track') {
+            const pts = selectedTool === 'water_flow' ? streamPoints.current : trackPoints.current;
             const last = pts[pts.length - 1];
             if (!last || Math.hypot(e.point.x - last.x, e.point.z - last.z) > 0.6) {
                 pts.push({ x: e.point.x, z: e.point.z });
@@ -662,7 +799,7 @@ export function Terrain() {
   useFrame(({ clock }) => {
      if (cursorRef.current && cursorRef.current.visible) {
          cursorRef.current.rotation.z = clock.elapsedTime * 2;
-         
+
          let baseScale = 1;
          const tool = useGameStore.getState().selectedTool;
          if (tool === 'terrainUp' || tool === 'terrainDown') baseScale = useGameStore.getState().brushSize;
@@ -680,11 +817,11 @@ export function Terrain() {
   return (
     <>
       {/* Giant invisible ocean plane to catch clicks outside the terrain grid */}
-      <mesh 
-        position={[0, -0.5, 0]} 
-        rotation={[-Math.PI / 2, 0, 0]} 
-        onPointerDown={onPointerDown} 
-        onPointerMove={onPointerMove} 
+      <mesh
+        position={[0, -0.5, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
         onPointerOut={onPointerOut}
       >
         <planeGeometry args={[400, 400]} />
@@ -697,27 +834,29 @@ export function Terrain() {
           <bufferAttribute attach="attributes-uv" array={uvs} count={uvs.length / 2} itemSize={2} />
           <bufferAttribute attach="attributes-color" array={colors} count={colors.length / 3} itemSize={3} />
         </bufferGeometry>
-        <meshStandardMaterial 
+        <meshStandardMaterial
           vertexColors={true}
-          flatShading={true} 
+          flatShading={true}
           roughness={0.9}
         />
       </mesh>
-      
+
       {/* Terrain Cursor */}
       <mesh ref={cursorRef} visible={false}>
         <ringGeometry args={[0.8, 1, 16]} />
         <meshBasicMaterial color="#ffffff" transparent opacity={0.6} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* 河流/瀑布拖绘实时预览：拖到哪显示到哪 */}
+      {/* 河流/铁轨/瀑布拖绘实时预览：拖到哪显示到哪 */}
       <RiverPreview pointsRef={streamPoints} />
+      <TrackPreview pointsRef={trackPoints} />
+      <WaterfallPreview anchorRef={waterfallAnchor} cursorRef={cursorWorldPos} />
 
       <ShockwaveRing />
 
       {/* Particle Bursts */}
       {clicks.map(c => <ParticleBurst key={c.id} position={c.pos} color={c.color} />)}
-      
+
       {/* High-End Build Previews */}
       <BuildPreview cursorWorldPos={cursorWorldPos} cursorActive={cursorActive} />
     </>

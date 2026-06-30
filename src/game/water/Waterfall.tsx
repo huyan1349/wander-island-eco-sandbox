@@ -2,122 +2,82 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { Waterfall as Fall } from './streamPath';
+import { StylizedWater } from './StylizedWater';
 
-// 风格化瀑布：沿落水线扫掠出「横截面外凸圆弧」的低多边形水柱网格（哑光、近不透明 → 有体积、不穿帮）
-// + 唇沫 / 跌水潭沫 + 小而碎的哑光水花粒子。对标 Blender 曲线扫掠思路，three.js 手搓。
+// 风格化瀑布：沿落水线扫掠出「横截面外凸圆弧」的低多边形水柱网格——真实 3D 体积，不是平板贴图。
+// 水帘本体用与「溪流」完全相同的 StylizedWater 着色器渲染（同配色、同深浅渐变、同柔和岸沫），
+// 不再有竖条纹 / 卡通描边 / 硬阈值白块等花纹。底部补少量哑光溅射水花（真实液滴）。
+//
+// 关键点：瀑布悬在半空，若按地形水深上色会「爆表」全黑 → 传 depthShade={false} 走横向 uv 上色；
+//         陡面白水 steepFoam 调低 → 水帘以蓝水为主、只有少量白沫，真正和溪流一致。
 
-const NOISE = /* glsl */ `
-float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-float vnoi(vec2 p){ vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.0-2.0*f);
-  return mix(mix(h21(i),h21(i+vec2(1,0)),u.x), mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),u.x), u.y); }
-`;
-
-/* ---------- 水柱网格（圆弧截面，沿落水线扫掠） ---------- */
-function buildChuteGeometry(poly: { x: number; y: number; z: number }[], dir: { x: number; z: number }, width: number) {
+/* ---------- 级联水体网格：沿落水线扫掠「贴坡、沿坡面法线鼓起」的圆弧水体 ----------
+   关键修正（解决"贴图感"）：
+   - 横截面沿「坡面法线 N」方向鼓出（陡处朝外、缓处朝上）→ 鼓包真正立在坡面之外 → 有体积；
+     旧版沿下游水平鼓、且整段共用同一个 Y，是一张完全扁平的膜，所以看着像贴图。
+   - 逐顶点写入坡度 aSteep（0 缓 → 1 陡），交给 StylizedWater 驱动「陡白急 / 缓蓝静」的自然过渡。
+   - 上窄下宽 + 陡处更鼓（鼓量随坡度）→ 缓处接近溪流的扁平、陡处是奔流的厚水体。 */
+function buildCascadeGeometry(poly: { x: number; y: number; z: number }[], dir: { x: number; z: number }, width: number) {
   const n = poly.length;
-  const K = 5;                       // 横向段数（圆弧分面）
+  const K = 6;                                   // 横向段数（圆弧分面）
   const VPR = K + 1;
-  const bulge = width * 0.5;         // 截面外凸量（体积）
-  const dh = new THREE.Vector2(dir.x, dir.z); const dl = dh.length() || 1; dh.x /= dl; dh.y /= dl; // 下游水平
-  const wx = -dh.y, wz = dh.x;       // 横向
-  const positions: number[] = [], uvs: number[] = [], indices: number[] = [];
+  const up = new THREE.Vector3(0, 1, 0);
+  const fallbackW = new THREE.Vector3(-dir.z, 0, dir.x); if (fallbackW.lengthSq() < 1e-6) fallbackW.set(1, 0, 0); fallbackW.normalize();
+  const positions: number[] = [], uvs: number[] = [], steeps: number[] = [], indices: number[] = [];
   const arc: number[] = [0];
   for (let k = 1; k < n; k++) arc.push(arc[k - 1] + Math.hypot(poly[k].x - poly[k - 1].x, poly[k].y - poly[k - 1].y, poly[k].z - poly[k - 1].z) || 0.001);
   const total = arc[n - 1] || 1;
+  // 逐站原始坡度（下落占比）→ 沿程平滑（box blur 2 趟），使陡/缓白水过渡连续、无突变带（更自然）
+  const steepArr: number[] = [];
   for (let k = 0; k < n; k++) {
+    const a = poly[Math.max(0, k - 1)], b = poly[Math.min(n - 1, k + 1)];
+    const tl = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) || 1;
+    steepArr.push(Math.min(1, Math.max(0, (-((b.y - a.y) / tl) - 0.30) / 0.55)));
+  }
+  for (let pass = 0; pass < 2; pass++) {
+    const tmp = steepArr.slice();
+    for (let k = 0; k < n; k++) steepArr[k] = (tmp[Math.max(0, k - 1)] + 2 * tmp[k] + tmp[Math.min(n - 1, k + 1)]) / 4;
+  }
+  const T = new THREE.Vector3(), W = new THREE.Vector3(), N = new THREE.Vector3();
+  for (let k = 0; k < n; k++) {
+    const a = poly[Math.max(0, k - 1)], b = poly[Math.min(n - 1, k + 1)];
+    T.set(b.x - a.x, b.y - a.y, b.z - a.z);       // 流向切线（含下落分量）
+    if (T.lengthSq() < 1e-8) T.set(dir.x, 0, dir.z);
+    T.normalize();
+    W.crossVectors(T, up);                        // 横向（水平，垂直于流向水平投影）
+    if (W.lengthSq() < 1e-6) W.copy(fallbackW); else W.normalize();
+    N.crossVectors(W, T).normalize();             // 坡面法线（指向坡外上方）
+    if (N.y < 0) N.negate();
+    const t = arc[k] / total;                     // 0 顶 → 1 底
+    const steep = steepArr[k]; // 沿程平滑后的坡度 → 陡缓过渡连续、不生硬
+    // 两端鼓量渐隐：顶部 14% 由扁渐鼓（出水口自然渐出）、底部 16% 由鼓渐扁（自然摊入潭面）→ 衔接不生硬
+    const endFade = Math.min(1, t / 0.14) * (1 - Math.min(1, Math.max(0, (t - 0.84) / 0.16)));
+    const wk = width * (0.7 + 0.45 * t);          // 上窄下宽
+    const bulge = wk * (0.15 + 0.4 * steep) * endFade; // 陡处更鼓；两端摊平融入地形/潭面
     const p = poly[k];
     for (let j = 0; j <= K; j++) {
       const u = j / K;
-      const s = (u - 0.5) * width;
-      const bo = Math.cos((u - 0.5) * Math.PI) * bulge; // 中间鼓、两边收 → D 形截面
-      positions.push(p.x + wx * s + dh.x * bo, p.y, p.z + wz * s + dh.y * bo);
-      uvs.push(u, arc[k] / total);   // v: 0 顶 → 1 底（向下滚动用）
+      const s = (u - 0.5) * wk;
+      const bo = Math.cos((u - 0.5) * Math.PI) * bulge; // 中间鼓、两边收 → 沿 N 的圆弧截面
+      positions.push(p.x + W.x * s + N.x * bo, p.y + W.y * s + N.y * bo, p.z + W.z * s + N.z * bo);
+      uvs.push(u, t);                             // u 横向(0..1 → 两岸)、v 弧长(0 顶 → 1 底)
+      steeps.push(steep);
     }
     if (k < n - 1) {
       const base = k * VPR;
       for (let j = 0; j < K; j++) {
-        const a = base + j, b = a + 1, c = a + VPR, d = c + 1;
-        indices.push(a, c, b, b, c, d);
+        const a2 = base + j, b2 = a2 + 1, c2 = a2 + VPR, d2 = c2 + 1;
+        indices.push(a2, c2, b2, b2, c2, d2);
       }
     }
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  g.setAttribute('aSteep', new THREE.Float32BufferAttribute(steeps, 1));
   g.setIndex(indices);
   g.computeVertexNormals();
   return g;
-}
-
-function Chute({ poly, dir, width }: { poly: Fall['poly']; dir: { x: number; z: number }; width: number }) {
-  const geo = useMemo(() => buildChuteGeometry(poly, dir, width), [poly, dir, width]);
-  const uniforms = useMemo(() => ({
-    uTime: { value: 0 }, uSpeed: { value: 0.9 },
-    uColor: { value: new THREE.Color('#7fb4d8') }, uFoam: { value: new THREE.Color('#f3fbff') },
-  }), []);
-  useFrame((s) => { uniforms.uTime.value = s.clock.elapsedTime; });
-  const onBeforeCompile = useMemo(() => (sh: any) => {
-    Object.assign(sh.uniforms, uniforms);
-    sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', `#include <common>\nuniform float uTime; varying vec2 vWUv;`)
-      .replace('#include <begin_vertex>', `#include <begin_vertex>
-{
-  vWUv = uv;
-  transformed += normal * sin(uv.y * 11.0 - uTime * 5.0) * 0.02; // 表面翻涌
-}`);
-    sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', `#include <common>\nuniform float uTime; uniform float uSpeed; uniform vec3 uColor; uniform vec3 uFoam; varying vec2 vWUv;\n${NOISE}`)
-      .replace('#include <color_fragment>', `#include <color_fragment>
-{
-  // 干净的竖直流线（少而清晰、带噪声轻扭），代替密集噪点
-  float lane = vWUv.x * 5.0;
-  float wob = vnoi(vec2(lane * 0.7, vWUv.y * 1.6 - uTime * uSpeed)) * 0.35;
-  float s = abs(fract(lane + wob) - 0.5) * 2.0;
-  float streak = smoothstep(0.55, 0.12, s);
-  // cel 二值水色：底蓝 / 亮蓝
-  vec3 col = mix(uColor, mix(uColor, uFoam, 0.55), step(0.5, streak));
-  // 顶部唇白 + 近底白沫盖（硬阈值 → toon 干净白块，不是菜花）
-  float capN = 0.6 + 0.4 * vnoi(vec2(vWUv.x * 4.0, -uTime * 2.0));
-  float cap = smoothstep(0.1, 0.0, vWUv.y) + smoothstep(0.82, 1.0, vWUv.y) * capN;
-  col = mix(col, uFoam, step(0.45, cap));
-  // 两侧描白边
-  col = mix(col, uFoam, smoothstep(0.82, 1.0, abs(vWUv.x - 0.5) * 2.0));
-  diffuseColor.rgb = col;
-  float fade = smoothstep(0.0, 0.03, vWUv.y) * smoothstep(1.0, 0.93, vWUv.y);
-  diffuseColor.a *= fade;
-}`);
-  }, [uniforms]);
-  return (
-    <mesh geometry={geo} renderOrder={2}>
-      <meshStandardMaterial transparent opacity={0.96} roughness={0.6} metalness={0.0}
-        depthWrite={false} flatShading side={THREE.DoubleSide} onBeforeCompile={onBeforeCompile}
-        customProgramCacheKey={() => 'chute'} />
-    </mesh>
-  );
-}
-
-/* ---------- 哑光翻涌白沫盘（唇 / 潭） ---------- */
-const FOAM_FRAG = /* glsl */ `
-uniform float uTime; uniform vec3 uFoam; varying vec2 vUv;
-${NOISE}
-void main(){
-  vec2 c = vUv - 0.5; float r = length(c) * 2.0;
-  float churn = vnoi(c * 8.0 + vec2(0.0, uTime * 1.4)) * 0.6 + vnoi(c * 16.0 - uTime) * 0.4;
-  float m = smoothstep(0.25, 0.85, churn) * (1.0 - smoothstep(0.45, 1.0, r));
-  if (m < 0.04) discard;
-  gl_FragColor = vec4(uFoam, m * 0.9);
-}`;
-function FoamDisc({ pos, radius }: { pos: [number, number, number]; radius: number }) {
-  const ref = useRef<THREE.ShaderMaterial>(null);
-  const uniforms = useMemo(() => ({ uTime: { value: 0 }, uFoam: { value: new THREE.Color('#f3fbff') } }), []);
-  useFrame((s) => { if (ref.current) ref.current.uniforms.uTime.value = s.clock.elapsedTime; });
-  return (
-    <mesh position={pos} rotation={[-Math.PI / 2, 0, 0]} renderOrder={3}>
-      <planeGeometry args={[radius * 2, radius * 2]} />
-      <shaderMaterial ref={ref} fragmentShader={FOAM_FRAG} uniforms={uniforms} transparent depthWrite={false} toneMapped={false}
-        vertexShader={`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`} />
-    </mesh>
-  );
 }
 
 /* ---------- 小而碎的哑光水花粒子 ---------- */
@@ -155,7 +115,7 @@ function Spray({ origin, count, life, speed, gravity, spread, up, sizeA, sizeB, 
   }, [count, spread, up]);
   const uniforms = useMemo(() => ({
     uTime: { value: 0 }, uLife: { value: life }, uSpeed: { value: speed }, uGravity: { value: gravity },
-    uSizeA: { value: sizeA }, uSizeB: { value: sizeB }, uColor: { value: new THREE.Color('#f3fbff') }, uOpacity: { value: opacity },
+    uSizeA: { value: sizeA }, uSizeB: { value: sizeB }, uColor: { value: new THREE.Color('#eaf8ff') }, uOpacity: { value: opacity },
   }), [life, speed, gravity, sizeA, sizeB, opacity]);
   useFrame((s) => { if (ref.current) ref.current.uniforms.uTime.value = s.clock.elapsedTime; });
   return (
@@ -166,18 +126,42 @@ function Spray({ origin, count, life, speed, gravity, spread, up, sizeA, sizeB, 
   );
 }
 
-export function Waterfall({ poly, dir, width }: Fall) {
-  if (!poly || poly.length < 2) return null;
+/* ---------- 水帘本体 + 落水水花 ---------- */
+function FallBody({ poly, dir, width }: Pick<Fall, 'poly' | 'dir' | 'width'>) {
+  const geo = useMemo(() => buildCascadeGeometry(poly, dir, width), [poly, dir, width]);
   const bot = poly[poly.length - 1];
   return (
     <group>
-      <Chute poly={poly} dir={dir} width={width} />
-      {/* 迸溅水花：小而碎、哑光，向外炸 + 重力 */}
-      <Spray origin={[bot.x, bot.y, bot.z]} count={20} life={0.9} speed={2.6} gravity={-9.0}
-        spread={0.9} up={1.5} sizeA={1.0} sizeB={2.4} opacity={0.9} />
-      {/* 极淡水雾：少、低透明、上飘 */}
-      <Spray origin={[bot.x, bot.y + 0.1, bot.z]} count={7} life={2.2} speed={0.8} gravity={0.4}
-        spread={0.6} up={2.0} sizeA={3.0} sizeB={5.5} opacity={0.1} />
+      {/* 水帘本体：与溪流同一套 StylizedWater 着色器（同配色、同柔和岸沫，无条纹）。
+          slopeAttr → 用几何坡度驱动「陡白急 / 缓蓝静」的自然过渡；
+          depthShade=false → 走横向 uv 上色（瀑布贴坡，水深无意义）；
+          opacity 偏高 → 读作有体积的水体，而非透明贴片。 */}
+      <StylizedWater
+        geometry={geo}
+        foamMode="ribbon"
+        slopeAttr
+        flow={[0, 0.4]}
+        lieFlat={false}
+        depthShade={false}
+        steepFoam={0.14}
+        shallow="#aee6fa"
+        deep="#2a6690"
+        opacity={0.95}
+        waveAmp={1.1}
+        renderOrder={2}
+      />
+      {/* 入潭溅射：低角度「向外炸开」的浪花冠（up 低、spread 大）——水真的打在潭面溅出来的感觉，
+          而不是向上喷的喷泉；重力大 → 迸出后很快落回，冠形紧凑。 */}
+      <Spray origin={[bot.x, bot.y, bot.z]} count={24} life={0.7} speed={2.8} gravity={-12.0}
+        spread={1.6} up={0.45} sizeA={1.2} sizeB={2.2} opacity={0.85} />
+      {/* 贴水面低矮碎沫：向外薄薄铺开，不上窜 */}
+      <Spray origin={[bot.x, bot.y + 0.05, bot.z]} count={10} life={1.1} speed={1.3} gravity={-5.0}
+        spread={1.3} up={0.5} sizeA={2.2} sizeB={3.8} opacity={0.14} />
     </group>
   );
+}
+
+export function Waterfall({ poly, dir, width }: Fall) {
+  if (!poly || poly.length < 2) return null;
+  return <FallBody poly={poly} dir={dir} width={width} />;
 }

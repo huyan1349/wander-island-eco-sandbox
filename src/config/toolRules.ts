@@ -21,10 +21,10 @@ export const GRAY_BURST_TOOLS = new Set<ToolType>(['terrainUp', 'terrainDown', '
 export const PLACEABLE_TOOLS = new Set<ToolType>([
   'treeA', 'treeB', 'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'rock',
   'deer', 'wolf', 'seagull', 'dolphin', 'fish', 'spring', 'pond', 'streetlamp',
-  'lantern_girl', 'house', 'windmill', 'lighthouse', 'platform', 'pier', 'boat',
+  'lantern_girl', 'house', 'windmill', 'lighthouse', 'platform', 'pier', 'boat', 'raft',
   'bridge_pillar', 'sub_island', 'birdhouse', 'balloon', 'balloon_ladder', 'balloon_bridge',
   'tent', 'campfire', 'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat',
-  'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel',
+  'seed_carrot', 'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'train',
 ]);
 
 export const VERTICAL_TOOLS = new Set<ToolType>([
@@ -32,7 +32,7 @@ export const VERTICAL_TOOLS = new Set<ToolType>([
   'bridge_pillar', 'balloon', 'balloon_ladder', 'balloon_bridge', 'tent', 'campfire',
   'fence', 'well', 'bench', 'sign', 'mailbox', 'hoe', 'seed_wheat', 'seed_carrot',
   'spirit_tree', 'observatory', 'ruins_arch', 'waterwheel', 'treeA', 'treeB',
-  'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush',
+  'cherry_tree', 'bamboo', 'pine_tree', 'willow_tree', 'bush', 'train',
 ]);
 
 export const FIXED_ROTATION_TOOLS = new Set<ToolType>([

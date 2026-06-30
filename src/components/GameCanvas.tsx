@@ -3,17 +3,16 @@ import { OrbitControls, Text, Html, PivotControls } from '@react-three/drei';
 import { PomodoroTimer } from './PomodoroTimer';
 import { IslandClock } from './IslandClock';
 import { Suspense, useRef, useEffect, useState } from 'react';
-import { Terrain } from './Terrain';
-import { Water } from './Water';
-import { BoatWake } from './assets/marine';
-import { SkySystem, WeatherSystem, FirefliesSystem } from './SkySystem';
+import { BoatWake } from './assets/BoatWake';
 import { ConstellationGame } from './game/ConstellationGame';
 import { TelescopeControls } from './game/TelescopeControls';
-import { updateHeightField } from '../game/water/heightField';
-import { Assets } from './Assets';
 import * as THREE from 'three';
-import { EffectComposer, Bloom, Vignette, HueSaturation, DepthOfField, BrightnessContrast } from '@react-three/postprocessing';
 import { useGameStore } from '../store';
+import { lazyNamed } from '../lib/lazyNamed';
+
+const EnvironmentScene = lazyNamed(() => import('./canvas/EnvironmentScene'), 'EnvironmentScene');
+const Assets = lazyNamed(() => import('./Assets'), 'Assets');
+const PostProcessingEffects = lazyNamed(() => import('./canvas/PostProcessingEffects'), 'PostProcessingEffects');
 
 // 触屏检测 hook
 function useIsTouchDevice() {
@@ -171,26 +170,6 @@ function FocusRaycaster() {
     return () => gl.domElement.removeEventListener('pointerdown', onPointerDown);
   }, [gl, camera, scene, pointer, raycaster]);
   return null;
-}
-
-function DynamicDOF({ photoSettings }: { photoSettings: any }) {
-  const { camera } = useThree();
-  const targetVec = photoSettings.focusTarget ? new THREE.Vector3(...photoSettings.focusTarget) : undefined;
-  
-  // Calculate world distance
-  let worldDist = photoSettings.focusDistance * (camera.far - camera.near);
-  if (targetVec) {
-    worldDist = camera.position.distanceTo(targetVec);
-  }
-
-  return (
-    <DepthOfField 
-      worldFocusDistance={worldDist} 
-      focalLength={photoSettings.focalLength} 
-      bokehScale={photoSettings.bokehScale} 
-      height={480} 
-    />
-  );
 }
 
 function CameraFocusPan({ controlsRef }: { controlsRef: any }) {
@@ -387,13 +366,6 @@ function SmoothZoom({ controlsRef, minDistance, maxDistance }: {
   return null;
 }
 
-// 地形高度场：terrainData 变更时重建一次，供体积水着色器采样水深
-function HeightFieldSync() {
-  const terrainData = useGameStore(state => state.terrainData);
-  useEffect(() => { updateHeightField(); }, [terrainData]);
-  return null;
-}
-
 export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = true }: { immersive?: boolean; timer3D?: boolean; autoRotateOn?: boolean }) {
   const isDrawing = useGameStore(state => state.isDrawing);
   const screen = useGameStore(state => state.screen);
@@ -435,16 +407,14 @@ export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = 
         }}
       >
         <Suspense fallback={null}>
-          <SkySystem />
-          <WeatherSystem />
-          <FirefliesSystem />
+          <Suspense fallback={null}>
+            <EnvironmentScene />
+          </Suspense>
           <FocusRaycaster />
-          
-          <HeightFieldSync />
-          <Terrain />
-          <Water />
           {/* Interactive Objects */}
-          <Assets />
+          <Suspense fallback={null}>
+            <Assets />
+          </Suspense>
           <ConstellationGame />
           <TelescopeControls active={isObservatoryMode} />
           
@@ -469,13 +439,16 @@ export function GameCanvas({ immersive = false, timer3D = false, autoRotateOn = 
              </group>
           )}
 
-          <EffectComposer multisampling={0}>
-             {isPhotoMode && <DynamicDOF photoSettings={photoSettings} />}
-             <Bloom luminanceThreshold={1.2} luminanceSmoothing={0.8} intensity={1.5} mipmapBlur />
-             <HueSaturation saturation={sat} hue={hue} />
-             {isPhotoMode && <BrightnessContrast brightness={brightness} contrast={contrast} />}
-             <Vignette eskil={false} offset={0.15} darkness={0.8} />
-          </EffectComposer>
+          <Suspense fallback={null}>
+            <PostProcessingEffects
+              isPhotoMode={isPhotoMode}
+              photoSettings={photoSettings}
+              hue={hue}
+              saturation={sat}
+              brightness={brightness}
+              contrast={contrast}
+            />
+          </Suspense>
         </Suspense>
         {!isTouch && !drivingBoatId && !isObservatoryMode && <WASDControls controlsRef={orbitRef} />}
         {!isTouch && !isObservatoryMode && <SmoothZoom controlsRef={orbitRef} minDistance={5} maxDistance={120} />}

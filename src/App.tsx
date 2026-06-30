@@ -1,8 +1,18 @@
-import { useEffect, useRef, useState, lazy, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
+import { lazyNamed } from "./lib/lazyNamed";
 // 懒加载 3D 场景（Three.js/r3f/drei）—— 拆出独立 chunk，大幅减小首屏主包
-const GameCanvas = lazy(() => import("./components/GameCanvas").then(m => ({ default: m.GameCanvas })));
-import { TitleScreen } from "./components/TitleScreen";
-import { SaveSelectScreen } from "./components/SaveSelectScreen";
+const GameCanvas = lazyNamed(() => import("./components/GameCanvas"), "GameCanvas");
+const PlayerPanel = lazyNamed(() => import("./components/PlayerPanel"), "PlayerPanel");
+const TelescopeOverlay = lazyNamed(() => import("./components/game/TelescopeOverlay"), "TelescopeOverlay");
+const MailboxModal = lazyNamed(() => import("./components/MailboxModal"), "MailboxModal");
+const SocialPanel = lazyNamed(() => import("./components/SocialPanel"), "SocialPanel");
+const GiftModal = lazyNamed(() => import("./components/GiftModal"), "GiftModal");
+const PomodoroTimer = lazyNamed(() => import("./components/PomodoroTimer"), "PomodoroTimer");
+const PhotoModeOverlay = lazyNamed(() => import("./components/ui/PhotoModeOverlay"), "PhotoModeOverlay");
+const TitleScreen = lazyNamed(() => import("./components/TitleScreen"), "TitleScreen");
+const SaveSelectScreen = lazyNamed(() => import("./components/SaveSelectScreen"), "SaveSelectScreen");
+const LoginScreen = lazyNamed(() => import("./components/LoginScreen"), "LoginScreen");
+const OnboardingFlow = lazyNamed(() => import("./components/OnboardingFlow"), "OnboardingFlow");
 import { LoadingScreen, hasVisitedBefore } from "./components/LoadingScreen";
 import { BUILD_CATEGORIES, MODE_TOOLS, WEATHER_OPTIONS } from "./config/toolCatalog";
 import { useGameStore, ToolType } from "./store";
@@ -22,22 +32,14 @@ import {
   Camera
 } from "lucide-react";
 
-import { PlayerPanel } from "./components/PlayerPanel";
-import { LoginScreen } from "./components/LoginScreen";
-import { OnboardingFlow } from "./components/OnboardingFlow";
 import { WelcomeGuide } from "./components/WelcomeGuide";
 import { SoundLayer } from "./components/SoundLayer";
 import { SignEditorModal } from "./components/SignEditorModal";
-import { TelescopeOverlay } from "./components/game/TelescopeOverlay";
 import { AchievementSystem } from "./components/AchievementSystem";
 import { HermitOnline } from "./components/HermitOnline";
-import { MailboxModal } from "./components/MailboxModal";
 import { emitHermitRemove } from "./lib/socket";
-import { SocialPanel } from "./components/SocialPanel";
 import { Toast } from "./components/Toast";
 import { FlourishHUD } from "./components/FlourishHUD";
-import { GiftModal } from "./components/GiftModal";
-import { PomodoroTimer } from "./components/PomodoroTimer";
 import { VisitOverlay } from "./components/VisitOverlay";
 import { CiSpirit } from "./components/CiSpirit";
 import { CiForecastAlert } from "./components/ui/CiForecastAlert";
@@ -63,12 +65,11 @@ import { useCiProactive } from "./hooks/useCiProactive";
 import { TimeWeatherSystem } from "./components/systems/TimeWeatherSystem";
 import { SolarMeridian } from "./components/ui/SolarMeridian";
 import { WeatherForecast } from "./components/ui/WeatherForecast";
-import { PhotoModeOverlay } from "./components/ui/PhotoModeOverlay";
 import { AudioSystem } from "./lib/audio";
 import { BRUSH_MODES, SURFACE_LABELS } from "./utils/terrainBrush";
 import type { BrushFalloff, SurfaceType } from "./utils/terrainBrush";
 import { SkySystem } from './components/SkySystem';
-import { TelescopeIcon } from './components/Assets';
+import { TelescopeIcon } from './components/icons/TelescopeIcon';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
@@ -169,6 +170,7 @@ export default function App() {
   const [isTouch, setIsTouch] = useState(false);
   const [touchTooltip, setTouchTooltip] = useState<string | null>(null);
   const touchTooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const catCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null); // 子菜单离开后延时收起
 
   useEffect(() => {
     const resetToPreload = () => {
@@ -205,7 +207,7 @@ export default function App() {
   useGiftClaimQuery(setGiftClaimId);
   useAuthBootstrap(authUser, setAuthUser);
   usePresenceAndVisitEvents(authUser, addToast, setVisitingIsland);
-  useEcologyAudioSync(springCount, windmillCount, weather);
+  useEcologyAudioSync(springCount, windmillCount, weather, timeOfDay);
   useAutosave(saveGame);
   useUnreadCountPolling(authUser, screen, setUnreadCount);
   useCloudIslandSync(authUser, islandId);
@@ -317,12 +319,14 @@ export default function App() {
         </Suspense>
       </div>
 
-      {appLoaded && screen === 'TITLE' && <TitleScreen />}
-      {appLoaded && screen === 'LOGIN' && <LoginScreen />}
-      {appLoaded && screen === 'ONBOARD' && <OnboardingFlow />}
-      <AnimatePresence>
-        {appLoaded && screen === 'SAVE_SELECT' && <SaveSelectScreen key="save-select" />}
-      </AnimatePresence>
+      <Suspense fallback={null}>
+        {appLoaded && screen === 'TITLE' && <TitleScreen />}
+        {appLoaded && screen === 'LOGIN' && <LoginScreen />}
+        {appLoaded && screen === 'ONBOARD' && <OnboardingFlow />}
+        <AnimatePresence>
+          {appLoaded && screen === 'SAVE_SELECT' && <SaveSelectScreen key="save-select" />}
+        </AnimatePresence>
+      </Suspense>
 
       {screen === 'PLAYING' && selectedTool === 'eraser' && (
         <div className={`absolute left-1/2 -translate-x-1/2 z-50 ${isTouch ? 'bottom-28' : 'bottom-10'}`}>
@@ -359,7 +363,9 @@ export default function App() {
           onMouseLeave={() => !isTouch && document.getElementById('left-bar-hit-area')?.dispatchEvent(new MouseEvent('mouseleave'))}
         >
            {/* Profile / Avatar (Top Left) */}
-           <PlayerPanel />
+           <Suspense fallback={null}>
+             <PlayerPanel />
+           </Suspense>
 
            {/* Tool Column (Below Avatar) - Hover to reveal */}
            <motion.div 
@@ -429,7 +435,9 @@ export default function App() {
                       visible: { opacity: 1, x: 0, scale: 1, transition: { type: "spring", stiffness: 400, damping: 25, delay: 0.2 } }
                     }}
                  >
-                    <SocialPanel />
+                    <Suspense fallback={null}>
+                      <SocialPanel />
+                    </Suspense>
                  </motion.div>
 
                  <motion.div
@@ -521,7 +529,9 @@ export default function App() {
            {/* 专注番茄钟（中央显示；切到 3D 时改由岛上 Html 渲染）*/}
            {!timer3D && (
            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-               <PomodoroTimer />
+               <Suspense fallback={null}>
+                 <PomodoroTimer />
+               </Suspense>
            </div>
            )}
 
@@ -575,7 +585,13 @@ export default function App() {
           <div 
             id="tool-dock" 
             className={`relative flex flex-col items-center gap-3 pointer-events-none transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isTouch ? 'touch-safe-bottom' : 'gap-4'}`}
-            onMouseLeave={() => !isTouch && setActiveCategory(null)}
+            onMouseEnter={() => { if (catCloseTimer.current) { clearTimeout(catCloseTimer.current); catCloseTimer.current = null; } }}
+            onMouseLeave={() => {
+              if (isTouch) return;
+              if (catCloseTimer.current) clearTimeout(catCloseTimer.current);
+              // 离开后延时 2s 再收起子菜单，给移动/操作留余量；移回 dock 会取消收起。
+              catCloseTimer.current = setTimeout(() => { setActiveCategory(null); catCloseTimer.current = null; }, 2000);
+            }}
           >
 
           {/* Touch tooltip banner */}
@@ -925,7 +941,11 @@ export default function App() {
       )}
       
       {/* Photo Mode UI needs to be outside the hidden block above */}
-      {screen === 'PLAYING' && <PhotoModeOverlay />}
+      {screen === 'PLAYING' && (
+        <Suspense fallback={null}>
+          <PhotoModeOverlay />
+        </Suspense>
+      )}
 
       {screen === 'PLAYING' && <Toast />}
       {screen === 'PLAYING' && showWelcomeGuide && <WelcomeGuide />}
@@ -936,7 +956,9 @@ export default function App() {
       {screen === 'PLAYING' && mailboxOpen && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/55 backdrop-blur-sm" onClick={() => setMailboxOpen(false)}>
           <div onClick={(e) => e.stopPropagation()}>
-            <MailboxModal onClose={() => setMailboxOpen(false)} />
+            <Suspense fallback={null}>
+              <MailboxModal onClose={() => setMailboxOpen(false)} />
+            </Suspense>
           </div>
         </div>
       )}
@@ -973,7 +995,9 @@ export default function App() {
       )}
 
       {/* 望远镜目镜覆层：镜筒 / 准星 / 变焦 / 星图进度 / 揭晓星卡 */}
-      <TelescopeOverlay />
+      <Suspense fallback={null}>
+        <TelescopeOverlay />
+      </Suspense>
 
       {/* --- Sailing Tutorial Dialog (First Time Only) --- */}
       {showSailingTutorial && (
@@ -1009,7 +1033,9 @@ export default function App() {
 
       <FlourishHUD />
       {giftClaimId && (
-        <GiftModal mode="claim" giftId={giftClaimId} onClose={() => { setGiftClaimId(null); history.replaceState({}, '', location.pathname); }} />
+        <Suspense fallback={null}>
+          <GiftModal mode="claim" giftId={giftClaimId} onClose={() => { setGiftClaimId(null); history.replaceState({}, '', location.pathname); }} />
+        </Suspense>
       )}
       {isIslandStatusOpen && <IslandStatusPanel onClose={() => setIsIslandStatusOpen(false)} />}
       {visitingIsland && <VisitOverlay />}

@@ -94,10 +94,12 @@ export function usePresenceAndVisitEvents(
   }, [authUser, addToast, setVisitingIsland]);
 }
 
-export function useEcologyAudioSync(springCount: number, windmillCount: number, weather: WeatherType) {
+export function useEcologyAudioSync(springCount: number, windmillCount: number, weather: WeatherType, timeOfDay = 12) {
+  // 量化到整点：timeOfDay 每帧推进，但夜虫/涌浪只需按小时变化（音频内部再平滑过渡）。
+  const hour = Math.floor(timeOfDay);
   useEffect(() => {
-    AudioSystem.updateEcologyState(springCount, windmillCount, weather);
-  }, [springCount, windmillCount, weather]);
+    AudioSystem.updateEcologyState(springCount, windmillCount, weather, hour);
+  }, [springCount, windmillCount, weather, hour]);
 }
 
 export function useAutosave(saveGame: () => void) {
