@@ -32,6 +32,17 @@ Read these files before making non-trivial changes:
 
 - Claim a narrow module before editing. Examples: "crop logic", "mailbox UI",
   "waterfall path fitting", "smoke test".
+- Keep `src/components/Assets.tsx` as the thin asset registry. Do not add new
+  mesh-heavy components there.
+- Use the asset modules by ownership: `assets/marine.tsx` for rafts, boats,
+  balloons, bridges, and marine physics; `assets/SubIsland.tsx` for local
+  island terrain editing; `assets/buildings.tsx` for houses, lighthouses,
+  streetlamps, lantern girl, and windmills; `assets/creatures.tsx` for deer and
+  wolves; `assets/ambientCreatures.tsx` for fish, dolphins, and seagulls;
+  `assets/waterAssets.tsx` for springs, ponds, streams, and waterfalls;
+  `assets/landmarks.tsx` for spirit tree, observatory, ruins, and waterwheel;
+  `assets/interactiveProps.tsx` for birdhouse, campfire, sign, mailbox, and
+  bench.
 - One agent should own one behavioral area at a time. If another agent has just
   touched the same file, read its diff before editing.
 - Prefer extracting pure logic and adding tests over changing React/Three

@@ -342,7 +342,8 @@ wander-island-eco-sandbox/
 │   │   ├── Terrain.tsx           # 地形网格 + 笔刷交互
 │   │   ├── Water.tsx             # 海洋/水面渲染
 │   │   ├── SkySystem.tsx         # 天空盒 + 日夜天光
-│   │   ├── Assets.tsx            # 所有 3D 物件渲染 + 子岛
+│   │   ├── Assets.tsx            # 3D 物件注册/分发层
+│   │   ├── assets/               # 3D 物件模块（海洋、建筑、生物、水体、地标、交互道具）
 │   │   ├── TitleScreen.tsx       # 标题画面
 │   │   ├── LoginScreen.tsx       # 登录/注册
 │   │   ├── SaveSelectScreen.tsx  # 存档选择

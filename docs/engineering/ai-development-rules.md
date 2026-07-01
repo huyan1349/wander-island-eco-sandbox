@@ -19,7 +19,21 @@ daily engineering rules for Wander Island.
 
 - App shell and lazy loading: `src/App.tsx`, `src/components/GameCanvas.tsx`,
   `src/components/canvas/*`.
-- Asset rendering: `src/components/Assets.tsx`, `src/components/assets/*`.
+- Asset registry: `src/components/Assets.tsx`. Keep this file as a thin
+  switch/dispatcher.
+- Asset rendering modules:
+  - `src/components/assets/marine.tsx`: rafts, boats, balloons, bridges,
+    marine physics.
+  - `src/components/assets/SubIsland.tsx`: local island terrain editing.
+  - `src/components/assets/buildings.tsx`: house, windmill, lighthouse,
+    streetlamp, lantern girl.
+  - `src/components/assets/creatures.tsx`: deer and wolf locomotion/AI.
+  - `src/components/assets/ambientCreatures.tsx`: fish, dolphin, seagull.
+  - `src/components/assets/waterAssets.tsx`: spring, pond, stream, waterfall.
+  - `src/components/assets/landmarks.tsx`: spirit tree, observatory, ruins,
+    waterwheel.
+  - `src/components/assets/interactiveProps.tsx`: birdhouse, campfire, sign,
+    mailbox, bench.
 - Pure game rules: `src/game/*`.
 - Save/load and import/export: `src/game/saveFormat.ts`,
   `src/utils/islandIO.ts`, `src/store.ts`.

@@ -53,7 +53,7 @@ function useMarineAssetIndex() {
   return useMemo(() => buildMarineAssetIndex(assets), [assets]);
 }
 
-function useMarinePhysics(ref: React.RefObject<any>, props: any, baseOffset: number = 0) {
+export function useMarinePhysics(ref: React.RefObject<any>, props: any, baseOffset: number = 0) {
   const weather = useGameStore((state) => state.weather);
   const { platforms, anchors } = useMarineAssetIndex();
 
