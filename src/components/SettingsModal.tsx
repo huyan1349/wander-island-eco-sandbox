@@ -478,6 +478,22 @@ export function SettingsModal(props: SettingsModalProps) {
                       
                       <SettingToggle icon={<Gauge size={18} />} label="降低界面动态效果" desc="适合低电量或晕动症患者" checked={props.reducedMotion} onClick={props.toggleReducedMotion} />
                       <SettingToggle icon={<Compass size={18} />} label="跳过开场动画" desc="直接进入主菜单" checked={props.skipIntro} onClick={props.toggleSkipIntro} />
+                      <ActionCard
+                        icon={<Sparkles size={18} />}
+                        label="重放开场仪式"
+                        onClick={() => {
+                          AudioSystem.playClick();
+                          try {
+                            localStorage.removeItem('wander-opening-seen');
+                          } catch {}
+                          props.onClose();
+                          // 提示用户刷新后即可重看
+                          window.setTimeout(() => {
+                            const tip = window.confirm('已重置开场仪式。刷新页面即可重看完整开场序列。');
+                            void tip;
+                          }, 200);
+                        }}
+                      />
                     </div>
                   </div>
                 </motion.div>
