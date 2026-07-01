@@ -71,13 +71,11 @@ export const TitleScreen: React.FC = () => {
     const islandName = useGameStore(state => state.islandName);
 
     const initialSkipIntro = readStoredBool('wander_title_skip_intro', false);
-    // 若已播放过电影感开场仪式，则跳过标题页 splash，避免重复情绪铺陈
-    const openingSeen = readStoredBool('wander-opening-seen', false);
     const [activeModal, setActiveModal] = useState<ModalType>('NONE');
     const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>('audio');
-    const [splashPhase, setSplashPhase] = useState<'AUTHOR' | 'TITLE' | 'DONE'>(hasSeenSplash || initialSkipIntro || openingSeen ? 'DONE' : 'AUTHOR');
+    const [splashPhase, setSplashPhase] = useState<'AUTHOR' | 'TITLE' | 'DONE'>(hasSeenSplash || initialSkipIntro ? 'DONE' : 'AUTHOR');
     const [splashVisible, setSplashVisible] = useState(false);
-    const [splashOverlayVisible, setSplashOverlayVisible] = useState(!(hasSeenSplash || initialSkipIntro || openingSeen));
+    const [splashOverlayVisible, setSplashOverlayVisible] = useState(!(hasSeenSplash || initialSkipIntro));
 
     const [isEditingName, setIsEditingName] = useState(false);
     const [tempName, setTempName] = useState('');
@@ -383,7 +381,7 @@ export const TitleScreen: React.FC = () => {
             {/* Top Right Version / Info */}
             <div className={`absolute flex flex-col items-end gap-1 ${isTouch ? 'top-8 right-12 touch-safe-top touch-safe-right' : 'top-16 right-24'}`}>
                 <span className="text-sm font-bold hand-drawn-title text-slate-700">Wander Island</span>
-                <span className="text-xs font-bold text-slate-600">流浪岛 . v2.3.0 Touch</span>
+                <span className="text-xs font-bold text-slate-600">流浪岛 . v2.2.0 Touch</span>
                 {authUser && (
                   <div className="mt-3 pointer-events-auto">
                     {/* 统一玩家界面：与正式游戏内同一套 PlayerPanel */}

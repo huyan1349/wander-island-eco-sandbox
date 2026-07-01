@@ -71,7 +71,6 @@ import type { BrushFalloff, SurfaceType } from "./utils/terrainBrush";
 import { SkySystem } from './components/SkySystem';
 import { TelescopeIcon } from './components/icons/TelescopeIcon';
 import { motion, AnimatePresence } from 'motion/react';
-import { OpeningSequence } from './components/OpeningSequence';
 
 export default function App() {
   const screen = useGameStore(state => state.screen);
@@ -164,20 +163,6 @@ export default function App() {
   const [showSailingTutorial, setShowSailingTutorial] = useState(false);
 
   const [appLoaded, setAppLoaded] = useState(() => hasVisitedBefore());
-
-  // 开场仪式：仅首次访问且未跳过时播放
-  const [showOpening, setShowOpening] = useState(() => {
-    try {
-      if (localStorage.getItem('wander_title_skip_intro') === 'true') return false;
-      return localStorage.getItem('wander-opening-seen') !== 'true';
-    } catch {
-      return false;
-    }
-  });
-  const handleOpeningDone = () => {
-    try { localStorage.setItem('wander-opening-seen', 'true'); } catch {}
-    setShowOpening(false);
-  };
   const lastToolRef = useRef<ToolType>('none');
   const lastCategoryRef = useRef<string | null>(null);
 
@@ -335,10 +320,7 @@ export default function App() {
       </div>
 
       <Suspense fallback={null}>
-        {appLoaded && screen === 'TITLE' && showOpening && (
-          <OpeningSequence onDone={handleOpeningDone} />
-        )}
-        {appLoaded && screen === 'TITLE' && !showOpening && <TitleScreen />}
+        {appLoaded && screen === 'TITLE' && <TitleScreen />}
         {appLoaded && screen === 'LOGIN' && <LoginScreen />}
         {appLoaded && screen === 'ONBOARD' && <OnboardingFlow />}
         <AnimatePresence>
