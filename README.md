@@ -16,7 +16,7 @@
 [![Socket.IO](https://img.shields.io/badge/Socket.IO-4-010101?logo=socket.io&logoColor=white)](https://socket.io/)
 [![SQLite](https://img.shields.io/badge/SQLite-better--sqlite3-003B57?logo=sqlite&logoColor=white)](https://github.com/WiseLibs/better-sqlite3)
 
-[项目简介](#项目简介) · [核心系统](#核心系统) · [技术架构](#技术架构) · [快速开始](#快速开始) · [项目结构](#项目结构) · [游戏截图](#游戏截图) · [游戏流程](#游戏流程)
+[项目简介](#项目简介) · [核心系统](#核心系统) · [技术架构](#技术架构) · [快速开始](#快速开始) · [AI 协作规范](AGENTS.md) · [项目结构](#项目结构) · [游戏截图](#游戏截图) · [游戏流程](#游戏流程)
 
 </div>
 
